@@ -329,3 +329,22 @@ document.addEventListener('click', async e => {
   else if (a === 'mkstd') { try { await makeFolder(m.folderId, el.dataset.n); toast('Created ' + el.dataset.n); loadFolder(); } catch (er) { toast(er.message); } }
 });
 document.addEventListener('change', e => { if (e.target.dataset?.act === 'upload') handleUpload(e.target); });
+
+/* Link matters that were loaded with a folder location (linkPath) to the folder's permanent OneDrive ID. */
+let linking = false;
+async function resolveLinks() {
+  if (linking || !S.account || !navigator.onLine) return;
+  const todo = live().filter(m => m.linkPath && !m.folderId);
+  if (!todo.length) return;
+  linking = true;
+  for (const m of todo) {
+    try {
+      const it = await getItem(drivePath(m.linkPath));
+      change(() => { Object.assign(m, { folderId: it.id, folderName: it.name, folderPath: itemPath(it), folderUrl: it.webUrl, ownFolder: false }); delete m.linkPath; touch(m); });
+    } catch (e) { if (/not found/.test(e.message)) change(() => { m.linkMissing = m.linkPath; delete m.linkPath; touch(m); }); }
+  }
+  linking = false;
+  if (S.tab === 'matter' && find(S.mid)?.folderId && !F.items) loadFolder();
+}
+setInterval(resolveLinks, 20000);
+setTimeout(resolveLinks, 5000);
