@@ -286,7 +286,7 @@ async function linkFolder(fid) {
   const m = find(S.mid);
   try {
     const it = await getItem(fid);
-    change(() => { Object.assign(m, { folderId: it.id, folderName: it.name, folderPath: itemPath(it), folderUrl: it.webUrl, ownFolder: false }); touch(m); });
+    change(() => { Object.assign(m, { folderId: it.id, folderName: it.name, folderPath: itemPath(it), folderUrl: it.webUrl, ownFolder: false, noAutoLink: true }); touch(m); });
     const root = $('#sheet-root'); root.onclick = root.onkeydown = null;
     closeSheet(); toast('Linked to ' + it.name); F.stack = []; loadFolder();
   } catch (e) { toast('Could not link: ' + e.message); }
@@ -383,3 +383,77 @@ async function resolveLinks() {
 }
 setInterval(resolveLinks, 20000);
 setTimeout(resolveLinks, 5000);
+
+/* ---------- Automatic linking by diary number: a folder ending "(2024-001)" belongs to matter 2024/1 ---------- */
+const tagOf = m => '(' + m.year + '-' + String(m.n).padStart(3, '0') + ')';
+const autoTried = new Set();
+async function moveDetailsFile(fromId, toId) {
+  try {
+    const r = await g('/me/drive/items/' + fromId + ':/' + encodeURIComponent('0 Matter details.txt'));
+    if (!r.ok) return;
+    const it = await r.json();
+    await g('/me/drive/items/' + it.id + '?@microsoft.graph.conflictBehavior=replace', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parentReference: { id: toId } }) });
+  } catch (e) {}
+}
+async function autoLink() {
+  if (!S.account || !navigator.onLine || linking) return;
+  for (const m of live()) {
+    const tag = tagOf(m);
+    if (m.noAutoLink || (m.folderName || '').endsWith(tag) || autoTried.has(m.id)) continue;
+    autoTried.add(m.id);
+    try {
+      const q = tag.slice(1, -1);
+      const r = await g("/me/drive/root/search(q='" + encodeURIComponent(q) + "')?" + SEL + '&$top=25');
+      if (!r.ok) continue;
+      const hit = ((await r.json()).value || []).find(i => i.folder && i.name.endsWith(tag));
+      if (!hit) continue;
+      const full = await getItem(hit.id);
+      const oldId = m.folderId;
+      change(() => { Object.assign(m, { folderId: full.id, folderName: full.name, folderPath: itemPath(full), folderUrl: full.webUrl, ownFolder: true }); delete m.linkPath; delete m.relink; m.detailsSig = ''; touch(m); });
+      if (oldId && oldId !== full.id) moveDetailsFile(oldId, full.id);
+    } catch (e) {}
+  }
+}
+
+/* ---------- Inbox: Claude leaves small instruction files in OneDrive › Case Diary › Inbox; the app applies them,
+   so nobody overwrites the diary file while the app is open. File format:
+   { "changes": [ { "no": "2025/1", "set": { "caseNo": "123/2025" }, "hearing": { "date": "...", "happened": "...", "next": "...", "purpose": "...", "note": "..." } } ] } */
+let inboxBusy = false;
+async function processInbox() {
+  if (inboxBusy || !S.account || !navigator.onLine) return;
+  inboxBusy = true;
+  try {
+    const r = await g(drivePath(DIARY_DIR + '/Inbox') + ':/children?$select=id,name,file&$top=50');
+    if (r.ok) {
+      const files = ((await r.json()).value || []).filter(f => f.file && /\.json$/i.test(f.name));
+      let done = null;
+      for (const f of files) {
+        try {
+          const body = await (await g('/me/drive/items/' + f.id + '/content')).json();
+          change(() => {
+            for (const c of (body.changes || [])) {
+              const m = live().find(x => x.no === c.no); if (!m) continue;
+              if (c.set) Object.assign(m, c.set);
+              if (c.hearing) {
+                const h = c.hearing; m.hearings = m.hearings || []; m.hearings.push(h);
+                m.lastDate = h.date || m.lastDate;
+                if (/dispos|decided/i.test(h.happened || '')) { m.status = 'Decided'; m.nextDate = ''; m.purpose = ''; }
+                else { m.nextDate = h.next || ''; m.purpose = h.purpose || ''; m.status = /reserved/i.test(h.happened || '') ? 'Reserved' : 'Pending'; }
+                m.item = h.item || ''; m.calPending = true;
+              }
+              if (c.relink) { m.folderName = ''; autoTried.delete(m.id); }
+              touch(m);
+            }
+          });
+          if (!done) { const d = await g(drivePath(DIARY_DIR + '/Inbox/Done')); done = d.ok ? await d.json() : await makeFolder((await getItem(drivePath(DIARY_DIR + '/Inbox'))).id, 'Done'); }
+          await g('/me/drive/items/' + f.id + '?@microsoft.graph.conflictBehavior=rename', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parentReference: { id: done.id } }) });
+          toast('Diary updated from Claude');
+        } catch (e) { console.warn('inbox', e); }
+      }
+    }
+  } catch (e) {}
+  inboxBusy = false;
+  autoLink();
+}
+setInterval(processInbox, 30000);
+setTimeout(processInbox, 4000);
