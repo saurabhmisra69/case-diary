@@ -3,7 +3,7 @@
    Code only in this repository; all case data lives in the user's own OneDrive. */
 'use strict';
 
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.1.0';
 const CLIENT_ID = 'df289e5d-2a3c-4280-b4be-b440bfe8ea8b';
 const SCOPES = ['User.Read', 'Files.ReadWrite', 'Calendars.ReadWrite'];
 const DIARY_DIR = 'Case Diary';
@@ -70,7 +70,7 @@ const S = {
   etag: localStorage.getItem(LS_ETAG) || '',
   dirty: localStorage.getItem(LS_DIRTY) === '1',
   syncing: false, syncErr: '', lastSynced: localStorage.getItem(LS_SYNCED) || '',
-  tab: 'home', day: todayIso(), q: '', filter: 'pending',
+  tab: 'home', prevTab: 'home', mid: '', day: todayIso(), q: '', filter: 'pending',
 };
 const emptyData = () => ({ v: 1, matters: [], updated: 0 });
 const live = () => (S.data?.matters || []).filter(m => !m.deleted);
@@ -180,7 +180,7 @@ async function writeExcel() {
     'Type': m.type, 'Case no.': m.caseNo, 'Crime / FIR no.': m.crimeNo, 'Police station': m.ps, 'Sections': m.sections,
     'Nature': m.nature, 'Appearing for': m.side, 'Status': m.status, 'Last date': dmy(m.lastDate), 'Next date': dmy(m.nextDate),
     'Fixed for': m.purpose, 'Item': m.item, 'Fees agreed': num(m.feeAgreed), 'Fees received': num(m.feeReceived),
-    'Balance': Math.max(0, num(m.feeAgreed) - num(m.feeReceived)), 'Client phone': m.phone, 'Deadline': dmy(m.deadline), 'Deadline for': m.deadlineFor, 'Notes': m.notes,
+    'Balance': Math.max(0, num(m.feeAgreed) - num(m.feeReceived)), 'Client phone': m.phone, 'Deadline': dmy(m.deadline), 'Deadline for': m.deadlineFor, 'OneDrive folder': m.folderPath || '', 'Notes': m.notes,
   }));
   const hist = [];
   for (const m of ms) for (const h of (m.hearings || [])) hist.push({ 'Matter No.': m.no, 'Title': m.title, 'Date': dmy(h.date), 'What happened': h.happened, 'Next date': dmy(h.next), 'Fixed for': h.purpose, 'Note': h.note });
@@ -239,7 +239,7 @@ function matches(m, q) {
 /* ---------- rendering ---------- */
 function render() {
   if (!S.account) return renderSignIn();
-  const html = S.tab === 'home' ? viewHome() : S.tab === 'matters' ? viewMatters() : viewMore();
+  const html = S.tab === 'home' ? viewHome() : S.tab === 'matters' ? viewMatters() : S.tab === 'matter' && find(S.mid) ? viewMatter(find(S.mid)) : viewMore();
   $('#app').innerHTML = html + navHtml();
   renderSync();
 }
@@ -299,9 +299,9 @@ function viewHome() {
     <label class="search">${I.search}<input type="search" placeholder="Case no., FIR, party, client" data-act="q" value="${esc(S.q)}" enterkeyhint="search"></label>
     <div class="week">${week}</div>
   </header>
-  <main>
+  <main class="home-main">
     ${briefHtml(list, deadlines, fees)}
-    <section class="list">
+    <section class="list a-list">
       <div class="h2"><h2>${S.day === todayIso() ? 'Today in court' : 'In court · ' + DOWL[parseIso(S.day).getDay()] + ' ' + short(S.day)}</h2><span class="sub">${list.length} listed</span></div>
       ${list.length ? groupByCourt(list).map(([court, ms]) => {
         const f = forumOf(ms[0]);
@@ -309,7 +309,7 @@ function viewHome() {
       }).join('') : `<div class="card empty">${live().length ? 'Nothing listed for this day.' : 'No matters yet. Tap <b>+</b> to add your first matter.'}</div>`}
       ${done.map(doneRow).join('')}
     </section>
-    <section class="tiles">
+    <section class="tiles a-tiles">
       <button class="tile" style="background:var(--red-soft)" data-act="filter" data-f="deadline"><span style="color:var(--red-ink)">Deadlines</span><b style="color:var(--red-ink)">${deadlines.length}</b><span>${deadlines[0] ? esc(deadlines[0].deadlineFor || 'Due') + ' · ' + short(deadlines[0].deadline) : 'None this week'}</span></button>
       <button class="tile" style="background:var(--saffron-soft)" data-act="filter" data-f="fees"><span style="color:var(--saffron-ink)">Fees pending</span><b style="color:var(--saffron-ink)">${rupees(fees)}</b><span>${feeClients} matter${feeClients === 1 ? '' : 's'}</span></button>
       <button class="tile" style="background:var(--hc-soft)" data-act="filter" data-f="need"><span style="color:var(--hc)">Need a date</span><b style="color:var(--hc)">${need.length}</b><span>Date passed or blank</span></button>
@@ -335,7 +335,7 @@ function briefHtml(list, deadlines, fees) {
   } else parts.push(isToday ? 'No matters listed today.' : 'No matters listed on ' + short(S.day) + '.');
   if (deadlines.length) parts.push(`${esc(deadlines[0].deadlineFor || 'A deadline')} in ${esc(deadlines[0].title)} is due <b style="color:var(--red)">${deadlines[0].deadline <= todayIso() ? 'today or overdue' : DOWL[parseIso(deadlines[0].deadline).getDay()]}</b>.`);
   if (fees > 0) parts.push(`${rupees(fees)} in fees is pending.`);
-  return `<section class="card brief"><div style="display:flex;align-items:center;gap:8px"><span class="icon-chip">${I.sun}</span><h2 style="margin:0;font-family:var(--head);font-size:17px">Your day at a glance</h2></div><p>${parts.join(' ')}</p></section>`;
+  return `<section class="card brief a-brief"><div style="display:flex;align-items:center;gap:8px"><span class="icon-chip">${I.sun}</span><h2 style="margin:0;font-family:var(--head);font-size:17px">Your day at a glance</h2></div><p>${parts.join(' ')}</p></section>`;
 }
 function itemBox(m) {
   const f = forumOf(m);
@@ -352,7 +352,7 @@ function matterCard(m) {
     </div></div>
     <div class="acts">
       <button class="act primary" data-act="record" data-id="${m.id}">Next date</button>
-      <button class="act blue" data-act="open" data-id="${m.id}">${I.folder}Details</button>
+      <button class="act blue" data-act="open" data-id="${m.id}">${I.folder}${m.folderId ? 'Files' : 'Details'}</button>
       <button class="act wa" data-act="wa" data-id="${m.id}" ${wa ? '' : 'disabled title="Add client phone first"'}>${I.wa}Client</button>
     </div>
   </article>`;
@@ -468,13 +468,13 @@ function sheetEdit(m) {
       change(d => d.matters.push(rec));
       closeSheet(); toast('Matter ' + rec.no + ' added');
     } else {
-      const old = find(m.id);
+      const old = find(m.id); const before = { caseNo: old.caseNo, type: old.type, court: old.court };
       change(() => {
         if (old.year !== fd.year) { old.n = nextNumber(fd.year); old.no = fd.year + '/' + old.n; }
         if (old.nextDate !== fd.nextDate || old.status !== fd.status || old.purpose !== fd.purpose || old.court !== fd.court) old.calPending = true;
         Object.assign(old, fd); touch(old);
       });
-      closeSheet(); toast('Saved');
+      closeSheet(); toast('Saved'); if (typeof afterEdit === 'function') afterEdit(old, before);
     }
   };
 }
@@ -588,12 +588,12 @@ document.addEventListener('click', e => {
   if (a === 'day') { S.day = el.dataset.day; render(); return; }
   if (a === 'filter') { S.filter = el.dataset.f; S.tab = 'matters'; render(); return; }
   if (a === 'add') return sheetEdit(null);
-  if (a === 'open') return sheetDetail(find(id));
+  if (a === 'open') return openMatter(id);
   if (a === 'edit') return sheetEdit(find(id));
   if (a === 'record') return sheetRecord(find(id));
   if (a === 'wa') return sendWa(find(id));
-  if (a === 'deadlinedone') { const m = find(id); change(() => { m.deadlineDone = true; touch(m); }); sheetDetail(m); return; }
-  if (a === 'del') { const m = find(id); if (confirm('Remove ' + m.no + ' from the diary? The OneDrive case folder is not touched.')) { change(() => { m.deleted = true; m.calPending = !!m.eventId; m.nextDate = ''; touch(m); }); closeSheet(); toast('Removed from diary'); } return; }
+  if (a === 'deadlinedone') { const m = find(id); change(() => { m.deadlineDone = true; touch(m); }); return; }
+  if (a === 'del') { const m = find(id); if (confirm('Remove ' + m.no + ' from the diary? The OneDrive case folder is not touched.')) { change(() => { m.deleted = true; m.calPending = !!m.eventId; m.nextDate = ''; touch(m); }); closeSheet(); if (S.tab === 'matter') { S.tab = S.prevTab || 'home'; render(); } toast('Removed from diary'); } return; }
   if (a === 'openfolder') return openDriveItem(DIARY_DIR);
   if (a === 'openexcel') return openDriveItem(EXCEL_FILE);
   if (a === 'install') {
