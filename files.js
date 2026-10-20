@@ -167,12 +167,12 @@ function viewMatter(m) {
 function fileIcon(it) {
   if (it.folder) return ['📁', 'var(--saffron-soft)'];
   const ext = (it.name.split('.').pop() || '').toLowerCase();
-  if (ext === 'pdf') return ['PDF', '#FDE6EC'];
-  if (['doc', 'docx', 'rtf', 'odt'].includes(ext)) return ['W', '#E7ECFF'];
-  if (['xls', 'xlsx', 'csv'].includes(ext)) return ['X', '#DDF5E6'];
-  if (['jpg', 'jpeg', 'png', 'heic', 'webp', 'gif'].includes(ext)) return ['IMG', '#F8E4FB'];
-  if (['mp3', 'm4a', 'ogg', 'opus', 'wav', 'mp4'].includes(ext)) return ['▶', '#E8ECF1'];
-  return [ext.slice(0, 3).toUpperCase() || '·', '#F1F3F9'];
+  if (ext === 'pdf') return ['PDF', 'var(--red-soft)'];
+  if (['doc', 'docx', 'rtf', 'odt'].includes(ext)) return ['W', 'var(--hc-soft)'];
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return ['X', 'var(--dc-soft)'];
+  if (['jpg', 'jpeg', 'png', 'heic', 'webp', 'gif'].includes(ext)) return ['IMG', 'var(--tr-soft)'];
+  if (['mp3', 'm4a', 'ogg', 'opus', 'wav', 'mp4'].includes(ext)) return ['▶', 'var(--rv-soft)'];
+  return [ext.slice(0, 3).toUpperCase() || '·', 'var(--chip)'];
 }
 const kb = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
 function filesInner(m) {

@@ -318,7 +318,7 @@ function viewHome() {
       <button class="tile" style="background:var(--saffron-soft)" data-act="filter" data-f="fees"><span style="color:var(--saffron-ink)">Fees pending</span><b style="color:var(--saffron-ink)">${rupees(fees)}</b><span>${feeClients} matter${feeClients === 1 ? '' : 's'}</span></button>
       <button class="tile" style="background:var(--hc-soft)" data-act="filter" data-f="need"><span style="color:var(--hc)">Need a date</span><b style="color:var(--hc)">${need.length}</b><span>Date passed or blank</span></button>
       <button class="tile" style="background:var(--dc-soft)" data-act="filter" data-f="pending"><span style="color:var(--dc-ink)">Pending matters</span><b style="color:var(--dc-ink)">${pending.length}</b><span>Including reserved</span></button>
-      <button class="tile wide" style="background:#DDF4F3" data-act="tab" data-tab="limit"><span style="color:#08716E">Limitation</span><b style="color:#08716E;font-size:19px">Calculate last date</b><span>Appeal, revision, review, s.34, NI Act and more</span></button>
+      <button class="tile wide" style="background:var(--hc-soft)" data-act="tab" data-tab="limit"><span style="color:var(--hc)">Limitation</span><b style="color:var(--hc);font-size:19px">Calculate last date</b><span>Appeal, revision, review, s.34, NI Act and more</span></button>
     </section>
   </main>`;
 }
@@ -499,7 +499,7 @@ function sheetRecord(m, pre) {
     const others = R.next ? onDay(R.next).filter(x => x.id !== m.id).length : 0;
     const closing = R.happened === 'Disposed';
     openSheet(`<div class="s-head"><div><small style="color:${f.ink}">${esc(m.court || f.label)}${m.item ? ' · Item ' + esc(m.item) : ''}</small><h1>${esc(m.title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
-    ${R.fromOrder ? `<div class="picked" style="background:var(--blue-soft,#E8EDFF)"><b>Read from the order${R.heardOn ? ' dated ' + dmy(R.heardOn) : ''}</b><span>Please check before saving${R.deadline ? ' · deadline ' + esc(R.deadlineFor || '') + ' by ' + dmy(R.deadline) : ''}</span></div>` : ''}
+    ${R.fromOrder ? `<div class="picked" style="background:var(--hc-soft)"><b>Read from the order${R.heardOn ? ' dated ' + dmy(R.heardOn) : ''}</b><span>Please check before saving${R.deadline ? ' · deadline ' + esc(R.deadlineFor || '') + ' by ' + dmy(R.deadline) : ''}</span></div>` : ''}
     <div class="grp"><span class="lbl">What happened ${R.heardOn ? 'on ' + dmy(R.heardOn) : m.nextDate && m.nextDate <= t ? 'on ' + dmy(m.nextDate) : 'today'}</span><div class="chips">${HAPPENED.map(h => `<button class="chip ${R.happened === h ? 'on' : ''}" data-r="happened" data-v="${h}">${h}</button>`).join('')}</div></div>
     ${closing ? '<div class="picked"><b>Matter will be marked Decided</b><span>no next date</span></div>' : `
     <div class="grp"><span class="lbl">Next date${R.happened === 'Reserved' ? ' (optional)' : ''}</span>
@@ -509,7 +509,7 @@ function sheetRecord(m, pre) {
     </div>
     <div class="grp"><span class="lbl">Fixed for</span><div class="chips">${FIXED_FOR.map(x => `<button class="chip blue ${R.purpose === x ? 'on' : ''}" data-r="purpose" data-v="${x}" style="min-height:40px;font-size:13px">${x}</button>`).join('')}</div>
       <input class="in" data-r="purposeText" value="${esc(FIXED_FOR.includes(R.purpose) ? '' : R.purpose)}" placeholder="Or type, e.g. Cross of PW2"></div>`}
-    <div class="field"><label for="r_note">NOTE (TYPE OR SPEAK)</label><div style="display:flex;gap:8px"><textarea class="in" id="r_note" data-r="note" style="flex:1">${esc(R.note)}</textarea><button class="ghost" data-r="mic" aria-label="Dictate note" style="width:56px;background:var(--saffron-soft);color:#B35F00;border:0">${I.mic}</button></div></div>
+    <div class="field"><label for="r_note">NOTE (TYPE OR SPEAK)</label><div style="display:flex;gap:8px"><textarea class="in" id="r_note" data-r="note" style="flex:1">${esc(R.note)}</textarea><button class="ghost" data-r="mic" aria-label="Dictate note" style="width:56px;background:var(--saffron-soft);color:var(--saffron-ink);border:0">${I.mic}</button></div></div>
     <div class="toggles">
       <label><span>Tell client on WhatsApp${phoneDigits(m.phone) ? '' : ' <small style="color:var(--muted)">(no mobile saved)</small>'}</span><input type="checkbox" data-r="wa" ${R.wa ? 'checked' : ''} ${phoneDigits(m.phone) ? '' : 'disabled'}></label>
       <label><span>Remind me the evening before (Outlook)</span><input type="checkbox" data-r="cal" ${R.cal ? 'checked' : ''}></label>

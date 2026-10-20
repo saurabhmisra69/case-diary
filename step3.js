@@ -26,7 +26,7 @@ VIEWS.calendar = function () {
     const ds = y + '-' + pad(mo) + '-' + pad(d);
     const ms = onDay(ds), past = ds < t ? doneOn(ds) : [];
     const dl = openDeadlines().filter(m => m.deadline === ds);
-    const dots = [...ms.slice(0, 4).map(m => `<i style="background:${forumOf(m).c}"></i>`), ...past.slice(0, 3).map(() => '<i style="background:#B8BFD6"></i>'), ...(dl.length ? ['<i style="background:var(--red)"></i>'] : [])].slice(0, 5).join('');
+    const dots = [...ms.slice(0, 4).map(m => `<i style="background:${forumOf(m).c}"></i>`), ...past.slice(0, 3).map(() => '<i style="background:#C9C3B6"></i>'), ...(dl.length ? ['<i style="background:var(--red)"></i>'] : [])].slice(0, 5).join('');
     const sun = parseIso(ds).getDay() === 0;
     cells += `<button class="cd ${ds === S.calDay ? 'on' : ''} ${ds === t ? 'today' : ''} ${sun ? 'sun' : ''}" data-act="calday" data-day="${ds}"><b>${d}</b>${ms.length ? `<small>${ms.length}</small>` : ''}<span class="dots">${dots}</span></button>`;
   }
