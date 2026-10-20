@@ -443,6 +443,13 @@ async function processInbox() {
                 else { m.nextDate = h.next || ''; m.purpose = h.purpose || ''; m.status = /reserved/i.test(h.happened || '') ? 'Reserved' : 'Pending'; }
                 m.item = h.item || ''; m.calPending = true;
               }
+              if (c.history) {   // past hearings read from saved orders: added to history only, next date untouched
+                m.hearings = m.hearings || [];
+                for (const h of c.history) if (h.date && !m.hearings.some(x => x.date === h.date)) m.hearings.push(h);
+                m.hearings.sort((x, y) => (x.date || '').localeCompare(y.date || ''));
+                const last = m.hearings[m.hearings.length - 1];
+                if (last && (!m.lastDate || last.date > m.lastDate)) m.lastDate = last.date;
+              }
               if (c.relink) { m.folderName = ''; autoTried.delete(m.id); }
               touch(m);
             }
