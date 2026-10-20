@@ -67,22 +67,54 @@ async function uploadFile(parentId, file, name, onProgress) {
   return last.json();
 }
 
-/* ---------- naming (as approved in the plan) ---------- */
-function courtShort(m) {
-  const c = (m.court || '').trim();
-  if (m.forum === 'HC') return /allahabad/i.test(c) && !/lucknow/i.test(c) ? 'HC Allahabad' : 'HC Lucknow';
-  return cleanName(c.split(/[·,]/)[0]) || forumOf(m).label;
+/* ---------- naming: quick-identification rule (approved 20.10.2026) ----------
+   Who it is against or about · type · case no. · (diary no.)  e.g. "Baghel 482 – 2787-2024 (2024-001)" */
+const TYPE_SHORT = { '138 NI': 'NI', 'Complaint': 'Complaint', 'Writ': 'Writ', 'Revision': 'Revision', 'Appeal': 'Appeal', 'Suit': 'Suit', 'Bail': 'Bail', 'ABA': 'ABA', 'DV': 'DV', '125': '125', 'Execution': 'Execution', 'Arbitration': 'Award', 'Mutation': 'Mutation', 'Opinion': 'Opinion', 'Notice': 'Notice', 'Deed': 'Deed' };
+const NOISE = /^(m\/s|shri|smt\.?|sri|dr\.?|mr\.?|mrs\.?|ms\.?|the|km\.?)$/i;
+function keyWord(party) {
+  const w = String(party || '').replace(/&.*$/, '').replace(/\(.*?\)/g, '').split(/[\s,.]+/).filter(x => x && !NOISE.test(x));
+  if (!w.length || /^(state|union)$/i.test(w[0])) return '';
+  const firm = /^(pvt|private|ltd|limited|enterprises|construction|industries|restaurant|firm|company|co|corporation|bank|society|trust|associates|traders)$/i;
+  if (w.some(x => firm.test(x))) return w.filter(x => !firm.test(x))[0] || w[0];
+  return w[w.length - 1];
 }
-function caseRef(m) {
-  if (m.caseNo) return cleanName((/^(writ|wp)$/i.test(m.type) && !/^wp/i.test(m.caseNo) ? 'WP ' : '') + m.caseNo);
-  const t = String(m.title || ''); const i = t.search(/\s+(v\.?|vs\.?|versus)\s+/i);
-  if (i > 0) return 'vs ' + cleanName(t.slice(i).replace(/^\s+(v\.?|vs\.?|versus)\s+/i, ''));
-  return '';
+function oppositeParty(m) {
+  const t = String(m.title || ''); const p = t.split(/\s+(?:v\.?|vs\.?|versus)\s+/i);
+  if (p.length < 2) return '';
+  const sd = m.side || ''; const weAreFirst = !/^(op|opposite|respondent|accused|defendant)/i.test(sd) && /complainant|petitioner|applicant|plaintiff|appellant|revisionist|claimant|lessor/i.test(sd);
+  return keyWord(weAreFirst ? p[1] : p[0]) || keyWord(weAreFirst ? p[0] : p[1]);
 }
 function proposedFolderName(m) {
-  return cleanName([m.year + '-' + String(m.n).padStart(3, '0') + ' ' + (m.type || 'Matter'), courtShort(m), caseRef(m)].filter(Boolean).join(' – '));
+  const who = oppositeParty(m) || keyWord(m.clients) || 'Matter';
+  const type = TYPE_SHORT[m.type] || m.type || '';
+  const no = m.caseNo ? cleanName(m.caseNo).replace(/\s+/g, ' ') : '';
+  const diaryNo = '(' + m.year + '-' + String(m.n).padStart(3, '0') + ')';
+  return cleanName([who + (type ? ' ' + type : ''), no].filter(Boolean).join(' – ') + ' ' + diaryNo);
 }
-const followsScheme = name => /^\d{4}-\d{3} /.test(name || '');
+const followsScheme = name => /\(\d{4}-\d{3}\)$/.test(name || '') || /^\d{4}-\d{3} /.test(name || '');
+
+/* "0 Matter details.txt" inside each matter folder: the full title and particulars, kept up to date. */
+function detailsText(m) {
+  const L = [['Full title', m.title], ['Diary no.', m.no], ['Client(s)', m.clients], ['Court', m.court], ['Type', m.type], ['Case no.', m.caseNo], ['Crime / FIR no.', m.crimeNo], ['Police station', m.ps], ['Sections', m.sections], ['Appearing for', m.side], ['Status', m.status], ['Next date', m.nextDate ? dmy(m.nextDate) + (m.purpose ? ', ' + m.purpose : '') : ''], ['Notes', m.notes]];
+  return L.filter(x => x[1]).map(x => x[0] + ': ' + x[1]).join('\r\n') + '\r\n\r\n(Kept up to date by Case Diary.)\r\n';
+}
+let detailsBusy = false;
+async function syncDetails() {
+  if (detailsBusy || !S.account || !navigator.onLine) return;
+  detailsBusy = true;
+  for (const m of live().filter(x => x.folderId && x.ownStructure !== false).slice(0, 200)) {
+    const txt = detailsText(m), sig = txt.length + ':' + [...txt].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7);
+    if (m.detailsSig === sig) continue;
+    try {
+      const r = await g('/me/drive/items/' + m.folderId + ':/' + encodeURIComponent('0 Matter details.txt') + ':/content', { method: 'PUT', headers: { 'Content-Type': 'text/plain; charset=utf-8' }, body: '\ufeff' + txt });
+      if (r.ok) change(() => { m.detailsSig = sig; });
+      else if (r.status === 404) change(() => { m.detailsSig = sig; });
+    } catch (e) { break; }
+  }
+  detailsBusy = false;
+}
+setInterval(syncDetails, 60000);
+setTimeout(syncDetails, 15000);
 
 /* ---------- Matter page ---------- */
 function openMatter(id) {
@@ -90,7 +122,10 @@ function openMatter(id) {
   if (S.tab !== 'matter') S.prevTab = S.tab;
   S.tab = 'matter'; S.mid = id; F.stack = []; F.items = null; F.err = '';
   closeSheet(); render(); scrollTo(0, 0);
-  if (m.folderId) loadFolder();
+  if (m.folderId) { loadFolder(); refreshFolderName(m); }
+}
+async function refreshFolderName(m) {
+  try { const it = await getItem(m.folderId); if (it.name !== m.folderName || itemPath(it) !== m.folderPath) change(() => { Object.assign(m, { folderName: it.name, folderPath: itemPath(it), folderUrl: it.webUrl }); }); } catch (e) {}
 }
 function curFolder() { const m = find(S.mid); return F.stack.length ? F.stack[F.stack.length - 1] : { id: m.folderId, name: m.folderName }; }
 async function loadFolder() {
@@ -175,7 +210,7 @@ async function handleUpload(input) {
   for (const file of files) {
     let name = file.name;
     if (/^(image|IMG|photo)[_-]?\d*\.(jpe?g|png|heic)$/i.test(name) || /^\d{8,}/.test(name)) {
-      const d = new Date(); name = `Photo ${iso(d)} ${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.` + (name.split('.').pop() || 'jpg');
+      const d = new Date(); name = `${dmy(iso(d))} Photo ${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.` + (name.split('.').pop() || 'jpg');
     }
     const u = { name, p: 0, done: false, err: '' }; F.uploads.push(u); renderFiles();
     try { await uploadFile(dest.id, file, name, p => { u.p = p; renderFiles(); }); u.done = true; }
