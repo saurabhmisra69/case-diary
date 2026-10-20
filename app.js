@@ -256,7 +256,7 @@ function render() {
 }
 function renderSignIn() {
   $('#app').innerHTML = `<section class="signin">
-    <div class="logo-big">⚖</div>
+    <div class="logo-big" style="background:#F7F5F0"><svg viewBox="0 0 512 512" width="100%" height="100%" aria-hidden="true"><rect x="132" y="96" width="248" height="320" rx="14" fill="#1B2A4A"/><rect x="132" y="96" width="34" height="320" rx="10" fill="#7A2E2E"/><rect x="196" y="150" width="152" height="6" fill="#B08D57"/><rect x="196" y="352" width="152" height="6" fill="#B08D57"/><g fill="none" stroke="#D9BD8A" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"><path d="M272 200v112M244 312h56M222 220h100"/><path d="M222 220l-20 46h40zM322 220l-20 46h40z"/></g></svg></div>
     <h1>Case Diary</h1>
     <p>Your matters, dates and fees, kept in your own OneDrive and the same on phone and computer.</p>
     <button class="btn-big" data-act="signin">Sign in with Microsoft</button>
@@ -304,7 +304,7 @@ function viewHome() {
 
   return `<header class="top">
     <div class="top-row">
-      <div class="who"><span class="mark">⚖</span><div><small>${DOWL[now.getDay()]}, ${now.getDate()} ${MONL[now.getMonth()]}</small><b>${esc(greeting())}${S.name ? ', ' + esc(S.name) : ''}</b></div></div>
+      <div class="who"><span class="mark"><svg viewBox="0 0 512 512" width="100%" height="100%" aria-hidden="true"><rect x="132" y="96" width="248" height="320" rx="14" fill="#1B2A4A"/><rect x="132" y="96" width="34" height="320" rx="10" fill="#7A2E2E"/><rect x="196" y="150" width="152" height="6" fill="#B08D57"/><rect x="196" y="352" width="152" height="6" fill="#B08D57"/><g fill="none" stroke="#D9BD8A" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"><path d="M272 200v112M244 312h56M222 220h100"/><path d="M222 220l-20 46h40zM322 220l-20 46h40z"/></g></svg></span><div><small>${DOWL[now.getDay()]}, ${now.getDate()} ${MONL[now.getMonth()]}</small><b>${esc(greeting())}${S.name ? ', ' + esc(S.name) : ''}</b></div></div>
       <button id="syncbtn" class="sync" data-act="sync"></button>
     </div>
     <label class="search">${I.search}<input type="search" placeholder="Case no., FIR, party, client" data-act="q" value="${esc(S.q)}" enterkeyhint="search"></label>
