@@ -3,7 +3,7 @@
    Code only in this repository; all case data lives in the user's own OneDrive. */
 'use strict';
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 const CLIENT_ID = 'df289e5d-2a3c-4280-b4be-b440bfe8ea8b';
 const SCOPES = ['User.Read', 'Files.ReadWrite', 'Calendars.ReadWrite'];
 const DIARY_DIR = 'Case Diary';
@@ -408,6 +408,7 @@ function viewMore() {
     <button data-act="tab" data-tab="fees">Fees <small>dues and payments</small></button>
     <button data-act="causelist" data-day="${S.day}">Cause list in Word <small>on your letterhead</small></button>
     <button data-act="tab" data-tab="limit">Limitation calculator <small>last date to file</small></button>
+    <button data-act="tab" data-tab="sort">Sort old folders <small>moves from the Folder Sorting Sheet</small></button>
     <button data-act="sync">Sync now <small>${esc(syncLabel()[1])}</small></button>
     <button data-act="openfolder">Open Case Diary folder in OneDrive <small>diary file, Excel copy, backups</small></button>
     <button data-act="openexcel">Open Excel copy <small>refreshed after every save</small></button>

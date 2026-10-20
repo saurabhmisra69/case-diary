@@ -240,3 +240,4 @@ textarea.in{min-height:72px;resize:vertical}
   .cd{min-height:84px}
   .calnav{max-width:520px}
 }
+.hist span{word-break:break-word;min-width:0}
