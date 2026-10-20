@@ -3,7 +3,7 @@
    Code only in this repository; all case data lives in the user's own OneDrive. */
 'use strict';
 
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.8.0';
 const CLIENT_ID = 'df289e5d-2a3c-4280-b4be-b440bfe8ea8b';
 const SCOPES = ['User.Read', 'Files.ReadWrite', 'Calendars.ReadWrite'];
 const DIARY_DIR = 'Case Diary';
@@ -99,7 +99,11 @@ async function initAuth() {
 async function token() {
   try { return (await msalApp.acquireTokenSilent({ scopes: SCOPES, account: S.account })).accessToken; }
   catch (e) {
-    if (e instanceof msal.InteractionRequiredAuthError) { await msalApp.acquireTokenRedirect({ scopes: SCOPES, account: S.account }); }
+    if (e instanceof msal.InteractionRequiredAuthError) {
+      // quiet renewal first (no typing); only if Microsoft insists, a quick redirect with the account already chosen
+      try { return (await msalApp.ssoSilent({ scopes: SCOPES, loginHint: S.account?.username })).accessToken; } catch (_) {}
+      await msalApp.acquireTokenRedirect({ scopes: SCOPES, account: S.account, loginHint: S.account?.username });
+    }
     throw e;
   }
 }
@@ -236,7 +240,10 @@ const doneOn = day => live().filter(m => (m.hearings || []).some(h => h.date ===
 function phoneDigits(p) { let d = String(p || '').replace(/\D/g, ''); if (d.length === 10) d = '91' + d; if (d.length === 11 && d[0] === '0') d = '91' + d.slice(1); return d.length >= 11 ? d : ''; }
 function matches(m, q) {
   q = q.toLowerCase().trim(); if (!q) return true;
-  return [m.no, m.title, m.clients, m.caseNo, m.crimeNo, m.ps, m.court, m.sections, m.type, m.notes].join(' ').toLowerCase().includes(q);
+  const hay = [m.no, m.title, m.clients, m.caseNo, m.crimeNo, m.ps, m.court, m.sections, m.type, m.side, m.item, m.phone, m.folderName, m.purpose, m.notes].join(' ').toLowerCase();
+  const flat = s => s.replace(/[^a-z0-9\u0900-\u097f]/g, ''), hayFlat = flat(hay);
+  // every word must match; "2787/2024", "2787-2024" and "27872024" all find the same case
+  return q.split(/\s+/).every(w => hay.includes(w) || (flat(w) && hayFlat.includes(flat(w))));
 }
 
 /* ---------- rendering ---------- */
@@ -307,6 +314,7 @@ function viewHome() {
     ${briefHtml(list, deadlines, fees)}
     <section class="list a-list">
       <div class="h2"><h2>${S.day === todayIso() ? 'Today in court' : 'In court · ' + DOWL[parseIso(S.day).getDay()] + ' ' + short(S.day)}</h2><button class="linkbtn" data-act="causelist" data-day="${S.day}">Cause list ↓</button></div>
+      ${list.length && S.day <= todayIso() ? `<button class="save" data-act="results" data-day="${S.day}" style="min-height:50px;font-size:15px">Court over? Enter next dates for all ${list.length}</button>` : ''}
       ${list.length ? groupByCourt(list).map(([court, ms]) => {
         const f = forumOf(ms[0]);
         return `<span class="court-tag" style="background:${f.soft};color:${f.ink}">${esc(court)}${ms.length > 1 ? ' · ' + ms.length + ' matters' : ''}</span>` + ms.map(matterCard).join('');
@@ -498,7 +506,7 @@ function sheetRecord(m, pre) {
   const draw = () => {
     const others = R.next ? onDay(R.next).filter(x => x.id !== m.id).length : 0;
     const closing = R.happened === 'Disposed';
-    openSheet(`<div class="s-head"><div><small style="color:${f.ink}">${esc(m.court || f.label)}${m.item ? ' · Item ' + esc(m.item) : ''}</small><h1>${esc(m.title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    openSheet(`<div class="s-head"><div><small style="color:${f.ink}">${R.step ? esc(R.step) + ' · ' : ''}${esc(m.court || f.label)}${m.item ? ' · Item ' + esc(m.item) : ''}</small><h1>${esc(m.title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     ${R.fromOrder ? `<div class="picked" style="background:var(--hc-soft)"><b>Read from the order${R.heardOn ? ' dated ' + dmy(R.heardOn) : ''}</b><span>Please check before saving${R.deadline ? ' · deadline ' + esc(R.deadlineFor || '') + ' by ' + dmy(R.deadline) : ''}</span></div>` : ''}
     <div class="grp"><span class="lbl">What happened ${R.heardOn ? 'on ' + dmy(R.heardOn) : m.nextDate && m.nextDate <= t ? 'on ' + dmy(m.nextDate) : 'today'}</span><div class="chips">${HAPPENED.map(h => `<button class="chip ${R.happened === h ? 'on' : ''}" data-r="happened" data-v="${h}">${h}</button>`).join('')}</div></div>
     ${closing ? '<div class="picked"><b>Matter will be marked Decided</b><span>no next date</span></div>' : `
@@ -554,6 +562,7 @@ function sheetRecord(m, pre) {
     toast(closing ? 'Recorded · matter marked Decided' : 'Saved · next date ' + dmy(R.next));
     if (R.deadline) change(() => { m.deadline = R.deadline; m.deadlineFor = R.deadlineFor || 'Direction in order'; m.deadlineDone = false; touch(m); });
     if (R.wa && phoneDigits(m.phone)) sendWa(m, R);
+    if (typeof R.after === 'function') setTimeout(R.after, 350);
   }
 }
 

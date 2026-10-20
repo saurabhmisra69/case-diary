@@ -149,7 +149,7 @@ function viewMatter(m) {
   </header>
   <main class="matter-main"><div class="mp-col">
     <div class="acts mp-acts" style="grid-template-columns:1.3fr 1fr 1fr 1fr"><button class="act primary" data-act="record" data-id="${m.id}">Next date</button><button class="act blue" data-act="edit" data-id="${m.id}">Edit</button><button class="act blue" data-act="draft" data-id="${m.id}">Draft</button><button class="act wa" data-act="wa" data-id="${m.id}" ${phoneDigits(m.phone) ? '' : 'disabled title="Add client mobile first"'}>${I.wa}Client</button></div>
-    <div class="acts mp-acts" style="grid-template-columns:1fr;margin-top:-4px"><button class="act blue" data-act="readorder" data-id="${m.id}">Read order photo <small style="opacity:.8;font-weight:600">· fills the next date</small></button></div>
+    <div class="acts mp-acts" style="grid-template-columns:1.4fr 1fr;margin-top:-4px"><button class="act blue" data-act="readorder" data-id="${m.id}">Read order photo</button><button class="act blue" data-act="askclaude" data-id="${m.id}">Send to Claude</button></div>
     <section class="card mp-files" id="files">${filesInner(m)}</section>
     </div><div class="mp-col">
     <section class="card mp-details"><div class="h2" style="margin-bottom:12px"><h2>Details</h2></div>

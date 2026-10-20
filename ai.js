@@ -98,9 +98,9 @@ async function fileOrder(m, file, blob, isPdf, dateIso) {
   return orders.name + ' › ' + nm;
 }
 
-async function readOrder(m) {
+async function readOrder(m, given) {
   if (!aiKey()) { sheetAiKey(); toast('First add your API key'); return; }
-  const file = await pickOrderFile(); if (!file) return;
+  const file = given || await pickOrderFile(); if (!file) return;
   const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
   if (isPdf && file.size > 20 * 1024 * 1024) { toast('PDF is too large (over 20 MB)'); return; }
   openSheet(`<div class="s-head"><div><small>${esc(m.no)}</small><h1>Reading the order…</h1></div></div><p class="hint">This takes about 10–20 seconds. Keep the app open.</p>`);
