@@ -25,7 +25,7 @@ async function loadSort() {
     const wb = XLSX.read(buf, { type: 'array' });
     const rows = XLSX.utils.sheet_to_json(wb.Sheets['Sorting sheet'], { defval: '' });
     SO.plan = rows.filter(r => String(r['Decision']).trim().toLowerCase() === 'agree' && r['Target folder (for the diary)'])
-      .map(r => ({ no: r['No.'], step: +r['Step'] || 0, action: String(r['Action'] || 'Move'), matter: r['Matter'] || '', key: (SO.sheet === 'old' ? '' : 'M:') + String(r['Current place']), cur: String(r['Current place']), kind: r['Kind'], group: r['Group'] || r['Matter'] || '', target: String(r['Target folder (for the diary)']), name: String(r['Final name (for the diary)'] || String(r['Current place']).split('\\').pop()) }));
+      .map(r => ({ no: r['No.'], step: +r['Step'] || 0, action: String(r['Action'] || 'Move'), matter: r['Matter'] || '', key: (SO.sheet === 'old' ? '' : 'M:') + String(r['Current place']) + ((+r['Step'] || 0) >= 300 ? '#short' : ''), cur: String(r['Current place']), kind: r['Kind'], group: r['Group'] || r['Matter'] || '', target: String(r['Target folder (for the diary)']), name: String(r['Final name (for the diary)'] || String(r['Current place']).split('\\').pop()) }));
     // folders inside "2026 Case Folder" first, so their parent is emptied before anything else
     if (SO.sheet === 'old') SO.plan.sort((a, b) => (b.cur.includes('\\') - a.cur.includes('\\')) || (a.no - b.no));
     else SO.plan.sort((a, b) => (a.step - b.step) || (a.no - b.no));
