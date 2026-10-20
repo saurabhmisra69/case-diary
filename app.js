@@ -3,7 +3,7 @@
    Code only in this repository; all case data lives in the user's own OneDrive. */
 'use strict';
 
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.6.0';
 const CLIENT_ID = 'df289e5d-2a3c-4280-b4be-b440bfe8ea8b';
 const SCOPES = ['User.Read', 'Files.ReadWrite', 'Calendars.ReadWrite'];
 const DIARY_DIR = 'Case Diary';
@@ -408,6 +408,7 @@ function viewMore() {
     <button data-act="tab" data-tab="fees">Fees <small>dues and payments</small></button>
     <button data-act="causelist" data-day="${S.day}">Cause list in Word <small>on your letterhead</small></button>
     <button data-act="tab" data-tab="limit">Limitation calculator <small>last date to file</small></button>
+    <button data-act="aikey">Order reading <small>${aiKey() ? 'key saved on this device' : 'add your API key'}</small></button>
     <button data-act="tab" data-tab="sort">Sort old folders <small>moves from the Folder Sorting Sheet</small></button>
     <button data-act="sync">Sync now <small>${esc(syncLabel()[1])}</small></button>
     <button data-act="openfolder">Open Case Diary folder in OneDrive <small>diary file, Excel copy, backups</small></button>
@@ -488,9 +489,9 @@ function sheetEdit(m) {
   };
 }
 
-function sheetRecord(m) {
+function sheetRecord(m, pre) {
   const t = todayIso();
-  const R = { happened: 'Adjourned', next: '', purpose: m.purpose || '', note: '', wa: !!phoneDigits(m.phone), cal: true };
+  const R = Object.assign({ happened: 'Adjourned', next: '', purpose: m.purpose || '', note: '', wa: !!phoneDigits(m.phone), cal: true }, pre || {});
   const f = forumOf(m);
   const base = m.nextDate && m.nextDate > t ? t : (m.nextDate || t);
   const quick = [['+1 week', skipSunday(addDays(base, 7))], ['+2 weeks', skipSunday(addDays(base, 14))], ['+1 month', skipSunday(addMonths(base, 1))]];
@@ -498,7 +499,8 @@ function sheetRecord(m) {
     const others = R.next ? onDay(R.next).filter(x => x.id !== m.id).length : 0;
     const closing = R.happened === 'Disposed';
     openSheet(`<div class="s-head"><div><small style="color:${f.ink}">${esc(m.court || f.label)}${m.item ? ' · Item ' + esc(m.item) : ''}</small><h1>${esc(m.title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
-    <div class="grp"><span class="lbl">What happened ${m.nextDate && m.nextDate <= t ? 'on ' + dmy(m.nextDate) : 'today'}</span><div class="chips">${HAPPENED.map(h => `<button class="chip ${R.happened === h ? 'on' : ''}" data-r="happened" data-v="${h}">${h}</button>`).join('')}</div></div>
+    ${R.fromOrder ? `<div class="picked" style="background:var(--blue-soft,#E8EDFF)"><b>Read from the order${R.heardOn ? ' dated ' + dmy(R.heardOn) : ''}</b><span>Please check before saving${R.deadline ? ' · deadline ' + esc(R.deadlineFor || '') + ' by ' + dmy(R.deadline) : ''}</span></div>` : ''}
+    <div class="grp"><span class="lbl">What happened ${R.heardOn ? 'on ' + dmy(R.heardOn) : m.nextDate && m.nextDate <= t ? 'on ' + dmy(m.nextDate) : 'today'}</span><div class="chips">${HAPPENED.map(h => `<button class="chip ${R.happened === h ? 'on' : ''}" data-r="happened" data-v="${h}">${h}</button>`).join('')}</div></div>
     ${closing ? '<div class="picked"><b>Matter will be marked Decided</b><span>no next date</span></div>' : `
     <div class="grp"><span class="lbl">Next date${R.happened === 'Reserved' ? ' (optional)' : ''}</span>
       <div class="quick">${quick.map(([l, d]) => `<button class="${R.next === d ? 'on' : ''}" data-r="next" data-v="${d}"><span>${l}</span><small>${short(d)}</small></button>`).join('')}
@@ -537,19 +539,20 @@ function sheetRecord(m) {
   };
   function save() {
     R.note = $('#r_note')?.value || R.note;
-    const heardOn = m.nextDate && m.nextDate <= t ? m.nextDate : t;
+    const heardOn = R.heardOn || (m.nextDate && m.nextDate <= t ? m.nextDate : t);
     const closing = R.happened === 'Disposed';
     change(() => {
       m.hearings = m.hearings || [];
       m.hearings.push({ date: heardOn, happened: R.happened, next: closing ? '' : R.next, purpose: closing ? '' : R.purpose, note: R.note });
       m.lastDate = heardOn;
       if (closing) { m.status = 'Decided'; m.nextDate = ''; m.purpose = ''; m.item = ''; }
-      else { m.nextDate = R.next; m.purpose = R.purpose; m.item = ''; m.status = R.happened === 'Reserved' ? 'Reserved' : 'Pending'; }
+      else { m.nextDate = R.next; m.purpose = R.purpose; m.item = R.item || ''; m.status = R.happened === 'Reserved' ? 'Reserved' : 'Pending'; }
       if (R.cal || closing || m.eventId) m.calPending = true;
       touch(m);
     });
     closeSheet(); root.onclick = root.oninput = root.onchange = null;
     toast(closing ? 'Recorded · matter marked Decided' : 'Saved · next date ' + dmy(R.next));
+    if (R.deadline) change(() => { m.deadline = R.deadline; m.deadlineFor = R.deadlineFor || 'Direction in order'; m.deadlineDone = false; touch(m); });
     if (R.wa && phoneDigits(m.phone)) sendWa(m, R);
   }
 }
