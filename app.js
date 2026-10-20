@@ -169,11 +169,13 @@ async function sync() {
       writeExcel().catch(() => {});
       weeklyBackup().catch(() => {});
     }
-    await flushCalendar();
+    // an Outlook reminder that fails must not stop the diary from syncing
+    try { await flushCalendar(); } catch (ce) { console.warn('calendar', ce); S.calErr = ce.message || 'Outlook reminder not set'; }
     S.lastSynced = new Date().toISOString(); localStorage.setItem(LS_SYNCED, S.lastSynced);
     persistLocal();
   } catch (e) { S.syncErr = e.message || 'error'; console.warn(e); }
   S.syncing = false; render();
+  if (!S.syncErr) setTimeout(() => typeof processInbox === 'function' && processInbox(), 500);
 }
 
 async function writeExcel() {
@@ -604,7 +606,7 @@ document.addEventListener('click', e => {
   if (a === 'close') return closeSheet();
   if (a === 'signin') return signIn();
   if (a === 'signout') return signOut();
-  if (a === 'sync') return sync();
+  if (a === 'sync') { if (S.syncErr && S.syncErr !== 'offline') toast('Last try: ' + S.syncErr, 5000); return sync(); }
   if (a === 'tab') { S.tab = el.dataset.tab; render(); scrollTo(0, 0); return; }
   if (a === 'day') { S.day = el.dataset.day; render(); return; }
   if (a === 'filter') { S.filter = el.dataset.f; S.tab = 'matters'; render(); return; }
