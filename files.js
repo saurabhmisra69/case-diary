@@ -165,7 +165,7 @@ function viewMatter(m) {
 }
 
 function fileIcon(it) {
-  if (it.folder) return ['📁', 'var(--saffron-soft)'];
+  if (it.folder) return [I.folder, 'var(--saffron-soft)'];
   const ext = (it.name.split('.').pop() || '').toLowerCase();
   if (ext === 'pdf') return ['PDF', 'var(--red-soft)'];
   if (['doc', 'docx', 'rtf', 'odt'].includes(ext)) return ['W', 'var(--hc-soft)'];
@@ -254,7 +254,7 @@ async function suggestWithSearch(m, rootKids) {
 function drawPicker() {
   const m = find(S.mid), cur = P.stack[P.stack.length - 1];
   const list = P.results || P.items;
-  const rows = it => `<div class="prow"><button class="frow" data-pk="into" data-fid="${it.id}" data-name="${esc(it.name)}"><span class="ficon" style="background:var(--saffron-soft)">📁</span><span class="fname">${esc(it.name)}${P.results ? `<small>${esc(itemPath(it))}</small>` : `<small>${it.folder?.childCount ?? ''} items</small>`}</span></button><button class="pick" data-pk="link" data-fid="${it.id}">Link</button></div>`;
+  const rows = it => `<div class="prow"><button class="frow" data-pk="into" data-fid="${it.id}" data-name="${esc(it.name)}"><span class="ficon" style="background:var(--saffron-soft)">${I.folder}</span><span class="fname">${esc(it.name)}${P.results ? `<small>${esc(itemPath(it))}</small>` : `<small>${it.folder?.childCount ?? ''} items</small>`}</span></button><button class="pick" data-pk="link" data-fid="${it.id}">Link</button></div>`;
   openSheet(`<div class="s-head"><div><small style="color:var(--hc)">${esc(m.no)} · link case folder</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <label class="search" style="border:2px solid var(--line)">${I.search}<input type="search" data-pk="q" placeholder="Search all OneDrive folders" value="${esc(P.q)}" enterkeyhint="search"></label>
     ${P.stack.length > 1 && !P.results ? `<div class="crumbs">${P.stack.map((c, k) => `<button data-pk="crumb" data-i="${k}" ${k === P.stack.length - 1 ? 'class="on"' : ''}>${esc(c.name)}</button>`).join('<span>›</span>')}</div>` : ''}
@@ -299,7 +299,7 @@ async function openNewFolder() {
   const N = { parent: null, name: proposedFolderName(m), clientName: cleanName(m.clients), opts: null, busy: false };
   const draw = () => openSheet(`<div class="s-head"><div><small style="color:var(--hc)">${esc(m.no)} · new case folder</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <div class="grp"><span class="lbl">1 · Client folder</span>
-      ${!N.opts ? '<p class="empty">Looking for the client folder…</p>' : `<div class="flist">${N.opts.map(o => `<button class="frow ${N.parent && N.parent.key === o.key ? 'sel' : ''}" data-nf="parent" data-key="${o.key}"><span class="ficon" style="background:${o.isNew ? 'var(--dc-soft)' : 'var(--saffron-soft)'}">${o.isNew ? '+' : '📁'}</span><span class="fname">${esc(o.label)}<small>${esc(o.sub)}</small></span></button>`).join('')}</div>`}
+      ${!N.opts ? '<p class="empty">Looking for the client folder…</p>' : `<div class="flist">${N.opts.map(o => `<button class="frow ${N.parent && N.parent.key === o.key ? 'sel' : ''}" data-nf="parent" data-key="${o.key}"><span class="ficon" style="background:${o.isNew ? 'var(--dc-soft)' : 'var(--saffron-soft)'}">${o.isNew ? '+' : I.folder}</span><span class="fname">${esc(o.label)}<small>${esc(o.sub)}</small></span></button>`).join('')}</div>`}
     </div>
     <div class="field"><label for="nf_name">2 · MATTER FOLDER NAME</label><input class="in" id="nf_name" value="${esc(N.name)}"><span class="hint">Year-number · type · court · case no. Edit if needed.</span></div>
     <button class="save" data-nf="create" ${N.parent && !N.busy ? '' : 'disabled'}>${N.busy ? 'Creating…' : 'Create folder and link'}</button>`);
