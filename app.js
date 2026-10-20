@@ -3,7 +3,7 @@
    Code only in this repository; all case data lives in the user's own OneDrive. */
 'use strict';
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const CLIENT_ID = 'df289e5d-2a3c-4280-b4be-b440bfe8ea8b';
 const SCOPES = ['User.Read', 'Files.ReadWrite', 'Calendars.ReadWrite'];
 const DIARY_DIR = 'Case Diary';
@@ -184,9 +184,12 @@ async function writeExcel() {
   }));
   const hist = [];
   for (const m of ms) for (const h of (m.hearings || [])) hist.push({ 'Matter No.': m.no, 'Title': m.title, 'Date': dmy(h.date), 'What happened': h.happened, 'Next date': dmy(h.next), 'Fixed for': h.purpose, 'Note': h.note });
+  const pays = [];
+  for (const m of ms) for (const p of (m.payments || [])) pays.push({ 'Matter No.': m.no, 'Client(s)': m.clients, 'Title': m.title, 'Date': dmy(p.date), 'Amount': num(p.amount), 'Mode': p.mode, 'Note': p.note });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{ 'Matter No.': '' }]), 'Matters');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hist.length ? hist : [{ 'Matter No.': '' }]), 'Hearings');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pays.length ? pays : [{ 'Matter No.': '' }]), 'Fee payments');
   const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   await g(drivePath(EXCEL_FILE) + ':/content', { method: 'PUT', headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }, body: buf });
 }
@@ -239,7 +242,8 @@ function matches(m, q) {
 /* ---------- rendering ---------- */
 function render() {
   if (!S.account) return renderSignIn();
-  const html = S.tab === 'home' ? viewHome() : S.tab === 'matters' ? viewMatters() : S.tab === 'matter' && find(S.mid) ? viewMatter(find(S.mid)) : viewMore();
+  const V = window.VIEWS && window.VIEWS[S.tab];
+  const html = V ? V() : S.tab === 'home' ? viewHome() : S.tab === 'matters' ? viewMatters() : S.tab === 'matter' && find(S.mid) ? viewMatter(find(S.mid)) : viewMore();
   $('#app').innerHTML = html + navHtml();
   renderSync();
 }
@@ -267,7 +271,7 @@ function renderSync() {
 function navHtml() {
   const t = (k, icon, label) => `<button class="${S.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}">${icon}${label}</button>`;
   return `<button class="fab" aria-label="Add matter" data-act="add">${I.plus}</button>
-  <nav class="nav" aria-label="Main">${t('home', I.home, 'Today')}${t('matters', I.case, 'Matters')}${t('more', I.more, 'More')}</nav>`;
+  <nav class="nav" aria-label="Main">${t('home', I.home, 'Today')}${t('calendar', I.cal || '', 'Calendar')}${t('matters', I.case, 'Matters')}${t('clients', I.people || '', 'Clients')}${t('more', I.more, 'More')}</nav>`;
 }
 function weekDays() {
   const out = []; let d = todayIso();
@@ -302,7 +306,7 @@ function viewHome() {
   <main class="home-main">
     ${briefHtml(list, deadlines, fees)}
     <section class="list a-list">
-      <div class="h2"><h2>${S.day === todayIso() ? 'Today in court' : 'In court · ' + DOWL[parseIso(S.day).getDay()] + ' ' + short(S.day)}</h2><span class="sub">${list.length} listed</span></div>
+      <div class="h2"><h2>${S.day === todayIso() ? 'Today in court' : 'In court · ' + DOWL[parseIso(S.day).getDay()] + ' ' + short(S.day)}</h2><button class="linkbtn" data-act="causelist" data-day="${S.day}">Cause list ↓</button></div>
       ${list.length ? groupByCourt(list).map(([court, ms]) => {
         const f = forumOf(ms[0]);
         return `<span class="court-tag" style="background:${f.soft};color:${f.ink}">${esc(court)}${ms.length > 1 ? ' · ' + ms.length + ' matters' : ''}</span>` + ms.map(matterCard).join('');
@@ -314,6 +318,7 @@ function viewHome() {
       <button class="tile" style="background:var(--saffron-soft)" data-act="filter" data-f="fees"><span style="color:var(--saffron-ink)">Fees pending</span><b style="color:var(--saffron-ink)">${rupees(fees)}</b><span>${feeClients} matter${feeClients === 1 ? '' : 's'}</span></button>
       <button class="tile" style="background:var(--hc-soft)" data-act="filter" data-f="need"><span style="color:var(--hc)">Need a date</span><b style="color:var(--hc)">${need.length}</b><span>Date passed or blank</span></button>
       <button class="tile" style="background:var(--dc-soft)" data-act="filter" data-f="pending"><span style="color:var(--dc-ink)">Pending matters</span><b style="color:var(--dc-ink)">${pending.length}</b><span>Including reserved</span></button>
+      <button class="tile wide" style="background:#DDF4F3" data-act="tab" data-tab="limit"><span style="color:#08716E">Limitation</span><b style="color:#08716E;font-size:19px">Calculate last date</b><span>Appeal, revision, review, s.34, NI Act and more</span></button>
     </section>
   </main>`;
 }
@@ -400,6 +405,9 @@ function viewMore() {
   return `<header class="phead"><div class="top-row"><h1>More</h1><button id="syncbtn" class="sync" data-act="sync"></button></div></header>
   <main><div class="menu">
     <div class="card"><div class="kv"><span>Signed in as</span><b>${esc(S.account?.username || '')}</b><span>Matters</span><b>${n}</b><span>Saved in</span><b>OneDrive › Case Diary</b><span>Version</span><b>${APP_VERSION}</b></div></div>
+    <button data-act="tab" data-tab="fees">Fees <small>dues and payments</small></button>
+    <button data-act="causelist" data-day="${S.day}">Cause list in Word <small>on your letterhead</small></button>
+    <button data-act="tab" data-tab="limit">Limitation calculator <small>last date to file</small></button>
     <button data-act="sync">Sync now <small>${esc(syncLabel()[1])}</small></button>
     <button data-act="openfolder">Open Case Diary folder in OneDrive <small>diary file, Excel copy, backups</small></button>
     <button data-act="openexcel">Open Excel copy <small>refreshed after every save</small></button>

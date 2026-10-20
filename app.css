@@ -87,7 +87,7 @@ main{padding:16px;display:flex;flex-direction:column;gap:18px}
 
 /* nav */
 .fab{position:fixed;right:max(18px,calc(50% - 262px));bottom:98px;width:62px;height:62px;border-radius:20px;border:0;background:var(--pink);color:#fff;box-shadow:0 10px 24px rgba(232,51,109,.38);display:flex;align-items:center;justify-content:center;z-index:5}
-.nav{position:fixed;left:50%;transform:translateX(-50%);width:min(536px,calc(100% - 24px));bottom:calc(12px + env(safe-area-inset-bottom));height:70px;background:var(--ink);border-radius:24px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:6px;z-index:5}
+.nav{position:fixed;left:50%;transform:translateX(-50%);width:min(536px,calc(100% - 24px));bottom:calc(12px + env(safe-area-inset-bottom));height:70px;background:var(--ink);border-radius:24px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:6px;z-index:5}
 .nav button{border:0;background:none;border-radius:18px;color:#A9B2D0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:600}
 .nav button.on{background:var(--saffron);color:var(--ink);font-weight:800}
 
@@ -200,3 +200,43 @@ textarea.in{min-height:72px;resize:vertical}
 }
 
 .mp-col{display:flex;flex-direction:column;gap:14px;min-width:0}
+
+/* ---------- Step 3: calendar, clients, fees, limitation ---------- */
+.tile.wide{grid-column:1/-1;min-height:84px}
+.nav button{font-size:10.5px}
+.calnav{display:flex;align-items:center;gap:8px}
+.calnav button{width:40px;height:40px;border:0;border-radius:12px;background:var(--hc-2);color:#fff;display:flex;align-items:center;justify-content:center}
+.calnav b{font-family:var(--head);font-size:19px;min-width:150px;text-align:center}
+.calnav .calToday{width:auto;padding:0 14px;margin-left:auto;font-weight:800;font-size:13px;background:var(--saffron);color:var(--ink)}
+.calcard{padding:12px}
+.calgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.calgrid .dh{text-align:center;font-size:11px;font-weight:800;color:var(--muted);padding:4px 0}
+.cd{border:0;background:#F7F8FC;border-radius:12px;min-height:58px;padding:5px 2px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative}
+.cd b{font-size:14px;font-weight:700}
+.cd small{position:absolute;top:3px;right:5px;font-size:9px;font-weight:800;color:var(--hc)}
+.cd.sun b{color:var(--red)}
+.cd.today{outline:2px solid var(--saffron)}
+.cd.on{background:var(--ink);color:#fff}
+.cd.on small{color:var(--saffron)}
+.dots{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;margin-top:auto}
+.dots i,.legend i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;font-size:11px;color:var(--muted);font-weight:600}
+.legend span{display:flex;align-items:center;gap:5px}
+.avatar{width:48px;height:48px;border-radius:16px;background:var(--hc-soft);color:var(--hc);font-family:var(--head);font-weight:800;font-size:17px;display:flex;align-items:center;justify-content:center}
+.feerow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}
+.feerow .act{grid-column:1/-1}
+.feedue{font-family:var(--head);font-weight:800;font-size:18px;color:var(--saffron-ink)}
+.feedue.paid{color:var(--dc-ink);font-size:14px}
+.chip.radio{display:inline-flex;align-items:center;cursor:pointer}
+.chip.radio input{position:absolute;opacity:0;pointer-events:none}
+.chip.radio:has(input:checked){background:var(--ink);color:#fff;font-weight:700}
+.lim-main{display:flex;flex-direction:column;gap:14px}
+.lim-res{display:flex;flex-direction:column;gap:4px}
+.lim-res .big{font-family:var(--head);font-size:28px;color:var(--dc-ink)}
+.lim-res .big.soon{color:var(--saffron-ink)} .lim-res .big.late{color:var(--red)}
+.lim-res .left{font-weight:700;color:var(--muted)}
+@media (min-width:1000px){
+  .cal-main,.lim-main{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:22px;align-items:start}
+  .cd{min-height:84px}
+  .calnav{max-width:520px}
+}
