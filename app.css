@@ -244,3 +244,7 @@ textarea.in{min-height:72px;resize:vertical}
 }
 .hist span{word-break:break-word;min-width:0}
 
+
+body::before{content:'';position:fixed;top:0;bottom:0;left:0;width:22px;z-index:30;pointer-events:none;
+  background:linear-gradient(90deg,#4A1719 0,#7A2A2D 45%,#8E3A3A 60%,#5E1F22 100%);box-shadow:2px 0 0 #B08D57}
+body{padding-left:24px} .nav{left:24px} .scrim{left:24px}
