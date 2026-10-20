@@ -432,6 +432,7 @@ async function processInbox() {
           const body = await (await g('/me/drive/items/' + f.id + '/content')).json();
           change(() => {
             for (const c of (body.changes || [])) {
+              if (c.add) { if (!S.data.matters.some(x => x.no === c.add.no && !x.deleted)) S.data.matters.push(Object.assign({ id: uid(), hearings: [], created: todayIso(), u: Date.now() }, c.add)); continue; }
               const m = live().find(x => x.no === c.no); if (!m) continue;
               if (c.set) Object.assign(m, c.set);
               if (c.hearing) {
