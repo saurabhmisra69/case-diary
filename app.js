@@ -3,7 +3,7 @@
    Code only in this repository; all case data lives in the user's own OneDrive. */
 'use strict';
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.1';
 const CLIENT_ID = 'df289e5d-2a3c-4280-b4be-b440bfe8ea8b';
 const SCOPES = ['User.Read', 'Files.ReadWrite', 'Calendars.ReadWrite'];
 const DIARY_DIR = 'Case Diary';
@@ -42,6 +42,7 @@ const MONL = ['January','February','March','April','May','June','July','August',
 const dmy = s => s ? s.split('-').reverse().join('.') : '';
 const short = s => { const d = parseIso(s); return d.getDate() + ' ' + MON[d.getMonth()]; };
 const rupees = n => '₹' + Math.round(n || 0).toLocaleString('en-IN');
+const cap = s => String(s || '').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 const num = v => { const n = parseFloat(String(v ?? '').replace(/[^\d.]/g, '')); return isNaN(n) ? 0 : n; };
 
 function toast(msg, ms = 2600) {
@@ -618,10 +619,10 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
   try { await initAuth(); } catch (e) { $('#app').innerHTML = '<div class="splash"><p>Could not start sign-in. Check the internet and reload.</p></div>'; return; }
   try { S.data = JSON.parse(localStorage.getItem(LS_DATA) || 'null'); } catch (e) {}
   if (!S.data) S.data = emptyData();
-  if (S.account) S.name = (S.account.name || '').split(' ')[0];
+  if (S.account) S.name = cap((S.account.name || '').split(' ')[0]);
   render();
   if (S.account) {
     sync();
-    g('/me?$select=givenName,displayName').then(r => r.ok && r.json()).then(j => { if (j) { S.name = j.givenName || (j.displayName || '').split(' ')[0]; render(); } }).catch(() => {});
+    g('/me?$select=givenName,displayName').then(r => r.ok && r.json()).then(j => { if (j) { S.name = cap(j.givenName || (j.displayName || '').split(' ')[0]); render(); } }).catch(() => {});
   }
 })();
