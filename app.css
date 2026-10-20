@@ -7,7 +7,7 @@
   --red:#9F1D2E; --red-soft:#F6E3E5; --red-ink:#7E1624;
   --saffron:#B08D57; --saffron-soft:#F4ECDD; --saffron-ink:#6F5428;
   --pink:#8A6A35;
-  --brand:#6B2426; --brand-2:#82363A; --brand-ink:#E9CFC9; --brand-deep:#4A1719;
+  --brand:#1B2A4A; --brand-2:#2A3B60; --brand-ink:#BAC4D8; --brand-deep:#1A2233; --spine:#7A2E2E;
   --ink:#1A2233; --ink-2:#2E3748; --muted:#5F6676; --line:#E4E0D6;
   --bg:#F7F5F0; --card:#FFFFFF; --chip:#EFECE5;
   --wa:#1F6B4F; --wa-soft:#E0EEE7;
@@ -88,8 +88,8 @@ main{padding:16px;display:flex;flex-direction:column;gap:18px}
 
 /* nav */
 .fab{position:fixed;right:max(18px,calc(50% - 262px));bottom:calc(78px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:8px;border:0;background:var(--pink);color:#fff;box-shadow:0 4px 12px rgba(27,42,74,.25);display:flex;align-items:center;justify-content:center;z-index:5}
-.nav{position:fixed;left:0;right:0;bottom:0;height:calc(62px + env(safe-area-inset-bottom));padding:0 max(8px,calc(50% - 280px)) env(safe-area-inset-bottom);background:var(--brand-deep);border-top:1px solid #5E2426;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));z-index:5}
-.nav button{border:0;background:none;border-radius:8px;color:#D7B9B3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:600}
+.nav{position:fixed;left:0;right:0;bottom:0;height:calc(62px + env(safe-area-inset-bottom));padding:0 max(8px,calc(50% - 280px)) env(safe-area-inset-bottom);background:var(--brand-deep);border-top:1px solid #2E3748;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));z-index:5}
+.nav button{border:0;background:none;border-radius:8px;color:#9AA4BA;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:600}
 .nav button.on{background:none;color:#D9BD8A;font-weight:700;box-shadow:inset 0 3px 0 var(--saffron);border-radius:0}
 
 /* page head for inner tabs */
@@ -243,3 +243,10 @@ textarea.in{min-height:72px;resize:vertical}
   .calnav{max-width:520px}
 }
 .hist span{word-break:break-word;min-width:0}
+
+/* the diary's binding: a maroon spine down the left edge, like the icon */
+body::before{content:'';position:fixed;top:0;bottom:0;left:0;width:12px;z-index:30;pointer-events:none;
+  background:linear-gradient(90deg,#5A1F21 0,#7A2E2E 45%,#8E3A3A 60%,#6A2628 100%);box-shadow:2px 0 4px rgba(0,0,0,.25)}
+body{padding-left:12px}
+.nav{left:12px}
+.scrim{left:12px}
