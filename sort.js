@@ -34,7 +34,7 @@ async function loadSort() {
   } catch (e) { SO.err = e.message; }
   SO.loading = false; render();
 }
-const isDone = it => SO.log.some(l => l.item === it.cur && (l.result === 'Moved' || l.result === 'Already in place' || l.result.startsWith('Not found')));
+const isDone = it => SO.log.some(l => l.item === it.cur && (l.result === 'Moved' || l.result === 'Already in place' || l.result.startsWith('Not found') || l.result.startsWith('Left as is') || l.result === 'Failed (400)'));
 const pending = () => SO.plan.filter(it => !isDone(it));
 const dest = it => (it.target === '(top level)' ? CASE_ROOT : CASE_ROOT + '\\' + it.target) + '\\' + it.name;
 
@@ -91,7 +91,7 @@ VIEWS.sort = function () {
   if (SO.loading || (!SO.loaded && !SO.err)) return head + '<main><div class="card empty">Reading Folder Sorting Sheet…</div></main>';
   if (SO.err) return head + `<main><div class="card empty">${esc(SO.err)}<br><button class="linkbtn" data-act="sortreload">Try again</button></div></main>`;
   const pend = pending(), done = SO.plan.length - pend.length, next = pend.slice(0, BATCH);
-  const problems = SO.log.filter(l => /^(Failed|Not found)/.test(l.result) && !SO.log.some(k => k.item === l.item && (k.result === 'Moved' || k.result === 'Already in place')));
+  const problems = SO.log.filter((l, i) => /^(Failed|Not found)/.test(l.result) && !SO.log.some((k, j) => k.item === l.item && (j > i || k.result === 'Moved' || k.result.startsWith('Left as is'))));
   const where = it => it.target === '(top level)' ? (it.name !== it.cur.split('\\').pop() ? 'rename → ' + it.name : 'top level') : it.target + (it.name !== it.cur.split('\\').pop() ? ' · as ' + it.name : '');
   return head + `<main class="lim-main">
     <section class="card grp" style="gap:10px">
