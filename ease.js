@@ -144,3 +144,5 @@ async function sheetDiaryUpdate(files) {
     } catch (er) { toast('Could not apply: ' + er.message, 5000); }
   };
 }
+
+document.addEventListener('change', e => { if (e.target.dataset && e.target.dataset.act === 'updfile' && e.target.files.length) { sheetDiaryUpdate([...e.target.files]); e.target.value = ''; } });

@@ -440,6 +440,7 @@ function viewMore() {
     <button data-act="tab" data-tab="fees">Fees <small>dues and payments</small></button>
     <button data-act="causelist" data-day="${S.day}">Cause list in Word <small>on your letterhead</small></button>
     <button data-act="tab" data-tab="limit">Limitation calculator <small>last date to file</small></button>
+    <label class="menu-file"><input type="file" accept=".json,application/json" data-act="updfile" hidden><b>Apply diary update from Claude</b><small>pick the diary-update file you downloaded</small></label>
     <button data-act="aikey">Order reading <small>${aiKey() ? 'key saved on this device' : 'add your API key'}</small></button>
     <button data-act="tab" data-tab="sort">Sort old folders <small>moves from the Folder Sorting Sheet</small></button>
     <button data-act="sync">Sync now <small>${esc(syncLabel()[1])}</small></button>

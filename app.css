@@ -305,3 +305,6 @@ body{padding-left:24px} .nav{left:24px} .scrim{left:24px}
 
 .row>span:last-child{max-width:92px;overflow-wrap:anywhere}
 .item.sm b{font-size:11px;white-space:nowrap}
+
+.menu-file{display:flex;flex-direction:column;gap:2px;background:var(--card,#fff);border:1px solid var(--line);padding:14px 16px;cursor:pointer;text-align:left}
+.menu-file b{font-size:15px}.menu-file small{color:var(--muted);font-size:12.5px}
