@@ -582,6 +582,12 @@ ONE_TIME_FIXES.push({ id: '2026-10-21-motinagar-advisory',
   find: m => /moti\s*nagar/i.test((m.title || '') + ' ' + (m.clients || '') + ' ' + (m.notes || '')) && /mutation|naam|नामान्तरण/i.test((m.title || '') + ' ' + (m.type || '') + ' ' + (m.notes || '')),
   apply: m => { m.forum = 'Advisory'; m.status = 'Advice given – completed'; if (!m.type) m.type = 'Mutation'; m.nextDate = ''; m.purpose = ''; m.closedOn = m.closedOn || todayIso(); m.calPending = true; },
   label: 'Moti Nagar mutation: Advisory · Advice given – completed' });
+ONE_TIME_FIXES.push({ id: '2026-10-21-baghel-writ-308-decided',
+  find: m => /baghel/i.test((m.title || '') + ' ' + (m.clients || '')) && (/9845|7303/.test(m.caseNo || '') || (/308/.test((m.crimeNo || '') + ' ' + (m.title || '') + ' ' + (m.notes || '')) && /writ|crlp|226/i.test((m.type || '') + ' ' + (m.caseNo || '') + ' ' + (m.title || '')))),
+  apply: m => { m.status = 'Decided'; m.outcome = m.outcome || 'In our favour'; m.nextDate = ''; m.purpose = ''; m.item = ''; m.closedOn = m.closedOn || todayIso(); m.calPending = true;
+    m.hearings = m.hearings || []; if (!m.hearings.some(h => /withdrawn/i.test(h.note || h.happened || ''))) m.hearings.push({ date: todayIso(), happened: 'Decided', note: 'Writ petition dismissed as withdrawn by the petitioner (Baghel). Folder kept with Anuj Gupta\'s matters: papers may be needed in his other cases.' });
+    m.keepFolder = true; },
+  label: 'Baghel writ (FIR 308): Decided · In our favour. Folder left in place.' });
 function runOneTimeFixes() {
   if (!S.data || !S.account) return;
   const done = S.data.fixes || [];
