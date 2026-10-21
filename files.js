@@ -158,7 +158,7 @@ function viewMatter(m) {
   <main class="matter-main"><div class="mp-col">
     <div class="acts mp-acts" style="grid-template-columns:1.3fr 1fr 1fr 1fr"><button class="act primary" data-act="record" data-id="${m.id}">Next date</button><button class="act blue" data-act="edit" data-id="${m.id}">Edit</button><button class="act blue" data-act="draft" data-id="${m.id}">Draft</button><button class="act wa" data-act="wa" data-id="${m.id}" ${phoneDigits(m.phone) ? '' : 'disabled title="Add client mobile first"'}>${I.wa}Client</button></div>
     <div class="acts mp-acts" style="grid-template-columns:1.4fr 1fr;margin-top:-4px"><button class="act blue" data-act="readorder" data-id="${m.id}">Read order photo</button><button class="act blue" data-act="askclaude" data-id="${m.id}">Send to Claude</button></div>
-    <section class="card" style="padding:12px 16px"><div class="stbox" style="margin:0"><div class="field" style="margin:0"><label for="st_${m.id}">Status</label><select class="in" id="st_${m.id}" data-st="status" data-id="${m.id}">${STATUSES.map(s => `<option ${s === (m.status || 'Pending') ? 'selected' : ''}>${s}</option>`).join('')}${STATUSES.includes(m.status) || !m.status ? '' : `<option selected>${esc(m.status)}</option>`}</select></div>
+    <section class="card" style="padding:12px 16px"><div class="stbox" style="margin:0"><div class="field" style="margin:0"><label for="st_${m.id}">Status</label><select class="in" id="st_${m.id}" data-st="status" data-id="${m.id}">${statusList(m).map(s => `<option ${s === (m.status || statusList(m)[0]) ? 'selected' : ''}>${s}</option>`).join('')}${statusList(m).includes(m.status) || !m.status ? '' : `<option selected>${esc(m.status)}</option>`}</select></div>
       ${m.status === 'Decided' ? `<div class="field" style="margin:10px 0 0"><label for="oc_${m.id}">Result</label><select class="in ${m.outcome ? '' : 'needs'}" id="oc_${m.id}" data-st="outcome" data-id="${m.id}"><option value="">Choose…</option>${OUTCOMES.map(s => `<option ${s === m.outcome ? 'selected' : ''}>${s}</option>`).join('')}</select></div>` : ''}</div></section>
     <section class="card mp-files" id="files">${filesInner(m)}</section>
     </div><div class="mp-col">
@@ -535,8 +535,9 @@ document.addEventListener('change', e => {
     const v = el.value, was = m.status;
     change(() => {
       m.status = v; if (v !== 'Decided') m.outcome = '';
-      if (!OPEN_STATUSES.includes(v) && OPEN_STATUSES.includes(was || 'Pending')) { m.closedOn = todayIso(); m.calPending = true; }
-      if (OPEN_STATUSES.includes(v)) m.closedOn = '';
+      const wasOpen = isOpen(m.forum === 'Advisory' ? { forum: 'Advisory', status: was } : { status: was }); m.status = v;
+      if (!isOpen(m) && wasOpen) { m.closedOn = todayIso(); m.calPending = true; }
+      if (isOpen(m)) m.closedOn = '';
       touch(m);
     });
     toast('Status: ' + v + (v === 'Decided' ? '. Now choose the result.' : ''), 3000);
@@ -544,3 +545,27 @@ document.addEventListener('change', e => {
   render();
 });
 document.addEventListener('change', e => { if (e.target.id === 'f_status') { const w = document.getElementById('f_outwrap'); if (w) w.style.display = e.target.value === 'Decided' ? '' : 'none'; } });
+document.addEventListener('change', e => {
+  if (e.target.id !== 'f_forum') return;
+  const st = document.getElementById('f_status'); if (!st) return;
+  const list = e.target.value === 'Advisory' ? ADV_STATUSES : STATUSES, cur = st.value;
+  const pick = list.includes(cur) ? cur : (e.target.value === 'Advisory' ? 'In progress' : 'Pending');
+  st.innerHTML = list.map(s => `<option ${s === pick ? 'selected' : ''}>${s}</option>`).join('');
+  const w = document.getElementById('f_outwrap'); if (w) w.style.display = 'none';
+});
+/* one-time fixes the advocate asked for in chat, applied once and remembered in the diary */
+const ONE_TIME_FIXES = [
+  { id: '2026-10-21-sarin-lease-advisory', find: m => /sarin/i.test((m.title || '') + ' ' + (m.clients || '')) && /lease|deed|mathura/i.test((m.title || '') + ' ' + (m.type || '') + ' ' + (m.notes || '')) && !/1431/.test(m.caseNo || ''),
+    apply: m => { m.forum = 'Advisory'; m.status = 'Advice given – completed'; m.nextDate = ''; m.purpose = ''; m.closedOn = m.closedOn || todayIso(); m.calPending = true; }, label: 'Sarin lease marked Advisory · Advice given' },
+];
+function runOneTimeFixes() {
+  if (!S.data || !S.account) return;
+  const done = S.data.fixes || [];
+  for (const fx of ONE_TIME_FIXES) {
+    if (done.includes(fx.id)) continue;
+    const hits = live().filter(fx.find);
+    if (hits.length !== 1) continue;   // not sure which matter: leave it for the advocate
+    change(d => { fx.apply(hits[0]); touch(hits[0]); d.fixes = [...(d.fixes || []), fx.id]; });
+    toast(fx.label, 4000);
+  }
+}

@@ -18,12 +18,16 @@ const FORUMS = {
   Tribunal: { label: 'Tribunal (AFT/DRT/RERA)', c: 'var(--tr)', soft: 'var(--tr-soft)', ink: 'var(--tr-ink)' },
   Consumer: { label: 'Consumer commission', c: 'var(--co)', soft: 'var(--co-soft)', ink: 'var(--co-ink)' },
   Revenue:  { label: 'Revenue court',     c: 'var(--rv)', soft: 'var(--rv-soft)', ink: 'var(--rv-ink)' },
+  Advisory: { label: 'Advisory (opinion / drafting)', c: 'var(--adv)', soft: 'var(--adv-soft)', ink: 'var(--adv-ink)' },
 };
 const TYPES = ['Complaint','FIR','Writ','482','Bail','ABA','Revision','Appeal','Suit','WS','Execution','DV','125','138 NI','Arbitration','AFT','Consumer','RERA','Mutation','Opinion','Notice','Deed'];
 const STATUSES = ['Not filed', 'Filed – under objection', 'Pending', 'Admitted', 'Part-heard', 'Reserved', 'Proceedings stayed', 'Adjourned sine die', 'Decided', 'Abated', 'Withdrawn', 'Dismissed in default', 'Infructuous', 'Returned', 'Transferred', 'Consigned to record', 'Dropped / Closed'];
 const OPEN_STATUSES = ['Not filed', 'Filed – under objection', 'Pending', 'Admitted', 'Part-heard', 'Reserved', 'Proceedings stayed', 'Adjourned sine die'];
 const OUTCOMES = ['In our favour', 'Against us', 'Partly in our favour', 'Disposed of with directions', 'Compromise / settled', 'Remanded'];
-const isOpen = m => OPEN_STATUSES.includes(m.status || 'Pending');
+const ADV_STATUSES = ['Instructions received', 'In progress', 'Draft / opinion sent', 'Advice given – completed', 'Dropped'];
+const ADV_OPEN = ['Instructions received', 'In progress', 'Draft / opinion sent'];
+const statusList = m => m.forum === 'Advisory' ? ADV_STATUSES : STATUSES;
+const isOpen = m => m.forum === 'Advisory' ? ADV_OPEN.includes(m.status || 'In progress') : OPEN_STATUSES.includes(m.status || 'Pending');
 const HAPPENED = ['Adjourned','Evidence recorded','Heard','Reserved','Disposed','Not taken up'];
 const FIXED_FOR = ['Hearing','Admission','Evidence','Cross-examination','Arguments','Orders','Reply / Objection','Framing of charge','313 statement','Judgment'];
 
@@ -131,6 +135,7 @@ function merge(local, remote) {
   for (const m of remote.matters || []) map.set(m.id, m);
   for (const m of local.matters || []) { const r = map.get(m.id); if (!r || (m.u || 0) >= (r.u || 0)) map.set(m.id, m); }
   out.matters = [...map.values()];
+  const fx = [...new Set([...(local.fixes || []), ...(remote.fixes || [])])]; if (fx.length) out.fixes = fx;
   return out;
 }
 async function pull() {
@@ -178,7 +183,7 @@ async function sync() {
     persistLocal();
   } catch (e) { S.syncErr = e.message || 'error'; console.warn(e); }
   S.syncing = false; render();
-  if (!S.syncErr) setTimeout(() => typeof processInbox === 'function' && processInbox(), 500);
+  if (!S.syncErr) setTimeout(() => { typeof processInbox === 'function' && processInbox(); typeof runOneTimeFixes === 'function' && runOneTimeFixes(); }, 500);
 }
 
 async function writeExcel() {
@@ -238,7 +243,7 @@ async function flushCalendar() {
 const byNo = (a, b) => (a.year - b.year) || (a.n - b.n);
 function nextNumber(year) { return Math.max(0, ...live().filter(m => m.year === year).map(m => m.n)) + 1; }
 const forumOf = m => FORUMS[m.forum] || FORUMS.District;
-const needsDate = m => (m.status === 'Pending') && (!m.nextDate || m.nextDate < todayIso());
+const needsDate = m => m.forum !== 'Advisory' && (m.status === 'Pending') && (!m.nextDate || m.nextDate < todayIso());
 const feeDue = m => Math.max(0, num(m.feeAgreed) - num(m.feeReceived));
 const onDay = day => live().filter(m => m.nextDate === day && isOpen(m));
 const doneOn = day => live().filter(m => (m.hearings || []).some(h => h.date === day));
@@ -336,7 +341,7 @@ function viewHome() {
   </main>`;
 }
 function groupByCourt(ms) {
-  const order = ['HC', 'Tribunal', 'Consumer', 'District', 'Revenue'];
+  const order = ['HC', 'Tribunal', 'Consumer', 'District', 'Revenue', 'Advisory'];
   const map = new Map();
   [...ms].sort((a, b) => (order.indexOf(a.forum) - order.indexOf(b.forum)) || (num(a.item) - num(b.item))).forEach(m => {
     const k = m.court || forumOf(m).label; if (!map.has(k)) map.set(k, []); map.get(k).push(m);
@@ -387,7 +392,7 @@ function viewMatters() {
     need: needsDate,
     deadline: m => m.deadline && !m.deadlineDone,
     fees: m => feeDue(m) > 0,
-    HC: m => m.forum === 'HC', District: m => m.forum === 'District', Tribunal: m => m.forum === 'Tribunal', Consumer: m => m.forum === 'Consumer', Revenue: m => m.forum === 'Revenue',
+    HC: m => m.forum === 'HC', District: m => m.forum === 'District', Tribunal: m => m.forum === 'Tribunal', Consumer: m => m.forum === 'Consumer', Revenue: m => m.forum === 'Revenue', Advisory: m => m.forum === 'Advisory',
     decided: m => !isOpen(m),
     all: () => true,
   };
@@ -397,7 +402,7 @@ function viewMatters() {
   return `<header class="phead">
     <div class="top-row"><h1>Matters</h1><button id="syncbtn" class="sync" data-act="sync"></button></div>
     <label class="search">${I.search}<input type="search" placeholder="Search matters" data-act="q" value="${esc(S.q)}"></label>
-    <div class="filters">${chip('pending', 'Pending')}${chip('need', 'Need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
+    <div class="filters">${chip('pending', 'Pending')}${chip('need', 'Need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory')}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
   </header>
   <main><div class="list">
     <div class="h2"><span class="sub">${ms.length} matter${ms.length === 1 ? '' : 's'}</span></div>
@@ -467,7 +472,7 @@ function sheetEdit(m) {
     <div class="two"><div class="field"><label for="f_type">Type</label><select class="in" id="f_type" name="type"><option value=""></option>${opt(TYPES, m.type)}</select></div>${fld('caseNo', 'Case no.', m.caseNo, 'text', 'placeholder="e.g. 8027/2026"')}</div>
     <div class="two">${fld('crimeNo', 'Crime / FIR no.', m.crimeNo)}${fld('ps', 'Police station', m.ps)}</div>
     ${fld('sections', 'Under section(s)', m.sections)}
-    <div class="two"><div class="field"><label for="f_nature">Nature</label><select class="in" id="f_nature" name="nature">${opt(['Criminal', 'Civil', 'Other'], m.nature)}</select></div><div class="field"><label for="f_status">Status</label><select class="in" id="f_status" name="status">${opt(STATUSES, m.status)}</select></div></div>
+    <div class="two"><div class="field"><label for="f_nature">Nature</label><select class="in" id="f_nature" name="nature">${opt(['Criminal', 'Civil', 'Other'], m.nature)}</select></div><div class="field"><label for="f_status">Status</label><select class="in" id="f_status" name="status">${opt(statusList(m), m.status)}</select></div></div>
     <div class="field" id="f_outwrap" style="${m.status === 'Decided' ? '' : 'display:none'}"><label for="f_outcome">Decided — result</label><select class="in" id="f_outcome" name="outcome"><option value="">—</option>${opt(OUTCOMES, m.outcome)}</select></div>
     ${fld('side', 'Appearing for', m.side, 'text', 'placeholder="e.g. Applicant, OP, Complainant"')}
     <div class="two">${fld('nextDate', 'Next date', m.nextDate, 'date')}${fld('item', 'Item no.', m.item)}</div>
