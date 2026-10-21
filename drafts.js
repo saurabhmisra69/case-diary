@@ -175,7 +175,7 @@ async function makeDraft(m, key, lang, f) {
   ];
   if (T.own) head.length = 0;
   const rows0 = (hi ? T.hi_body : T.en_body)(m, f).filter(([t]) => !/^\(supported by affidavit\)$|^\(शपथ पत्र द्वारा समर्थित\)$/i.test(t));
-  if (!T.own && f.withAff === 'yes') rows0.push([hi ? '(शपथ पत्र द्वारा समर्थित)' : '(Supported by affidavit)', 'c']);
+  if (!T.own && /^(full|short|yes)$/.test(f.withAff || '')) rows0.push([hi ? '(शपथ पत्र द्वारा समर्थित)' : '(Supported by affidavit)', 'c']);
   const body = rows0.flatMap(([t, s]) => s === 'cb' ? P(t, { align: C, bold: true, u: true, after: 120 }) : s === 'c' ? P(t, { align: C, bold: true, after: 160 }) : P(t, T.own ? { align: D.AlignmentType.LEFT, indent: { left: 2160, hanging: 2160 } } : { indent: /^\d/.test(t) ? { left: 720, hanging: 720 } : undefined }));
   const today = dmy(todayIso());
   const sig = [
@@ -187,13 +187,14 @@ async function makeDraft(m, key, lang, f) {
   // affidavit in support: added on its own pages whenever the application needs one
   const aff = [];
   const bodyRows = (hi ? T.hi_body : T.en_body)(m, f);
-  if (!T.own && f.withAff === 'yes') {
+  if (!T.own && /^(full|short|yes)$/.test(f.withAff || '')) {
+    const full = f.withAff === 'full';
     const nParas = bodyRows.filter(([t]) => /^\d+\./.test(t)).length || 1;
     const dep = { name: f.depName || '______________________', rel: f.depRel || 'son of ______________________', age: f.depAge || '____', addr: f.depAddr || '________________________________________', is: f.depIs || 'applicant' };
     const isSelf = !/pairokar|पैरोकार/i.test(dep.is);
     const L = D.AlignmentType.LEFT;
     aff.push(new D.Paragraph({ pageBreakBefore: true, alignment: C, spacing: { after: 60 }, children: [new D.TextRun({ text: courtLine(m, hi), bold: true, size: SZ, font: FONT })] }));
-    aff.push(...P(hi ? 'शपथ पत्र' : 'A F F I D A V I T', { align: C, bold: true, u: true, after: 60 }));
+    aff.push(...P(hi ? (full ? 'शपथ पत्र' : 'संक्षिप्त शपथ पत्र') : (full ? 'A F F I D A V I T' : 'S H O R T   A F F I D A V I T'), { align: C, bold: true, u: true, after: 60 }));
     aff.push(...P(hi ? '(' + T.hi + ' के समर्थन में)' : '(In support of the accompanying ' + (T.affFor || 'application') + ')', { align: C, after: 120 }));
     if (m.forum === 'HC') aff.push(...P(hi ? 'में' : 'IN RE:', { align: C, after: 60 }));
     aff.push(...P(caseRef, { align: C, bold: true, after: 60 }));
@@ -210,11 +211,18 @@ async function makeDraft(m, key, lang, f) {
       '2.\tThat the deponent has read and understood the contents of the accompanying application.',
       '3.\tThat the contents of paragraphs 1 to ' + nParas + ' of the accompanying application are true to the personal knowledge of the deponent and based on the record of the case.',
     ];
-    paras.forEach(t => aff.push(...P(t)));
+    let nAff = 3;
+    if (full) {
+      const appParas = bodyRows.filter(([t]) => /^\d+\./.test(t)).map(([t]) => t.replace(/^\d+\.\s*/, ''));
+      const lines = [paras[0], paras[1].replace(/^1\./, '1.')];
+      appParas.forEach((t, i) => lines.push((i + 2) + '.\t' + t));
+      nAff = appParas.length + 1;
+      lines.forEach(t => aff.push(...P(t)));
+    } else paras.forEach(t => aff.push(...P(t)));
     aff.push(new D.Paragraph({ spacing: { before: 240, after: 240 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: '\t' + (hi ? 'शपथकर्ता' : 'Deponent'), bold: true, size: SZ, font: FONT })] }));
     aff.push(...P(hi ? 'सत्यापन' : 'V E R I F I C A T I O N', { align: C, bold: true, u: true, after: 120 }));
-    aff.push(...P(hi ? 'मैं, उपरोक्त नामित शपथकर्ता, सत्यापित करता हूँ कि इस शपथ पत्र के प्रस्तर 1 से 3 की बातें मेरे निजी ज्ञान से सत्य एवं सही हैं, इसका कोई भाग असत्य नहीं है और न ही कोई तथ्य छिपाया गया है। ईश्वर मेरी सहायता करे।'
-      : 'I, the deponent above named, do hereby verify that the contents of paragraphs 1 to 3 of this affidavit are true to my personal knowledge; no part of it is false and nothing material has been concealed. So help me God.'));
+    aff.push(...P(hi ? 'मैं, उपरोक्त नामित शपथकर्ता, सत्यापित करता हूँ कि इस शपथ पत्र के प्रस्तर 1 से ' + nAff + ' की बातें मेरे निजी ज्ञान से सत्य एवं सही हैं, इसका कोई भाग असत्य नहीं है और न ही कोई तथ्य छिपाया गया है। ईश्वर मेरी सहायता करे।'
+      : 'I, the deponent above named, do hereby verify that the contents of paragraphs 1 to ' + nAff + ' of this affidavit are true to my personal knowledge' + (full ? ' and based on the record of the case, which I believe to be true' : '') + '; no part of it is false and nothing material has been concealed. So help me God.'));
     aff.push(...P(hi ? 'हस्ताक्षरित एवं सत्यापित दिनांक ____________ को लखनऊ में।' : 'Signed and verified this ____ day of ______________, ' + new Date().getFullYear() + ' at Lucknow.'));
     aff.push(new D.Paragraph({ spacing: { before: 240, after: 240 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: '\t' + (hi ? 'शपथकर्ता' : 'Deponent'), bold: true, size: SZ, font: FONT })] }));
     aff.push(...P(hi ? 'मैं शपथकर्ता को पहचानता हूँ जिसने मेरे समक्ष हस्ताक्षर किए हैं।' : 'I identify the deponent who has signed before me.'));
@@ -384,8 +392,8 @@ function sheetDraft(m, preset) {
         ${S2.annex.length ? `<div class="hist">${S2.annex.map((a, i) => `<div><b>Annexure ${i + 1}</b><span>${esc(a.title)} · ${a.images.length} page${a.images.length > 1 ? 's' : ''} <button class="linkbtn" data-dr="rmannex" data-i="${i}">Remove</button></span></div>`).join('')}</div>` : ''}
       </div>
       ${S2.format ? `<p class="hint">${esc(FIELD_HINT)}</p>` : fields.map(([k, l]) => `<div class="field"><label for="dr_${k}">${esc(l.toUpperCase())}</label>${['facts', 'why', 'lapse', 'gist'].includes(k) ? `<textarea class="in" id="dr_${k}" data-df="${k}">${esc(S2.f[k] || '')}</textarea>` : `<input class="in" id="dr_${k}" data-df="${k}" value="${esc(S2.f[k] || (k === 'who' ? m.clients || '' : ''))}">`}</div>`).join('')}
-      ${!S2.format && !T.own && S2.key !== 'vakalat' ? `<div class="grp" id="dr_affq" style="margin-top:6px"><span class="lbl">Add a supporting affidavit?</span><div class="chips"><button class="chip ${S2.f.withAff === 'yes' ? 'on' : ''}" data-dr="aff" data-v="yes">Yes, add affidavit</button><button class="chip ${S2.f.withAff === 'no' ? 'on' : ''}" data-dr="aff" data-v="no">No</button></div></div>` : ''}
-      ${!S2.format && !T.own && S2.f.withAff === 'yes' ? `<div class="grp"><span class="lbl">Deponent</span><div class="chips"><button class="chip ${S2.f.depIs !== 'pairokar' ? 'on' : ''}" data-dr="dep" data-v="applicant">${esc(ourRole(m))} himself</button><button class="chip ${S2.f.depIs === 'pairokar' ? 'on' : ''}" data-dr="dep" data-v="pairokar">Pairokar</button></div></div>
+      ${!S2.format && !T.own && S2.key !== 'vakalat' ? `<div class="grp" id="dr_affq" style="margin-top:6px"><span class="lbl">Add a supporting affidavit?</span><div class="chips"><button class="chip ${S2.f.withAff === 'full' ? 'on' : ''}" data-dr="aff" data-v="full">Full affidavit</button><button class="chip ${S2.f.withAff === 'short' ? 'on' : ''}" data-dr="aff" data-v="short">Short affidavit</button><button class="chip ${S2.f.withAff === 'no' ? 'on' : ''}" data-dr="aff" data-v="no">No</button></div><p class="hint" style="margin:6px 0 0">Full: every paragraph of the application is sworn in the affidavit. Short: the deponent adopts the application's paragraphs.</p><div></div></div>` : ''}
+      ${!S2.format && !T.own && /^(full|short|yes)$/.test(S2.f.withAff || '') ? `<div class="grp"><span class="lbl">Deponent</span><div class="chips"><button class="chip ${S2.f.depIs !== 'pairokar' ? 'on' : ''}" data-dr="dep" data-v="applicant">${esc(ourRole(m))} himself</button><button class="chip ${S2.f.depIs === 'pairokar' ? 'on' : ''}" data-dr="dep" data-v="pairokar">Pairokar</button></div></div>
       ${[['depName', 'Deponent name'], ['depRel', 'Son / daughter / wife of'], ['depAge', 'Age (years)'], ['depAddr', 'Address']].map(([k, l]) => `<div class="field"><label for="dr_${k}">${l.toUpperCase()}</label><input class="in" id="dr_${k}" data-df="${k}" value="${esc(S2.f[k] || '')}" placeholder="${k === 'depRel' ? 'son of …' : 'leave blank to fill by hand'}"></div>`).join('')}` : ''}
       <p class="hint">Court, case no., parties, crime no. and your signature are filled in from the diary. ${m.folderId ? 'Saved in the matter folder › 1 Pleadings.' : 'This matter has no folder yet, so use Download or Share.'}</p>
       ${S2.busy ? `<button class="save" disabled>${esc(S2.busy)}</button>` : S2.done ? `
@@ -440,12 +448,12 @@ function sheetDraft(m, preset) {
       draw();
     }
     else if (k === 'make') {
-      if (!S2.format && !T0().own && S2.key !== 'vakalat' && !S2.f.withAff) { toast('Add a supporting affidavit? Choose Yes or No.', 3500); const q = $('#dr_affq'); if (q) { q.scrollIntoView({ block: 'center', behavior: 'smooth' }); q.classList.add('ask'); } return; }
+      if (!S2.format && !T0().own && S2.key !== 'vakalat' && !S2.f.withAff) { toast('Add a supporting affidavit? Choose Full, Short or No.', 3500); const q = $('#dr_affq'); if (q) { q.scrollIntoView({ block: 'center', behavior: 'smooth' }); q.classList.add('ask'); } return; }
       S2.busy = 'Preparing…'; draw();
       try {
         if (S2.format) { S2.done = await fillOwnFormat(m, S2.format); toast(S2.done.found ? S2.done.found + ' blanks filled' : 'No {{…}} markers found in your format; saved as it is', 4000); }
         else {
-          if (S2.f.withAff === 'yes') { const dp = {}; ['depName', 'depRel', 'depAge', 'depAddr', 'depIs'].forEach(x => { if (S2.f[x]) dp[x] = S2.f[x]; }); if (JSON.stringify(dp) !== JSON.stringify(m.deponent || {})) change(() => { m.deponent = dp; touch(m); }); }
+          if (/^(full|short|yes)$/.test(S2.f.withAff || '')) { const dp = {}; ['depName', 'depRel', 'depAge', 'depAddr', 'depIs'].forEach(x => { if (S2.f[x]) dp[x] = S2.f[x]; }); if (JSON.stringify(dp) !== JSON.stringify(m.deponent || {})) change(() => { m.deponent = dp; touch(m); }); }
           S2.done = await makeDraft(m, S2.key, S2.lang, { ...S2.f, _annex: S2.annex }); toast(S2.done.url ? 'Draft saved in 1 Pleadings' : 'Draft ready'); }
         if (S2.done.url) setTimeout(() => S.tab === 'matter' && loadFolder(), 800);
       } catch (er) { toast(er.message); }
