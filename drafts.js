@@ -326,8 +326,8 @@ function applyOrderToFields(key, o, f) {
   if (key === 'time' && o.directions) f.what = o.directions;
 }
 
-function sheetDraft(m) {
-  const S2 = { key: 'adjournment', lang: 'en', f: {}, busy: '', done: null, annex: [], format: null };
+function sheetDraft(m, preset) {
+  const S2 = Object.assign({ key: 'adjournment', lang: 'en', f: {}, busy: '', done: null, annex: [], format: null }, preset || {});
   const T0 = () => TEMPLATES[S2.key];
   const draw = () => {
     const T = T0();

@@ -266,3 +266,15 @@ body{padding-left:24px} .nav{left:24px} .scrim{left:24px}
 
 .three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .three .act{min-height:48px;font-size:13px;padding:6px}
+
+.v-read{background:var(--saffron)!important;color:#1B2A4A!important;font-weight:700}
+.v-read-panel{position:absolute;left:0;right:0;bottom:0;max-height:62vh;overflow:auto;background:var(--card,#fff);color:var(--ink,#1B2A4A);border-top:3px solid var(--saffron);padding:12px 16px calc(16px + env(safe-area-inset-bottom));font-size:15px;line-height:1.5;box-shadow:0 -8px 24px rgba(0,0,0,.35)}
+.v-read-panel .v-btn{background:var(--chip,#EEE9DF);color:var(--ink,#1B2A4A);border:0}
+.v-read-head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-family:var(--head);font-size:19px}
+.v-read-panel ul{margin:4px 0 8px;padding-left:20px}
+.v-sub{margin:10px 0 2px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.v-facts{background:var(--hc-soft);padding:8px 10px}
+.v-warn{background:#F7E3E1;color:#8E2A2A;padding:8px 10px;font-weight:600}
+.v-watch li{color:#8E2A2A}
+.v-acts{display:flex;flex-direction:column;gap:8px}
+.v-act{min-height:46px;border:0;background:var(--hc,#1B2A4A);color:#fff;font-weight:700;font-size:15px;text-align:left;padding:0 14px}
