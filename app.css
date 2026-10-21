@@ -281,3 +281,5 @@ body{padding-left:24px} .nav{left:24px} .scrim{left:24px}
 .v-act small{display:block;font-weight:500;font-size:12.5px;opacity:.85;margin-top:2px}
 .v-act{padding:10px 14px}
 .v-act.alt{background:var(--hc-soft,#E6EAF2);color:var(--hc,#1B2A4A)}
+
+.grp.ask{outline:2px solid var(--saffron);outline-offset:4px}
