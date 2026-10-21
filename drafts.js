@@ -194,7 +194,7 @@ async function makeDraft(m, key, lang, f) {
     const isSelf = !/pairokar|पैरोकार/i.test(dep.is);
     const L = D.AlignmentType.LEFT;
     aff.push(new D.Paragraph({ pageBreakBefore: true, alignment: C, spacing: { after: 60 }, children: [new D.TextRun({ text: courtLine(m, hi), bold: true, size: SZ, font: FONT })] }));
-    aff.push(...P(hi ? (full ? 'शपथ पत्र' : 'संक्षिप्त शपथ पत्र') : (full ? 'A F F I D A V I T' : 'S H O R T   A F F I D A V I T'), { align: C, bold: true, u: true, after: 60 }));
+    aff.push(...P(hi ? 'शपथ पत्र' : 'A F F I D A V I T', { align: C, bold: true, u: true, after: 60 }));
     aff.push(...P(hi ? '(' + T.hi + ' के समर्थन में)' : '(In support of the accompanying ' + (T.affFor || 'application') + ')', { align: C, after: 120 }));
     if (m.forum === 'HC') aff.push(...P(hi ? 'में' : 'IN RE:', { align: C, after: 60 }));
     aff.push(...P(caseRef, { align: C, bold: true, after: 60 }));
