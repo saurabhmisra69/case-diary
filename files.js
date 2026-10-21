@@ -578,6 +578,10 @@ ONE_TIME_FIXES.push({ id: '2026-10-21-omaxe-retainer', create: true,
     if (!+m.feeAgreed) m.feeAgreed = 100000; m.calPending = true;
     if (!/Q1 bill/.test(m.notes || '')) m.notes = ((m.notes ? m.notes + '\n' : '') + 'Retainer ₹1,00,000/year in four quarterly instalments of ₹25,000. Q1 bill SM/OMAXE/BILL/2026-27/01 dated 21.10.2026 sent on the Association\'s letter; payment being sent.'); },
   label: 'Omaxe Heights retainership: Retainer – active, Q1 bill raised' });
+ONE_TIME_FIXES.push({ id: '2026-10-21-motinagar-advisory',
+  find: m => /moti\s*nagar/i.test((m.title || '') + ' ' + (m.clients || '') + ' ' + (m.notes || '')) && /mutation|naam|नामान्तरण/i.test((m.title || '') + ' ' + (m.type || '') + ' ' + (m.notes || '')),
+  apply: m => { m.forum = 'Advisory'; m.status = 'Advice given – completed'; if (!m.type) m.type = 'Mutation'; m.nextDate = ''; m.purpose = ''; m.closedOn = m.closedOn || todayIso(); m.calPending = true; },
+  label: 'Moti Nagar mutation: Advisory · Advice given – completed' });
 function runOneTimeFixes() {
   if (!S.data || !S.account) return;
   const done = S.data.fixes || [];
