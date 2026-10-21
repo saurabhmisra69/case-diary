@@ -287,3 +287,13 @@ body{padding-left:24px} .nav{left:24px} .scrim{left:24px}
 
 .stbox{background:var(--chip);padding:12px;margin-bottom:12px}
 .stbox select.needs{outline:2px solid var(--saffron)}
+
+.cats{display:flex;flex-direction:column;gap:10px}
+.cat-card{background:var(--card,#fff);border:1px solid var(--line);padding:10px 12px}
+.cat-head{display:flex;justify-content:space-between;align-items:baseline;width:100%;border:0;background:none;padding:0 0 6px;text-align:left}
+.cat-head b{font-family:var(--head);font-size:18px}
+.cat-head span{font-size:13px;color:var(--muted);font-weight:600}
+.cat-sts{display:flex;flex-wrap:wrap;gap:6px}
+.cat-sts button{border:0;background:var(--chip);padding:6px 10px;font-size:13px;font-weight:600}
+.cat-sts button b{margin-left:4px;color:var(--hc)}
+.cat-sts button.closed{opacity:.65}

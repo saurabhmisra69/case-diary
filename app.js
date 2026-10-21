@@ -396,7 +396,7 @@ function viewMatters() {
     decided: m => !isOpen(m),
     all: () => true,
   };
-  const ms = live().filter(tests[f] || tests.all).filter(m => matches(m, S.q))
+  const ms = live().filter(tests[f] || tests.all).filter(m => !S.stf || (m.status || 'Pending') === S.stf).filter(m => matches(m, S.q))
     .sort((a, b) => f === 'deadline' ? a.deadline.localeCompare(b.deadline) : ((a.nextDate || '9999').localeCompare(b.nextDate || '9999') || byNo(b, a)));
   const chip = (k, l) => `<button class="${f === k ? 'on' : ''}" data-act="filter" data-f="${k}">${l}</button>`;
   return `<header class="phead">
@@ -405,7 +405,7 @@ function viewMatters() {
     <div class="filters">${chip('pending', 'Pending')}${chip('need', 'Need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory / Pre-litigation')}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
   </header>
   <main><div class="list">
-    <div class="h2"><span class="sub">${ms.length} matter${ms.length === 1 ? '' : 's'}</span></div>
+    <div class="h2"><span class="sub">${ms.length} matter${ms.length === 1 ? '' : 's'}${S.stf ? ' · ' + esc(S.stf) + ' <button class="linkbtn" data-act="filter" data-f="' + f + '">clear</button>' : ''}</span><button class="linkbtn" data-act="cats">Categories</button></div>
     ${ms.length ? ms.map(m => {
       const fo = forumOf(m), late = needsDate(m);
       const right = f === 'fees' ? rupees(feeDue(m)) : f === 'deadline' ? dmy(m.deadline) : (m.nextDate ? dmy(m.nextDate) : m.status);
@@ -619,7 +619,8 @@ document.addEventListener('click', e => {
   if (a === 'sync') { if (S.syncErr && S.syncErr !== 'offline') toast('Last try: ' + S.syncErr, 5000); return sync(); }
   if (a === 'tab') { S.tab = el.dataset.tab; render(); scrollTo(0, 0); return; }
   if (a === 'day') { S.day = el.dataset.day; render(); return; }
-  if (a === 'filter') { S.filter = el.dataset.f; S.tab = 'matters'; render(); return; }
+  if (a === 'filter') { S.filter = el.dataset.f; S.stf = el.dataset.st || ''; S.tab = 'matters'; closeSheet(); render(); return; }
+  if (a === 'cats') { sheetCategories(); return; }
   if (a === 'add') return sheetEdit(null);
   if (a === 'open') return openMatter(id);
   if (a === 'edit') return sheetEdit(find(id));
@@ -659,3 +660,20 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
     g('/me?$select=givenName,displayName').then(r => r.ok && r.json()).then(j => { if (j) { S.name = cap(j.givenName || (j.displayName || '').split(' ')[0]); render(); } }).catch(() => {});
   }
 })();
+
+/* overview: how many matters in each category and status */
+function sheetCategories() {
+  const all = live();
+  const rows = Object.entries(FORUMS).map(([k, fo]) => {
+    const ms = all.filter(m => (m.forum || 'District') === k); if (!ms.length) return '';
+    const open = ms.filter(isOpen), counts = {};
+    ms.forEach(m => { const s = m.status || (k === 'Advisory' ? 'In progress' : 'Pending'); counts[s] = (counts[s] || 0) + 1; });
+    const order = k === 'Advisory' ? ADV_STATUSES : STATUSES;
+    return `<div class="cat-card" style="border-left:6px solid ${fo.c}">
+      <button class="cat-head" data-act="filter" data-f="${k}"><b>${esc(fo.label)}</b><span>${open.length} open · ${ms.length - open.length} closed</span></button>
+      <div class="cat-sts">${Object.keys(counts).sort((x, y) => { const ix = s => { const i = order.indexOf(s); return i < 0 ? 99 : i; }; return ix(x) - ix(y); }).map(s => `<button data-act="filter" data-f="${k}" data-st="${esc(s)}" class="${isOpen({ forum: k, status: s }) ? '' : 'closed'}">${esc(s)} <b>${counts[s]}</b></button>`).join('')}</div>
+    </div>`;
+  }).join('');
+  openSheet(`<div class="s-head"><div><small>${all.length} matters</small><h1>Categories</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    <div class="cats">${rows}</div><p class="hint">Tap a category or a status to see those matters.</p>`);
+}
