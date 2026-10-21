@@ -182,8 +182,15 @@ async function makeDraft(m, key, lang, f) {
     new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: '\t' + (hi ? role + ' के अधिवक्ता' : 'Counsel for the ' + role), size: SZ, font: FONT })] }),
     new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: '\t' + (hi ? 'पंजीकरण सं. ' : 'Enrolment No. ') + ADV.enrol, size: 22, font: FONT })] }),
   ];
+  // documents attached as annexures follow the application, each from a new page
+  const annex = [];
+  (f._annex || []).forEach((ax, i) => {
+    annex.push(new D.Paragraph({ pageBreakBefore: true, alignment: C, spacing: { after: 120 }, children: [new D.TextRun({ text: (hi ? 'संलग्नक संख्या ' : 'ANNEXURE NO. ') + (i + 1), bold: true, underline: {}, size: SZ, font: FONT })] }));
+    if (ax.title) annex.push(...P(ax.title, { align: C, after: 200 }));
+    ax.images.forEach((im, k) => annex.push(new D.Paragraph({ alignment: C, pageBreakBefore: k > 0, children: [new D.ImageRun({ data: im.data, transformation: { width: im.w, height: im.h } })] })));
+  });
   const doc = new D.Document({ creator: 'Saurabh Misra', styles: { default: { document: { run: { font: FONT, size: SZ } } } },
-    sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1440, bottom: 1440, left: 2160, right: 1440 } } }, children: [...head, ...body, ...sig] }] });
+    sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1440, bottom: 1440, left: 2160, right: 1440 } } }, children: [...head, ...body, ...sig, ...annex] }] });
   const blob = await D.Packer.toBlob(doc);
   const name = cleanName(today + ' ' + (hi ? T.hi : T.en)) + '.docx';
   let url = '';
@@ -192,34 +199,227 @@ async function makeDraft(m, key, lang, f) {
       let parent = m.folderId;
       try { const r = await g('/me/drive/items/' + m.folderId + ':/' + encodeURIComponent('1 Pleadings')); if (r.ok) parent = (await r.json()).id; } catch (e) {}
       const it = await uploadFile(parent, new File([blob], name), name);
-      url = it.webUrl || '';
+      url = it.webUrl || ''; var itemId = it.id, parentId = parent;
     } catch (e) {}
   }
-  return { blob, name, url };
+  return { blob, name, url, itemId: typeof itemId !== 'undefined' ? itemId : '', parentId: typeof parentId !== 'undefined' ? parentId : '' };
+}
+
+/* ---------- import / export around a draft ----------
+   Import: fill the form from an order (read by Claude), attach papers as annexures, or fill your own Word format.
+   Export: Word in the folder, a PDF copy beside it, Share, Download. */
+const FIELD_HINT = 'Placeholders for your own format: {{COURT}} {{CASE}} {{CASE_NO}} {{TYPE}} {{FIRST_PARTY}} {{SECOND_PARTY}} {{CLIENT}} {{SIDE}} {{CRIME_NO}} {{SECTIONS}} {{PS}} {{NEXT_DATE}} {{LAST_DATE}} {{ITEM}} {{DATE}} {{ADVOCATE}} {{ENROLMENT}} {{MOBILE}}';
+function formatValues(m) {
+  const pt = parties(m);
+  return { COURT: courtLine(m, false), CASE: ((m.type ? m.type + ' ' : '') + (m.caseNo || '')).trim(), CASE_NO: m.caseNo || '', TYPE: m.type || '',
+    FIRST_PARTY: pt.first, SECOND_PARTY: pt.second, CLIENT: m.clients || '', SIDE: ourRole(m), CRIME_NO: m.crimeNo || '', SECTIONS: m.sections || '', PS: m.ps || '',
+    NEXT_DATE: m.nextDate ? dmy(m.nextDate) : '', LAST_DATE: m.lastDate ? dmy(m.lastDate) : '', ITEM: m.item || '', DATE: dmy(todayIso()),
+    ADVOCATE: ADV.name, ENROLMENT: ADV.enrol, MOBILE: ADV.phone.split(',')[0] };
+}
+let jszipLoading = null;
+function loadJSZip() {
+  if (window.JSZip) return Promise.resolve(window.JSZip);
+  if (!jszipLoading) jszipLoading = new Promise((ok, bad) => { const sc = document.createElement('script'); sc.src = 'lib/jszip.min.js'; sc.onload = () => ok(window.JSZip); sc.onerror = () => { jszipLoading = null; bad(new Error('Could not load')); }; document.head.appendChild(sc); });
+  return jszipLoading;
+}
+async function fillOwnFormat(m, fmt) {
+  const JSZip = await loadJSZip(), zip = await JSZip.loadAsync(fmt.buf), vals = formatValues(m);
+  const xmlEsc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  let found = 0;
+  for (const p of Object.keys(zip.files).filter(p => /^word\/(document|header\d*|footer\d*)\.xml$/.test(p))) {
+    let x = await zip.file(p).async('string');
+    // Word often splits {{NAME}} across several runs; join the pieces first
+    x = x.replace(/\{(?:<[^>]+>)*\{((?:[^{}<]|<[^>]+>)*?)\}(?:<[^>]+>)*\}/g, (all, inner) => '{{' + inner.replace(/<[^>]+>/g, '') + '}}');
+    x = x.replace(/\{\{\s*([A-Z_]+)\s*\}\}/g, (all, k) => { if (k in vals) { found++; return xmlEsc(vals[k]); } return all; });
+    zip.file(p, x);
+  }
+  const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  const name = cleanName(dmy(todayIso()) + ' ' + fmt.name.replace(/\.docx$/i, '')) + '.docx';
+  let url = '', itemId = '', parentId = '';
+  if (m.folderId) {
+    try {
+      parentId = m.folderId;
+      try { const r = await g('/me/drive/items/' + m.folderId + ':/' + encodeURIComponent('1 Pleadings')); if (r.ok) parentId = (await r.json()).id; } catch (e) {}
+      const it = await uploadFile(parentId, new File([blob], name), name); url = it.webUrl || ''; itemId = it.id;
+    } catch (e) {}
+  }
+  return { blob, name, url, itemId, parentId, found };
+}
+
+/* pick a paper: from the matter's folder (any sub-folder, or up to the case root) or from this device */
+function pickDoc(m, title, exts) {
+  return new Promise(resolve => {
+    const st = { stack: m.folderId ? [{ id: m.folderId, name: m.folderName || 'Case folder' }] : [], items: null, err: '' };
+    const ok = it => it.folder || exts.includes((it.name.split('.').pop() || '').toLowerCase());
+    const draw = () => {
+      const cur = st.stack[st.stack.length - 1];
+      openSheet(`<div class="s-head"><div><small>${esc(m.no)}</small><h1>${esc(title)}</h1></div><button class="x" data-pd="cancel" aria-label="Close">${I.x}</button></div>
+        <label class="act blue" style="margin-bottom:10px">From this ${isPhone() ? 'phone' : 'computer'}<input type="file" accept="${exts.map(e => '.' + e).join(',')}" data-pd="local" hidden></label>
+        ${cur ? `<div class="crumbs">${st.stack.length > 1 ? '<button data-pd="up">‹ Back</button><span>›</span>' : '<button data-pd="root">‹ Case folders</button><span>›</span>'}<button class="on">${esc(cur.name)}</button></div>` : ''}
+        <div class="flist" style="max-height:52vh;overflow:auto">${st.err ? `<p class="empty">${esc(st.err)}</p>` : !st.items ? '<p class="empty">Reading folder…</p>' : st.items.filter(ok).map(it => { const [ic, bg] = fileIcon(it); return `<button class="frow" data-pd="${it.folder ? 'into' : 'pick'}" data-id="${it.id}"><span class="ficon" style="background:${bg}">${ic}</span><span class="fname">${esc(it.name)}<small>${it.folder ? 'folder' : kb(it.size || 0)}</small></span></button>`; }).join('') || '<p class="empty">Nothing suitable here.</p>'}</div>`);
+    };
+    const load = async () => { st.items = null; st.err = ''; draw(); try { const cur = st.stack[st.stack.length - 1]; st.items = await listChildren(cur ? cur.id : (await caseRoot()).id); } catch (e) { st.err = e.message; } draw(); };
+    const root = $('#sheet-root');
+    const done = v => { root.onclick = root.onchange = null; resolve(v); };
+    root.onclick = async e => {
+      const el = e.target.closest('[data-pd]'); if (!el) return;
+      const a = el.dataset.pd;
+      if (a === 'cancel') done(null);
+      else if (a === 'up') { st.stack.pop(); load(); }
+      else if (a === 'root') { const r = await caseRoot(); st.stack = [{ id: r.id, name: 'Case folders' }]; load(); }
+      else if (a === 'into') { const it = st.items.find(x => x.id === el.dataset.id); st.stack.push({ id: it.id, name: it.name }); load(); }
+      else if (a === 'pick') {
+        const it = st.items.find(x => x.id === el.dataset.id); el.querySelector('small').textContent = 'Opening…';
+        try { const r = await g('/me/drive/items/' + it.id + '/content'); if (!r.ok) throw new Error('OneDrive ' + r.status); done({ name: it.name, blob: await r.blob() }); } catch (er) { toast(er.message); }
+      }
+    };
+    root.onchange = e => { if (e.target.dataset?.pd === 'local' && e.target.files[0]) { const f = e.target.files[0]; done({ name: f.name, blob: f }); } };
+    if (st.stack.length) load(); else caseRoot().then(r => { st.stack = [{ id: r.id, name: 'Case folders' }]; load(); });
+  });
+}
+
+/* turn a picked paper into page images for an annexure */
+async function paperToImages(doc) {
+  const ext = (doc.name.split('.').pop() || '').toLowerCase(), out = [], W = 550, HMAX = 790;
+  const fit = (w, h) => { let ww = W, hh = Math.round(h * W / w); if (hh > HMAX) { hh = HMAX; ww = Math.round(w * HMAX / h); } return { w: ww, h: hh }; };
+  if (ext === 'pdf') {
+    const lib = await loadPdfLib(), pdf = await lib.getDocument({ data: await doc.blob.arrayBuffer() }).promise;
+    for (let n = 1; n <= Math.min(pdf.numPages, 40); n++) {
+      const page = await pdf.getPage(n), vp = page.getViewport({ scale: 1.6 });
+      const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
+      await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+      const b = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.82));
+      out.push({ data: await b.arrayBuffer(), ...fit(c.width, c.height) });
+    }
+    pdf.destroy();
+  } else {
+    const b = await shrinkImage(doc.blob, 1700);
+    const bm = await createImageBitmap(b);
+    out.push({ data: await b.arrayBuffer(), ...fit(bm.width, bm.height) });
+  }
+  return out;
+}
+
+/* read an order with Claude and fill the draft's blanks */
+async function readOrderForDraft(m, doc) {
+  if (!aiKey()) throw new Error('Add your API key in More › Order reading first');
+  const isPdf = /\.pdf$/i.test(doc.name);
+  const blob = isPdf ? doc.blob : await shrinkImage(doc.blob);
+  const data = await toB64(blob);
+  const part = isPdf ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } } : { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } };
+  const prompt = `This is an Indian court order (English or Hindi, possibly handwritten) in the matter "${m.title}" (${m.type || ''} ${m.caseNo || ''}). Reply with ONLY JSON:
+{"orderDate":"DD.MM.YYYY","courtNo":"court number if shown, else empty","interimRelief":"the interim protection granted, in a short clause such as 'no coercive action shall be taken against the applicant' or 'further proceedings of Case No. X shall remain stayed'; empty if none","operatesTill":"till when the interim order operates, e.g. 'till the next date of listing' or a date; empty if not stated","nextDate":"DD.MM.YYYY or empty","directions":"anything the party must do, with time limits, in one sentence; empty if none","summary":"what the order says in one or two plain English sentences"}
+Never guess a date: leave it empty if unclear.`;
+  const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': aiKey(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({ model: AI_MODEL, max_tokens: 800, messages: [{ role: 'user', content: [part, { type: 'text', text: prompt }] }] }) });
+  if (!r.ok) throw new Error(r.status === 401 ? 'The API key was not accepted' : 'Could not read the order (' + r.status + ')');
+  const t = ((await r.json()).content || []).map(c => c.text || '').join('');
+  return JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1));
+}
+function applyOrderToFields(key, o, f) {
+  if (o.orderDate) f.orderDate = o.orderDate;
+  if (o.interimRelief) f.gist = o.interimRelief;
+  if (o.operatesTill) f.lapse = 'the interim order dated ' + (o.orderDate || '__________') + ' operates ' + o.operatesTill + ' and the case has not been taken up thereafter';
+  if (o.courtNo) f.courtNo = o.courtNo;
+  if (key === 'slip') { f.forWhat = f.forWhat || (o.interimRelief ? 'extension of interim order' : 'urgent listing'); f.why = 'Order dated ' + (o.orderDate || '______') + ': ' + (o.summary || ''); }
+  if (key === 'listing' || key === 'early') f.facts = 'the above noted case was last taken up on ' + (o.orderDate || '__________') + ', when ' + (o.summary || '') ;
+  if (key === 'time' && o.directions) f.what = o.directions;
 }
 
 function sheetDraft(m) {
-  const S2 = { key: 'adjournment', lang: m.forum === 'HC' ? 'en' : 'en', f: {}, busy: false, done: null };
+  const S2 = { key: 'adjournment', lang: 'en', f: {}, busy: '', done: null, annex: [], format: null };
+  const T0 = () => TEMPLATES[S2.key];
   const draw = () => {
-    const T = TEMPLATES[S2.key];
+    const T = T0();
     if (!T.hi && S2.lang === 'hi') S2.lang = 'en';
+    const fields = S2.key === 'adjournment' ? [['reason', S2.lang === 'hi' ? 'Reason (in Hindi, optional)' : 'Reason (optional; default "exigencies of work")']] : T.fields;
     openSheet(`<div class="s-head"><div><small style="color:var(--hc)">${esc(m.no)} · draft</small><h1>${esc(m.title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+      ${S2.format ? `<div class="picked"><b>Your format: ${esc(S2.format.name)}</b><span><button class="linkbtn" data-dr="noformat">Use the app's drafts instead</button></span></div>` : `
       <div class="grp"><span class="lbl">Document</span><div class="chips">${Object.entries(TEMPLATES).filter(([, t]) => !t.forum || (t.forum === 'HC' ? m.forum === 'HC' : m.forum !== 'HC')).map(([k, t]) => `<button class="chip ${S2.key === k ? 'on' : ''}" data-dr="key" data-v="${k}">${t.en}</button>`).join('')}</div></div>
-      ${T.hi ? `<div class="grp"><span class="lbl">Language</span><div class="chips"><button class="chip ${S2.lang === 'en' ? 'on' : ''}" data-dr="lang" data-v="en">English</button><button class="chip ${S2.lang === 'hi' ? 'on' : ''}" data-dr="lang" data-v="hi">हिन्दी</button></div></div>` : ''}
-      ${(S2.key === 'adjournment' ? [['reason', S2.lang === 'hi' ? 'Reason (in Hindi, optional)' : 'Reason (optional; default "exigencies of work")']] : T.fields).map(([k, l]) => `<div class="field"><label for="dr_${k}">${esc(l.toUpperCase())}</label>${k === 'facts' || k === 'why' || k === 'lapse' || k === 'gist' ? `<textarea class="in" id="dr_${k}" data-df="${k}">${esc(S2.f[k] || '')}</textarea>` : `<input class="in" id="dr_${k}" data-df="${k}" value="${esc(S2.f[k] || (k === 'who' ? m.clients || '' : ''))}">`}</div>`).join('')}
-      <p class="hint">Court, case no., parties, crime no. and your signature block are filled in from the diary. ${m.folderId ? 'Saved into the matter folder › 1 Pleadings.' : 'This matter has no folder yet, so use Download.'}</p>
-      ${S2.done ? `<div class="two"><button class="act primary" data-dr="open">Open in Word</button><button class="act blue" data-dr="dl">Download</button></div><p class="hint">${esc(S2.done.name)}</p>` : `<button class="save" data-dr="make" ${S2.busy ? 'disabled' : ''}>${S2.busy ? 'Preparing…' : 'Make Word file'}</button>`}`);
+      ${T.hi ? `<div class="grp"><span class="lbl">Language</span><div class="chips"><button class="chip ${S2.lang === 'en' ? 'on' : ''}" data-dr="lang" data-v="en">English</button><button class="chip ${S2.lang === 'hi' ? 'on' : ''}" data-dr="lang" data-v="hi">हिन्दी</button></div></div>` : ''}`}
+      <div class="grp"><span class="lbl">Import</span><div class="three">
+        ${S2.format ? '' : `<button class="act blue" data-dr="fromorder">Fill from an order</button>`}
+        ${S2.format ? '' : `<button class="act blue" data-dr="annex">Attach annexure</button>`}
+        <button class="act blue" data-dr="format">${S2.format ? 'Change format' : 'Use my own format'}</button></div>
+        ${S2.annex.length ? `<div class="hist">${S2.annex.map((a, i) => `<div><b>Annexure ${i + 1}</b><span>${esc(a.title)} · ${a.images.length} page${a.images.length > 1 ? 's' : ''} <button class="linkbtn" data-dr="rmannex" data-i="${i}">Remove</button></span></div>`).join('')}</div>` : ''}
+      </div>
+      ${S2.format ? `<p class="hint">${esc(FIELD_HINT)}</p>` : fields.map(([k, l]) => `<div class="field"><label for="dr_${k}">${esc(l.toUpperCase())}</label>${['facts', 'why', 'lapse', 'gist'].includes(k) ? `<textarea class="in" id="dr_${k}" data-df="${k}">${esc(S2.f[k] || '')}</textarea>` : `<input class="in" id="dr_${k}" data-df="${k}" value="${esc(S2.f[k] || (k === 'who' ? m.clients || '' : ''))}">`}</div>`).join('')}
+      <p class="hint">Court, case no., parties, crime no. and your signature are filled in from the diary. ${m.folderId ? 'Saved in the matter folder › 1 Pleadings.' : 'This matter has no folder yet, so use Download or Share.'}</p>
+      ${S2.busy ? `<button class="save" disabled>${esc(S2.busy)}</button>` : S2.done ? `
+        <span class="lbl">Export</span>
+        <div class="three"><button class="act primary" data-dr="open">Open in Word</button><button class="act blue" data-dr="pdf">PDF copy</button><button class="act blue" data-dr="share">Share</button></div>
+        <button class="ghost" data-dr="dl" style="width:100%;margin-top:8px">Download</button><p class="hint">${esc(S2.done.name)}${S2.done.pdfName ? ' · ' + esc(S2.done.pdfName) : ''}</p>
+        <button class="linkbtn" data-dr="again">Make another</button>`
+      : `<button class="save" data-dr="make">Make Word file</button>`}`);
   };
   draw();
   const root = $('#sheet-root');
-  root.oninput = e => { const k = e.target.dataset?.df; if (k) S2.f[k] = e.target.value; };
-  root.onclick = async e => {
+  const bind = () => {
+    root.oninput = e => { const k = e.target.dataset?.df; if (k) S2.f[k] = e.target.value; };
+    root.onclick = onClick; root.onchange = null;
+  };
+  async function onClick(e) {
     const el = e.target.closest('[data-dr]'); if (!el) return;
     const k = el.dataset.dr;
     if (k === 'key' || k === 'lang') { S2[k] = el.dataset.v; S2.done = null; draw(); }
-    else if (k === 'make') { S2.busy = true; draw(); try { S2.done = await makeDraft(m, S2.key, S2.lang, S2.f); toast(S2.done.url ? 'Draft saved in 1 Pleadings' : 'Draft ready'); if (S2.done.url) setTimeout(() => S.tab === 'matter' && loadFolder(), 800); } catch (er) { toast(er.message); } S2.busy = false; draw(); }
-    else if (k === 'open') { if (S2.done.url) window.open(S2.done.url, '_blank'); else toast('Not saved to OneDrive. Use Download.'); }
-    else if (k === 'dl') { const a = document.createElement('a'); a.href = URL.createObjectURL(S2.done.blob); a.download = S2.done.name; a.click(); }
-  };
+    else if (k === 'again') { S2.done = null; draw(); }
+    else if (k === 'noformat') { S2.format = null; S2.done = null; draw(); }
+    else if (k === 'rmannex') { S2.annex.splice(+el.dataset.i, 1); draw(); }
+    else if (k === 'fromorder') {
+      const doc = await pickDoc(m, 'Which order?', ['pdf', 'jpg', 'jpeg', 'png', 'webp']); bind();
+      if (!doc) return draw();
+      S2.busy = 'Reading the order…'; draw();
+      try { const o = await readOrderForDraft(m, doc); applyOrderToFields(S2.key, o, S2.f); toast('Filled from the order dated ' + (o.orderDate || '?') + '. Please check.', 4000); }
+      catch (er) { toast(er.message, 5000); }
+      S2.busy = ''; draw();
+    }
+    else if (k === 'annex') {
+      const doc = await pickDoc(m, 'Attach which paper?', ['pdf', 'jpg', 'jpeg', 'png', 'webp']); bind();
+      if (!doc) return draw();
+      S2.busy = 'Adding ' + doc.name + '…'; draw();
+      try { S2.annex.push({ title: doc.name.replace(/\.[^.]+$/, ''), images: await paperToImages(doc) }); S2.done = null; } catch (er) { toast('Could not attach: ' + er.message); }
+      S2.busy = ''; draw();
+    }
+    else if (k === 'format') {
+      const doc = await pickDoc(m, 'Pick your Word format (.docx)', ['docx']); bind();
+      if (doc) { S2.format = { name: doc.name, buf: await doc.blob.arrayBuffer() }; S2.done = null; }
+      draw();
+    }
+    else if (k === 'make') {
+      S2.busy = 'Preparing…'; draw();
+      try {
+        if (S2.format) { S2.done = await fillOwnFormat(m, S2.format); toast(S2.done.found ? S2.done.found + ' blanks filled' : 'No {{…}} markers found in your format; saved as it is', 4000); }
+        else { S2.done = await makeDraft(m, S2.key, S2.lang, { ...S2.f, _annex: S2.annex }); toast(S2.done.url ? 'Draft saved in 1 Pleadings' : 'Draft ready'); }
+        if (S2.done.url) setTimeout(() => S.tab === 'matter' && loadFolder(), 800);
+      } catch (er) { toast(er.message); }
+      S2.busy = ''; draw();
+    }
+    else if (k === 'open') {
+      if (S2.done.itemId) { try { openNative(await getItem(S2.done.itemId)); } catch (er) { window.open(S2.done.url, '_blank'); } }
+      else toast('Not saved to OneDrive. Use Download or Share.');
+    }
+    else if (k === 'pdf') {
+      if (!S2.done.itemId) { toast('A PDF copy needs the draft saved in the case folder'); return; }
+      S2.busy = 'Making PDF…'; draw();
+      try {
+        const r = await g('/me/drive/items/' + S2.done.itemId + '/content?format=pdf'); if (!r.ok) throw new Error('OneDrive ' + r.status);
+        S2.done.pdf = await r.blob(); S2.done.pdfName = S2.done.name.replace(/\.docx$/i, '.pdf');
+        await uploadFile(S2.done.parentId, new File([S2.done.pdf], S2.done.pdfName, { type: 'application/pdf' }), S2.done.pdfName);
+        toast('PDF saved beside the Word file'); setTimeout(() => S.tab === 'matter' && loadFolder(), 800);
+      } catch (er) { toast('Could not make the PDF: ' + er.message); }
+      S2.busy = ''; draw();
+    }
+    else if (k === 'share') {
+      const files = [new File([S2.done.blob], S2.done.name, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })];
+      if (S2.done.pdf) files.push(new File([S2.done.pdf], S2.done.pdfName, { type: 'application/pdf' }));
+      if (navigator.canShare && navigator.canShare({ files })) { try { await navigator.share({ files, title: S2.done.name }); } catch (er) { if (er.name !== 'AbortError') toast('Could not share'); } }
+      else toast('Sharing files is not available on this device; use Download');
+    }
+    else if (k === 'dl') {
+      for (const [b, n] of [[S2.done.blob, S2.done.name], ...(S2.done.pdf ? [[S2.done.pdf, S2.done.pdfName]] : [])]) { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = n; document.body.appendChild(a); a.click(); a.remove(); }
+      toast('Saved to Downloads');
+    }
+  }
+  bind();
 }
 document.addEventListener('click', e => { const el = e.target.closest('[data-act="draft"]'); if (el) sheetDraft(find(el.dataset.id)); });

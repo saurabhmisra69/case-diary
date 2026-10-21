@@ -263,3 +263,6 @@ body{padding-left:24px} .nav{left:24px} .scrim{left:24px}
 .v-page{background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.35);max-width:none}
 .v-img{max-width:100%;height:auto;margin:auto}
 .v-msg{color:#D8DCE6;text-align:center;font-size:14px;margin:24px 0}
+
+.three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.three .act{min-height:48px;font-size:13px;padding:6px}
