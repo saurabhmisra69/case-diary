@@ -485,7 +485,7 @@ async function processInbox() {
             for (const c of (body.changes || [])) {
               if (c.add) { if (!S.data.matters.some(x => x.no === c.add.no && !x.deleted)) S.data.matters.push(Object.assign({ id: uid(), hearings: [], created: todayIso(), u: Date.now() }, c.add)); continue; }
               let m = c.no ? live().find(x => x.no === c.no) : findByMatch(c.match);
-              if (!m && c.match && c.addIfMissing && !matchHits(c.match).length) { const y = +(String(c.addIfMissing.caseNo || '').match(/(\d{4})\s*$/) || [])[1] || new Date().getFullYear(); m = Object.assign({ id: uid(), year: y, n: nextNumber(y), hearings: [], created: todayIso(), status: 'Pending', u: Date.now() }, c.addIfMissing); m.no = m.year + '/' + m.n; S.data.matters.push(m); }
+              if (!m && c.match && c.addIfMissing && !matchHits(c.match).length) { const ys = String(c.addIfMissing.caseNo || '').match(/(?:19|20)\d{2}/g) || []; const y = +(ys.find(v => +v <= new Date().getFullYear()) || new Date().getFullYear()); m = Object.assign({ id: uid(), year: y, n: nextNumber(y), hearings: [], created: todayIso(), status: 'Pending', u: Date.now() }, c.addIfMissing); m.no = m.year + '/' + m.n; S.data.matters.push(m); }
               if (!m) continue;
               if (c.lastDate && (!m.lastDate || c.lastDate > m.lastDate)) m.lastDate = c.lastDate;
               if (c.fill) for (const [k, v] of Object.entries(c.fill)) if (!m[k]) m[k] = v;
@@ -673,6 +673,6 @@ function matchHits(mt) {
   if (hits.length > 1 && party) hits = hits.filter(m => party.test((m.title || '') + ' ' + (m.clients || '')));
   if (!hits.length && mt.crimeNo) { const k = caseKey(mt.crimeNo); hits = all.filter(m => k && caseKey(m.crimeNo) === k && (!party || party.test((m.title || '') + ' ' + (m.clients || '')))); }
   if (!hits.length && mt.party && mt.partyOnly) hits = all.filter(m => party.test((m.title || '') + ' ' + (m.clients || '') + ' ' + (m.court || '')) && isOpen(m));
-  if (mt.kind) { const kr = new RegExp(mt.kind, 'i'); const k2 = hits.filter(m => kr.test((m.type || '') + ' ' + (m.title || '') + ' ' + (m.caseNo || ''))); if (k2.length) hits = k2; }
+  if (mt.kind) { const kr = new RegExp(mt.kind, 'i'); hits = hits.filter(m => kr.test((m.type || '') + ' ' + (m.title || '') + ' ' + (m.caseNo || ''))); }
   return hits;
 }
