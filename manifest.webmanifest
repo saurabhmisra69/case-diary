@@ -111,6 +111,8 @@
           "accept": [
             "image/*",
             "application/pdf",
+            "application/json",
+            ".json",
             ".pdf",
             ".jpg",
             ".jpeg",
