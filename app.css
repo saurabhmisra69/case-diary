@@ -308,3 +308,5 @@ body{padding-left:24px} .nav{left:24px} .scrim{left:24px}
 
 .menu-file{display:flex;flex-direction:column;gap:2px;background:var(--card,#fff);border:1px solid var(--line);padding:14px 16px;cursor:pointer;text-align:left}
 .menu-file b{font-size:15px}.menu-file small{color:var(--muted);font-size:12.5px}
+
+.micbtn{border:0;background:var(--saffron);color:#1B2A4A;min-width:52px;display:flex;align-items:center;justify-content:center;border-radius:6px}

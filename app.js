@@ -330,7 +330,7 @@ function viewHome() {
       <div class="who"><span class="mark"><svg viewBox="0 0 512 512" width="100%" height="100%" aria-hidden="true"><rect x="132" y="96" width="248" height="320" rx="14" fill="#1B2A4A"/><rect x="132" y="96" width="34" height="320" rx="10" fill="#7A2E2E"/><rect x="196" y="150" width="152" height="6" fill="#B08D57"/><rect x="196" y="352" width="152" height="6" fill="#B08D57"/><g fill="none" stroke="#D9BD8A" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"><path d="M272 200v112M244 312h56M222 220h100"/><path d="M222 220l-20 46h40zM322 220l-20 46h40z"/></g></svg></span><div><small>${DOWL[now.getDay()]}, ${now.getDate()} ${MONL[now.getMonth()]}</small><b>${esc(greeting())}${S.name ? ', ' + esc(S.name) : ''}</b></div></div>
       <button id="syncbtn" class="sync" data-act="sync"></button>
     </div>
-    <label class="search">${I.search}<input type="search" placeholder="Case no., FIR, party, client" data-act="q" value="${esc(S.q)}" enterkeyhint="search"></label>
+    <div style="display:flex;gap:8px;align-items:stretch"><label class="search" style="flex:1">${I.search}<input type="search" placeholder="Case no., FIR, party, client" data-act="q" value="${esc(S.q)}" enterkeyhint="search"></label><button class="micbtn" data-act="voice" aria-label="Speak a next date">${I.mic}</button></div>
     <div class="week">${week}</div>
   </header>
   <main class="home-main">
@@ -537,6 +537,7 @@ function sheetRecord(m, pre) {
     ${R.fromOrder ? `<div class="picked" style="background:var(--hc-soft)"><b>Read from the order${R.heardOn ? ' dated ' + dmy(R.heardOn) : ''}</b><span>Please check before saving${R.deadline ? ' · deadline ' + esc(R.deadlineFor || '') + ' by ' + dmy(R.deadline) : ''}</span></div>` : ''}
     <div class="grp"><span class="lbl">What happened ${R.heardOn ? 'on ' + dmy(R.heardOn) : m.nextDate && m.nextDate <= t ? 'on ' + dmy(m.nextDate) : 'today'}</span><div class="chips">${HAPPENED.map(h => `<button class="chip ${R.happened === h ? 'on' : ''}" data-r="happened" data-v="${h}">${h}</button>`).join('')}</div></div>
     ${closing ? '<div class="picked"><b>Matter will be marked Decided</b><span>no next date</span></div>' : `
+    <button class="act blue" data-r="speak" style="width:100%;min-height:46px;margin-bottom:10px">${I.mic} Speak the date${R.heard ? ' · heard “' + esc(R.heard) + '”' : ''}</button>
     <div class="grp"><span class="lbl">Next date${R.happened === 'Reserved' ? ' (optional)' : ''}</span>
       <div class="quick">${quick.map(([l, d]) => `<button class="${R.next === d ? 'on' : ''}" data-r="next" data-v="${d}"><span>${l}</span><small>${short(d)}</small></button>`).join('')}
         <button class="${R.next && !quick.some(q => q[1] === R.next) ? 'on' : ''}"><span>Pick</span><small>${R.next && !quick.some(q => q[1] === R.next) ? short(R.next) : 'date'}</small><input type="date" data-r="pick" value="${R.next}" aria-label="Pick next date"></button></div>
@@ -558,6 +559,16 @@ function sheetRecord(m, pre) {
     const k = el.dataset.r;
     if (k === 'happened' || k === 'next' || k === 'purpose') { R.note = $('#r_note')?.value || R.note; R[k] = el.dataset.v; if (k === 'happened' && el.dataset.v === 'Reserved') R.purpose = 'Judgment'; draw(); }
     else if (k === 'pick') { try { el.showPicker(); } catch (_) {} }
+    else if (k === 'speak') {
+      R.note = $('#r_note')?.value || R.note;
+      toast('Listening… say e.g. "15 November, cross examination"', 2500);
+      listen('en-IN').then(alts => {
+        let p = null; for (const a of alts) { const q = parseSpoken(a); if (q.next) { p = q; R.heard = a; break; } }
+        if (!p) { p = parseSpoken(alts[0]); R.heard = alts[0]; }
+        if (p.next) R.next = p.next; if (p.purpose) R.purpose = p.purpose; if (p.item) R.item = p.item; if (p.happened) R.happened = p.happened;
+        draw(); if (!p.next) toast('Date not caught. Say it again or pick it.');
+      }).catch(er => toast(er.message));
+    }
     else if (k === 'mic') dictate($('#r_note'));
     else if (k === 'save') save();
   };
