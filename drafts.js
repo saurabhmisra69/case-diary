@@ -77,7 +77,7 @@ const TEMPLATES = {
       ['अतः माननीय न्यायालय से विनम्र प्रार्थना है कि ' + (f.who || m.clients || '') + ' की ओर से प्रस्तुत वकालतनामा पत्रावली पर लेने तथा वाद सूची में ' + ourRole(m, true) + ' के अधिवक्ता के रूप में नाम दर्शाये जाने की न्यायहित में कृपा करें।', 'p']],
   },
   listing: {
-    en: 'Listing application (High Court)', hi: null, forum: 'HC', fields: [['facts', 'Facts (when filed, last listed, why urgent)']],
+    en: 'Listing application (High Court)', hi: null, forum: 'HC', affidavit: true, affFor: 'listing application', fields: [['facts', 'Facts (when filed, last listed, why urgent)']],
     en_body: (m, f) => [
       ['APPLICATION FOR LISTING', 'cb'], ['OF ' + ((m.type ? m.type + ' ' : '') + (m.caseNo || '')).toUpperCase(), 'c'],
       ["To,\nThe Hon'ble the Chief Justice and\nHis other companion Judges of the aforesaid Court.", 'p'],
@@ -86,10 +86,10 @@ const TEMPLATES = {
       ['2.\tThat since then the above noted case has not been listed.', 'p'],
       ['3.\tThat therefore it is expedient in the interest of Justice that the above noted case be listed for hearing.', 'p'],
       ['P R A Y E R', 'cb'],
-      ["WHEREFORE, it is most respectfully prayed that this Hon'ble Court may graciously be pleased to direct the listing of the above noted case for hearing in the interest of justice.", 'p']],
+      ["WHEREFORE, it is most respectfully prayed that this Hon'ble Court may graciously be pleased to direct the listing of the above noted case for hearing in the interest of justice.", 'p'], ['(Supported by affidavit)', 'c']],
   },
   interim: {
-    en: 'Interim order extension (High Court)', hi: null, forum: 'HC', fields: [['orderDate', 'Interim order dated (DD.MM.YYYY)'], ['gist', 'What the interim order gives (e.g. no coercive action / stay of proceedings)'], ['lapse', 'Why it needs extension (e.g. case not listed since; order operates till next listing)']],
+    en: 'Interim order extension (High Court)', hi: null, forum: 'HC', affidavit: true, affFor: 'application for extension of interim order', fields: [['orderDate', 'Interim order dated (DD.MM.YYYY)'], ['gist', 'What the interim order gives (e.g. no coercive action / stay of proceedings)'], ['lapse', 'Why it needs extension (e.g. case not listed since; order operates till next listing)']],
     en_body: (m, f) => [
       ['APPLICATION FOR EXTENSION OF INTERIM ORDER', 'cb'], ['DATED ' + (f.orderDate || '__________'), 'c'],
       ["To,\nThe Hon'ble the Chief Justice and\nHis other companion Judges of the aforesaid Court.", 'p'],
@@ -123,7 +123,7 @@ const TEMPLATES = {
     },
   },
   early: {
-    en: 'Early hearing application (High Court)', hi: null, forum: 'HC', fields: [['facts', 'Facts (when filed, last listed, why early hearing is needed)']],
+    en: 'Early hearing application (High Court)', hi: null, forum: 'HC', affidavit: true, affFor: 'application for early hearing', fields: [['facts', 'Facts (when filed, last listed, why early hearing is needed)']],
     en_body: (m, f) => [
       ['APPLICATION FOR EARLY HEARING', 'cb'], ['OF ' + ((m.type ? m.type + ' ' : '') + (m.caseNo || '')).toUpperCase(), 'c'],
       ["To,\nThe Hon'ble the Chief Justice and\nHis other companion Judges of the aforesaid Court.", 'p'],
@@ -132,7 +132,7 @@ const TEMPLATES = {
       ['2.\tThat the matter involves the liberty / valuable rights of the ' + ourRole(m).toLowerCase() + ' and any further delay shall cause irreparable loss to the ' + ourRole(m).toLowerCase() + '.', 'p'],
       ['3.\tThat therefore it is expedient in the interest of Justice that the above noted case be heard at an early date.', 'p'],
       ['P R A Y E R', 'cb'],
-      ["WHEREFORE, it is most respectfully prayed that this Hon'ble Court may graciously be pleased to fix an early date of hearing in the above noted case in the interest of justice.", 'p']],
+      ["WHEREFORE, it is most respectfully prayed that this Hon'ble Court may graciously be pleased to fix an early date of hearing in the above noted case in the interest of justice.", 'p'], ['(Supported by affidavit)', 'c']],
   },
   time: {
     en: 'Time to file reply / objection', hi: 'जवाब/आपत्ति हेतु समय', forum: 'District', fields: [['what', 'Time for (e.g. reply to application dated __)']],
@@ -182,6 +182,43 @@ async function makeDraft(m, key, lang, f) {
     new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: '\t' + (hi ? role + ' के अधिवक्ता' : 'Counsel for the ' + role), size: SZ, font: FONT })] }),
     new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: '\t' + (hi ? 'पंजीकरण सं. ' : 'Enrolment No. ') + ADV.enrol, size: 22, font: FONT })] }),
   ];
+  // affidavit in support: added on its own pages whenever the application needs one
+  const aff = [];
+  const bodyRows = (hi ? T.hi_body : T.en_body)(m, f);
+  if (!T.own && (T.affidavit || bodyRows.some(([t]) => /supported by affidavit|शपथ पत्र द्वारा समर्थित/i.test(t)))) {
+    const nParas = bodyRows.filter(([t]) => /^\d+\./.test(t)).length || 1;
+    const dep = { name: f.depName || '______________________', rel: f.depRel || 'son of ______________________', age: f.depAge || '____', addr: f.depAddr || '________________________________________', is: f.depIs || 'applicant' };
+    const isSelf = !/pairokar|पैरोकार/i.test(dep.is);
+    const L = D.AlignmentType.LEFT;
+    aff.push(new D.Paragraph({ pageBreakBefore: true, alignment: C, spacing: { after: 60 }, children: [new D.TextRun({ text: courtLine(m, hi), bold: true, size: SZ, font: FONT })] }));
+    aff.push(...P(hi ? 'शपथ पत्र' : 'A F F I D A V I T', { align: C, bold: true, u: true, after: 60 }));
+    aff.push(...P(hi ? '(' + T.hi + ' के समर्थन में)' : '(In support of the accompanying ' + (T.affFor || 'application') + ')', { align: C, after: 120 }));
+    if (m.forum === 'HC') aff.push(...P(hi ? 'में' : 'IN RE:', { align: C, after: 60 }));
+    aff.push(...P(caseRef, { align: C, bold: true, after: 60 }));
+    aff.push(...P(pt.first, { align: L, after: 40 }));
+    if (pt.second) { aff.push(...P(hi ? 'बनाम' : 'Versus', { align: C, after: 40 }), ...P(pt.second, { align: L, after: 200 })); }
+    const paras = hi ? [
+      'मैं, ' + dep.name + ', आयु लगभग ' + dep.age + ' वर्ष, ' + dep.rel + ', निवासी ' + dep.addr + ', शपथकर्ता, शपथपूर्वक निम्नवत कथन करता हूँ:-',
+      '1.\tयह कि शपथकर्ता उपरोक्त वाद में ' + (isSelf ? role + ' स्वयं' : role + ' का पैरोकार') + ' है तथा वाद के तथ्यों एवं परिस्थितियों से भली-भाँति परिचित है।',
+      '2.\tयह कि शपथकर्ता ने संलग्न प्रार्थना पत्र को पढ़ एवं समझ लिया है।',
+      '3.\tयह कि संलग्न प्रार्थना पत्र के प्रस्तर 1 से ' + nParas + ' में वर्णित तथ्य शपथकर्ता के निजी ज्ञान एवं अभिलेखों के आधार पर सत्य एवं सही हैं।',
+    ] : [
+      'I, ' + dep.name + ', aged about ' + dep.age + ' years, ' + dep.rel + ', resident of ' + dep.addr + ', the deponent, do hereby solemnly affirm and state on oath as under:-',
+      '1.\tThat the deponent is ' + (isSelf ? 'the ' + role.toLowerCase() + (/^(daughter|wife|d\/o|w\/o)/i.test(dep.rel) ? ' herself' : ' himself') : 'the pairokar of the ' + role.toLowerCase()) + ' in the above noted case and as such is fully conversant with the facts and circumstances of the case deposed to hereinafter.',
+      '2.\tThat the deponent has read and understood the contents of the accompanying application.',
+      '3.\tThat the contents of paragraphs 1 to ' + nParas + ' of the accompanying application are true to the personal knowledge of the deponent and based on the record of the case.',
+    ];
+    paras.forEach(t => aff.push(...P(t)));
+    aff.push(new D.Paragraph({ spacing: { before: 240, after: 240 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: '\t' + (hi ? 'शपथकर्ता' : 'Deponent'), bold: true, size: SZ, font: FONT })] }));
+    aff.push(...P(hi ? 'सत्यापन' : 'V E R I F I C A T I O N', { align: C, bold: true, u: true, after: 120 }));
+    aff.push(...P(hi ? 'मैं, उपरोक्त नामित शपथकर्ता, सत्यापित करता हूँ कि इस शपथ पत्र के प्रस्तर 1 से 3 की बातें मेरे निजी ज्ञान से सत्य एवं सही हैं, इसका कोई भाग असत्य नहीं है और न ही कोई तथ्य छिपाया गया है। ईश्वर मेरी सहायता करे।'
+      : 'I, the deponent above named, do hereby verify that the contents of paragraphs 1 to 3 of this affidavit are true to my personal knowledge; no part of it is false and nothing material has been concealed. So help me God.'));
+    aff.push(...P(hi ? 'हस्ताक्षरित एवं सत्यापित दिनांक ____________ को लखनऊ में।' : 'Signed and verified this ____ day of ______________, ' + new Date().getFullYear() + ' at Lucknow.'));
+    aff.push(new D.Paragraph({ spacing: { before: 240, after: 240 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: '\t' + (hi ? 'शपथकर्ता' : 'Deponent'), bold: true, size: SZ, font: FONT })] }));
+    aff.push(...P(hi ? 'मैं शपथकर्ता को पहचानता हूँ जिसने मेरे समक्ष हस्ताक्षर किए हैं।' : 'I identify the deponent who has signed before me.'));
+    aff.push(new D.Paragraph({ spacing: { before: 240 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: '\t(' + (hi ? HI_ADV : ADV.name) + ')', bold: true, size: SZ, font: FONT })] }));
+    aff.push(new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: '\t' + (hi ? 'अधिवक्ता' : 'Advocate'), size: SZ, font: FONT })] }));
+  }
   // documents attached as annexures follow the application, each from a new page
   const annex = [];
   (f._annex || []).forEach((ax, i) => {
@@ -190,7 +227,7 @@ async function makeDraft(m, key, lang, f) {
     ax.images.forEach((im, k) => annex.push(new D.Paragraph({ alignment: C, pageBreakBefore: k > 0, children: [new D.ImageRun({ data: im.data, transformation: { width: im.w, height: im.h } })] })));
   });
   const doc = new D.Document({ creator: 'Saurabh Misra', styles: { default: { document: { run: { font: FONT, size: SZ } } } },
-    sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1440, bottom: 1440, left: 2160, right: 1440 } } }, children: [...head, ...body, ...sig, ...annex] }] });
+    sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1440, bottom: 1440, left: 2160, right: 1440 } } }, children: [...head, ...body, ...sig, ...aff, ...annex] }] });
   const blob = await D.Packer.toBlob(doc);
   const name = cleanName(today + ' ' + (hi ? T.hi : T.en)) + '.docx';
   let url = '';
@@ -328,6 +365,7 @@ function applyOrderToFields(key, o, f) {
 
 function sheetDraft(m, preset) {
   const S2 = Object.assign({ key: 'adjournment', lang: 'en', f: {}, busy: '', done: null, annex: [], format: null }, preset || {});
+  S2.f = Object.assign({ depName: m.clients || '' }, m.deponent || {}, S2.f);
   const T0 = () => TEMPLATES[S2.key];
   const draw = () => {
     const T = T0();
@@ -344,6 +382,8 @@ function sheetDraft(m, preset) {
         ${S2.annex.length ? `<div class="hist">${S2.annex.map((a, i) => `<div><b>Annexure ${i + 1}</b><span>${esc(a.title)} · ${a.images.length} page${a.images.length > 1 ? 's' : ''} <button class="linkbtn" data-dr="rmannex" data-i="${i}">Remove</button></span></div>`).join('')}</div>` : ''}
       </div>
       ${S2.format ? `<p class="hint">${esc(FIELD_HINT)}</p>` : fields.map(([k, l]) => `<div class="field"><label for="dr_${k}">${esc(l.toUpperCase())}</label>${['facts', 'why', 'lapse', 'gist'].includes(k) ? `<textarea class="in" id="dr_${k}" data-df="${k}">${esc(S2.f[k] || '')}</textarea>` : `<input class="in" id="dr_${k}" data-df="${k}" value="${esc(S2.f[k] || (k === 'who' ? m.clients || '' : ''))}">`}</div>`).join('')}
+      ${!S2.format && T.affidavit ? `<div class="grp" style="margin-top:6px"><span class="lbl">Affidavit (added automatically)</span><div class="chips"><button class="chip ${S2.f.depIs !== 'pairokar' ? 'on' : ''}" data-dr="dep" data-v="applicant">${esc(ourRole(m))} himself</button><button class="chip ${S2.f.depIs === 'pairokar' ? 'on' : ''}" data-dr="dep" data-v="pairokar">Pairokar</button></div></div>
+      ${[['depName', 'Deponent name'], ['depRel', 'Son / daughter / wife of'], ['depAge', 'Age (years)'], ['depAddr', 'Address']].map(([k, l]) => `<div class="field"><label for="dr_${k}">${l.toUpperCase()}</label><input class="in" id="dr_${k}" data-df="${k}" value="${esc(S2.f[k] || '')}" placeholder="${k === 'depRel' ? 'son of …' : 'leave blank to fill by hand'}"></div>`).join('')}` : ''}
       <p class="hint">Court, case no., parties, crime no. and your signature are filled in from the diary. ${m.folderId ? 'Saved in the matter folder › 1 Pleadings.' : 'This matter has no folder yet, so use Download or Share.'}</p>
       ${S2.busy ? `<button class="save" disabled>${esc(S2.busy)}</button>` : S2.done ? `
         <span class="lbl">Export</span>
@@ -371,6 +411,7 @@ function sheetDraft(m, preset) {
     const el = e.target.closest('[data-dr]'); if (!el) return;
     const k = el.dataset.dr;
     if (k === 'key' || k === 'lang') { S2[k] = el.dataset.v; S2.done = null; draw(); }
+    else if (k === 'dep') { S2.f.depIs = el.dataset.v; draw(); }
     else if (k === 'again') { S2.done = null; draw(); }
     else if (k === 'noformat') { S2.format = null; S2.done = null; draw(); }
     else if (k === 'rmannex') { S2.annex.splice(+el.dataset.i, 1); draw(); }
@@ -398,7 +439,9 @@ function sheetDraft(m, preset) {
       S2.busy = 'Preparing…'; draw();
       try {
         if (S2.format) { S2.done = await fillOwnFormat(m, S2.format); toast(S2.done.found ? S2.done.found + ' blanks filled' : 'No {{…}} markers found in your format; saved as it is', 4000); }
-        else { S2.done = await makeDraft(m, S2.key, S2.lang, { ...S2.f, _annex: S2.annex }); toast(S2.done.url ? 'Draft saved in 1 Pleadings' : 'Draft ready'); }
+        else {
+          if (T0().affidavit) { const dp = {}; ['depName', 'depRel', 'depAge', 'depAddr', 'depIs'].forEach(x => { if (S2.f[x]) dp[x] = S2.f[x]; }); if (JSON.stringify(dp) !== JSON.stringify(m.deponent || {})) change(() => { m.deponent = dp; touch(m); }); }
+          S2.done = await makeDraft(m, S2.key, S2.lang, { ...S2.f, _annex: S2.annex }); toast(S2.done.url ? 'Draft saved in 1 Pleadings' : 'Draft ready'); }
         if (S2.done.url) setTimeout(() => S.tab === 'matter' && loadFolder(), 800);
       } catch (er) { toast(er.message); }
       S2.busy = ''; draw();
