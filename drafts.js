@@ -347,8 +347,10 @@ function sheetDraft(m) {
       <p class="hint">Court, case no., parties, crime no. and your signature are filled in from the diary. ${m.folderId ? 'Saved in the matter folder › 1 Pleadings.' : 'This matter has no folder yet, so use Download or Share.'}</p>
       ${S2.busy ? `<button class="save" disabled>${esc(S2.busy)}</button>` : S2.done ? `
         <span class="lbl">Export</span>
-        <div class="three"><button class="act primary" data-dr="open">Open in Word</button><button class="act blue" data-dr="pdf">PDF copy</button><button class="act blue" data-dr="share">Share</button></div>
-        <button class="ghost" data-dr="dl" style="width:100%;margin-top:8px">Download</button><p class="hint">${esc(S2.done.name)}${S2.done.pdfName ? ' · ' + esc(S2.done.pdfName) : ''}</p>
+        <div class="three"><button class="act primary" data-dr="open">Open in Word</button><button class="act blue" data-dr="pdf">PDF copy</button><button class="act blue" data-dr="dl">Download</button></div>
+        <span class="lbl" style="margin-top:14px;display:block">Send for printing</span>
+        <div class="three"><button class="act wa" data-dr="sendwa">${I.wa}WhatsApp link</button><button class="act blue" data-dr="sendmail">Email link</button><button class="act blue" data-dr="sendfile">Send file</button></div>
+        <p class="hint">Link: opens WhatsApp or email with a ready-to-print PDF and Word link; you choose your junior there. Send file: attaches the files themselves.</p><p class="hint">${esc(S2.done.name)}${S2.done.pdfName ? ' · ' + esc(S2.done.pdfName) : ''}</p>
         <button class="linkbtn" data-dr="again">Make another</button>`
       : `<button class="save" data-dr="make">Make Word file</button>`}`);
   };
@@ -358,6 +360,13 @@ function sheetDraft(m) {
     root.oninput = e => { const k = e.target.dataset?.df; if (k) S2.f[k] = e.target.value; };
     root.onclick = onClick; root.onchange = null;
   };
+  async function ensurePdf() {
+    if (S2.done.pdfId) return;
+    const r = await g('/me/drive/items/' + S2.done.itemId + '/content?format=pdf'); if (!r.ok) throw new Error('OneDrive ' + r.status);
+    S2.done.pdf = await r.blob(); S2.done.pdfName = S2.done.name.replace(/\.docx$/i, '.pdf');
+    const it = await uploadFile(S2.done.parentId, new File([S2.done.pdf], S2.done.pdfName, { type: 'application/pdf' }), S2.done.pdfName);
+    S2.done.pdfId = it.id; setTimeout(() => S.tab === 'matter' && loadFolder(), 800);
+  }
   async function onClick(e) {
     const el = e.target.closest('[data-dr]'); if (!el) return;
     const k = el.dataset.dr;
@@ -393,6 +402,7 @@ function sheetDraft(m) {
         if (S2.done.url) setTimeout(() => S.tab === 'matter' && loadFolder(), 800);
       } catch (er) { toast(er.message); }
       S2.busy = ''; draw();
+      const ex = $('#sheet-root [data-dr=open]'); if (ex) ex.scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
     else if (k === 'open') {
       if (S2.done.itemId) { try { openNative(await getItem(S2.done.itemId)); } catch (er) { window.open(S2.done.url, '_blank'); } }
@@ -402,18 +412,32 @@ function sheetDraft(m) {
       if (!S2.done.itemId) { toast('A PDF copy needs the draft saved in the case folder'); return; }
       S2.busy = 'Making PDF…'; draw();
       try {
-        const r = await g('/me/drive/items/' + S2.done.itemId + '/content?format=pdf'); if (!r.ok) throw new Error('OneDrive ' + r.status);
-        S2.done.pdf = await r.blob(); S2.done.pdfName = S2.done.name.replace(/\.docx$/i, '.pdf');
-        await uploadFile(S2.done.parentId, new File([S2.done.pdf], S2.done.pdfName, { type: 'application/pdf' }), S2.done.pdfName);
-        toast('PDF saved beside the Word file'); setTimeout(() => S.tab === 'matter' && loadFolder(), 800);
+        await ensurePdf(); toast('PDF saved beside the Word file');
       } catch (er) { toast('Could not make the PDF: ' + er.message); }
       S2.busy = ''; draw();
     }
-    else if (k === 'share') {
+    else if (k === 'sendwa' || k === 'sendmail') {
+      if (!S2.done.itemId) { toast('A link needs the draft saved in the case folder. Use Send file.'); return; }
+      const w = k === 'sendwa' && !isPhone() ? window.open('', '_blank') : null;
+      S2.busy = 'Preparing the link…'; draw();
+      try {
+        await ensurePdf();
+        const link = async id => { const r = await g('/me/drive/items/' + id + '/createLink', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'view', scope: 'anonymous' }) }); if (!r.ok) throw new Error('OneDrive ' + r.status); return (await r.json()).link.webUrl; };
+        const pdfUrl = await link(S2.done.pdfId), docUrl = await link(S2.done.itemId);
+        const what = S2.done.name.replace(/^\d\d\.\d\d\.\d{4}\s*/, '').replace(/\.docx$/i, '');
+        const lines = ['Please print and file: ' + what, m.title + ((m.type || m.caseNo) ? ' (' + ((m.type ? m.type + ' ' : '') + (m.caseNo || '')).trim() + ')' : ''), m.court ? m.court.replace(/\s*·.*$/, '') : '', m.nextDate ? 'Date: ' + dmy(m.nextDate) + (m.item ? ', item ' + m.item : '') : '', '', 'PDF (print this): ' + pdfUrl, 'Word (to edit): ' + docUrl].filter((x, i) => x || i === 4);
+        const txt = lines.join('\n');
+        const url = k === 'sendwa' ? 'https://wa.me/?text=' + encodeURIComponent(txt) : 'mailto:?subject=' + encodeURIComponent('For filing: ' + what + ' – ' + m.title) + '&body=' + encodeURIComponent(txt);
+        window.__lastSend = url;
+        if (w) w.location.href = url; else { const a = document.createElement('a'); a.href = url; if (k === 'sendwa') a.target = '_blank'; document.body.appendChild(a); a.click(); a.remove(); }
+      } catch (er) { if (w) w.close(); toast('Could not make the link: ' + er.message, 5000); }
+      S2.busy = ''; draw();
+    }
+    else if (k === 'share' || k === 'sendfile') {
       const files = [new File([S2.done.blob], S2.done.name, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })];
       if (S2.done.pdf) files.push(new File([S2.done.pdf], S2.done.pdfName, { type: 'application/pdf' }));
       if (navigator.canShare && navigator.canShare({ files })) { try { await navigator.share({ files, title: S2.done.name }); } catch (er) { if (er.name !== 'AbortError') toast('Could not share'); } }
-      else toast('Sharing files is not available on this device; use Download');
+      else { for (const f of files) { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); } toast('Saved to Downloads. Attach it in WhatsApp Web or your email.', 5000); }
     }
     else if (k === 'dl') {
       for (const [b, n] of [[S2.done.blob, S2.done.name], ...(S2.done.pdf ? [[S2.done.pdf, S2.done.pdfName]] : [])]) { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = n; document.body.appendChild(a); a.click(); a.remove(); }
