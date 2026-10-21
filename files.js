@@ -120,12 +120,20 @@ setTimeout(syncDetails, 15000);
 function openMatter(id) {
   const m = find(id); if (!m) return;
   if (S.tab !== 'matter') S.prevTab = S.tab;
-  S.tab = 'matter'; S.mid = id; F.stack = []; F.items = null; F.err = '';
+  S.tab = 'matter'; S.mid = id; F.stack = []; F.items = null; F.err = ''; F.common = null;
   closeSheet(); render(); scrollTo(0, 0);
   if (m.folderId) { loadFolder(); refreshFolderName(m); }
 }
+async function findCommon(m, it) {   // a "Common papers" folder beside this matter's folder (shared by co-accused / family matters)
+  F.common = null;
+  try {
+    const pid = it.parentReference && it.parentReference.id; if (!pid) return;
+    const sib = (await listChildren(pid)).find(x => x.folder && x.id !== m.folderId && /common\s*papers|सामान्य/i.test(x.name));
+    if (sib && S.mid === m.id) { F.common = { id: sib.id, name: sib.name }; renderFiles(); }
+  } catch (e) {}
+}
 async function refreshFolderName(m) {
-  try { const it = await getItem(m.folderId); if (it.name !== m.folderName || itemPath(it) !== m.folderPath) change(() => { Object.assign(m, { folderName: it.name, folderPath: itemPath(it), folderUrl: it.webUrl }); }); } catch (e) {}
+  try { const it = await getItem(m.folderId); findCommon(m, it); if (it.name !== m.folderName || itemPath(it) !== m.folderPath) change(() => { Object.assign(m, { folderName: it.name, folderPath: itemPath(it), folderUrl: it.webUrl }); }); } catch (e) {}
 }
 function curFolder() { const m = find(S.mid); return F.stack.length ? F.stack[F.stack.length - 1] : { id: m.folderId, name: m.folderName }; }
 async function loadFolder() {
@@ -195,6 +203,7 @@ function filesInner(m) {
   else body = `<div class="flist">${F.items.map(it => { const [ic, bg] = fileIcon(it); return `<button class="frow" data-act="${it.folder ? 'subdir' : 'openfile'}" data-fid="${it.id}"><span class="ficon" style="background:${bg}">${ic}</span><span class="fname">${esc(it.name)}<small>${it.folder ? (it.folder.childCount ?? '') + ' items' : kb(it.size || 0)} · ${new Date(it.lastModifiedDateTime).toLocaleDateString('en-GB').replace(/\//g, '.')}</small></span></button>`; }).join('')}</div>`;
   const missingStd = m.ownFolder && !F.stack.length && F.items ? STD_SUBFOLDERS.filter(n => !F.items.some(it => it.folder && it.name === n)) : [];
   return `<div class="h2"><h2>Case folder</h2><span style="display:flex;gap:6px">${isPhone() ? '' : `<button class="linkbtn" data-act="copypath" title="Copy this folder\'s path on your computer">PC path</button>`}<button class="linkbtn" data-act="openweb">${I.ext} OneDrive</button></span></div>
+    ${F.common && !(F.stack[0] && F.stack[0].id === F.common.id) ? `<button class="act blue" data-act="common" style="width:100%;margin:8px 0 0;min-height:40px">${I.folder}${esc(F.common.name)} (shared)</button>` : ''}
     <div class="crumbs">${crumbs.map((c, k) => `<button data-act="crumb" data-i="${c.i}" ${k === crumbs.length - 1 ? 'class="on"' : ''}>${esc(c.name)}</button>`).join('<span>›</span>')}</div>
     <div class="fbar">
       <label class="act primary">${I.cam}Photo<input type="file" accept="image/*" capture="environment" data-act="upload" hidden></label>
@@ -383,6 +392,10 @@ async function openNative(it) {
 }
 
 /* ---------- events for this module ---------- */
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act="common"]'); if (!el || !F.common) return;
+  F.stack = [{ id: F.common.id, name: F.common.name }]; loadFolder();
+});
 document.addEventListener('click', async e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
   const a = el.dataset.act, m = find(S.mid);
