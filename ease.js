@@ -123,6 +123,7 @@ async function sheetDiaryUpdate(files) {
   const line = c => {
     if (c.add) return `<div><b>New</b><span>${esc(c.add.title || c.add.clients || '')}${c.add.nextDate ? ' · next ' + dmy(c.add.nextDate) : ''}</span></div>`;
     const m = c.no ? live().find(x => x.no === c.no) : findByMatch(c.match);
+    if (!m && c.match && matchHits(c.match).length > 1) return `<div><b>?</b><span>${esc((c.addIfMissing && c.addIfMissing.title) || c.match.party || '')}<br><small style="color:var(--red)">more than one matter fits; will be skipped. Enter this date by hand.</small></span></div>`;
     if (!m && c.addIfMissing) return `<div><b>New</b><span>${esc(c.addIfMissing.title || '')}<br><small>${esc([c.addIfMissing.court, c.addIfMissing.caseNo, c.set && c.set.nextDate ? 'next ' + dmy(c.set.nextDate) : ''].filter(Boolean).join(' · '))} — not found in the diary, will be added</small></span></div>`;
     const bits = [];
     if (c.hearing) bits.push((c.hearing.date ? dmy(c.hearing.date) + ': ' : '') + (c.hearing.happened || '') + (c.hearing.next ? ' → ' + dmy(c.hearing.next) : '') + (c.hearing.purpose ? ' (' + c.hearing.purpose + ')' : ''));
