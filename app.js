@@ -20,8 +20,8 @@ const FORUMS = {
   Revenue:  { label: 'Revenue court',     c: 'var(--rv)', soft: 'var(--rv-soft)', ink: 'var(--rv-ink)' },
 };
 const TYPES = ['Complaint','FIR','Writ','482','Bail','ABA','Revision','Appeal','Suit','WS','Execution','DV','125','138 NI','Arbitration','AFT','Consumer','RERA','Mutation','Opinion','Notice','Deed'];
-const STATUSES = ['Not filed', 'Filed – under objection', 'Pending', 'Reserved', 'Proceedings stayed', 'Adjourned sine die', 'Decided', 'Withdrawn', 'Dismissed in default', 'Infructuous', 'Returned', 'Transferred', 'Consigned to record', 'Dropped / Closed'];
-const OPEN_STATUSES = ['Not filed', 'Filed – under objection', 'Pending', 'Reserved', 'Proceedings stayed', 'Adjourned sine die'];
+const STATUSES = ['Not filed', 'Filed – under objection', 'Pending', 'Admitted', 'Part-heard', 'Reserved', 'Proceedings stayed', 'Adjourned sine die', 'Decided', 'Abated', 'Withdrawn', 'Dismissed in default', 'Infructuous', 'Returned', 'Transferred', 'Consigned to record', 'Dropped / Closed'];
+const OPEN_STATUSES = ['Not filed', 'Filed – under objection', 'Pending', 'Admitted', 'Part-heard', 'Reserved', 'Proceedings stayed', 'Adjourned sine die'];
 const OUTCOMES = ['In our favour', 'Against us', 'Partly in our favour', 'Disposed of with directions', 'Compromise / settled', 'Remanded'];
 const isOpen = m => OPEN_STATUSES.includes(m.status || 'Pending');
 const HAPPENED = ['Adjourned','Evidence recorded','Heard','Reserved','Disposed','Not taken up'];
