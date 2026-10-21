@@ -159,7 +159,7 @@ function viewMatter(m) {
     <div class="acts mp-acts" style="grid-template-columns:1.3fr 1fr 1fr 1fr"><button class="act primary" data-act="record" data-id="${m.id}">Next date</button><button class="act blue" data-act="edit" data-id="${m.id}">Edit</button><button class="act blue" data-act="draft" data-id="${m.id}">Draft</button><button class="act wa" data-act="wa" data-id="${m.id}" ${phoneDigits(m.phone) ? '' : 'disabled title="Add client mobile first"'}>${I.wa}Client</button></div>
     <div class="acts mp-acts" style="grid-template-columns:1.4fr 1fr;margin-top:-4px"><button class="act blue" data-act="readorder" data-id="${m.id}">Read order photo</button><button class="act blue" data-act="askclaude" data-id="${m.id}">Send to Claude</button></div>
     <section class="card" style="padding:12px 16px"><div class="stbox" style="margin:0"><div class="field" style="margin:0 0 10px"><label for="fo_${m.id}">Category</label><select class="in" id="fo_${m.id}" data-st="forum" data-id="${m.id}">${Object.entries(FORUMS).map(([k, x]) => `<option value="${k}" ${k === (m.forum || 'District') ? 'selected' : ''}>${x.label}</option>`).join('')}</select></div><div class="field" style="margin:0"><label for="st_${m.id}">Status</label><select class="in" id="st_${m.id}" data-st="status" data-id="${m.id}">${statusList(m).map(s => `<option ${s === (m.status || statusList(m)[0]) ? 'selected' : ''}>${s}</option>`).join('')}${statusList(m).includes(m.status) || !m.status ? '' : `<option selected>${esc(m.status)}</option>`}</select></div>
-      ${m.forum === 'Advisory' ? `<button class="act primary" data-act="tocase" data-id="${m.id}" style="width:100%;margin-top:10px;min-height:44px">Convert to case</button>` : ''}${m.prelit ? `<p class="hint" style="margin:8px 0 0">Pre-litigation: ${esc(m.prelit.status || '')}${m.prelit.till ? ' (till ' + dmy(m.prelit.till) + ')' : ''}</p>` : ''}
+      ${m.forum === 'Advisory' && isRetainer(m) ? retainerBox(m) : ''}${m.forum === 'Advisory' && !isRetainer(m) ? `<button class="act primary" data-act="tocase" data-id="${m.id}" style="width:100%;margin-top:10px;min-height:44px">Convert to case</button>` : ''}${m.prelit ? `<p class="hint" style="margin:8px 0 0">Pre-litigation: ${esc(m.prelit.status || '')}${m.prelit.till ? ' (till ' + dmy(m.prelit.till) + ')' : ''}</p>` : ''}
       ${m.status === 'Decided' ? `<div class="field" style="margin:10px 0 0"><label for="oc_${m.id}">Result</label><select class="in ${m.outcome ? '' : 'needs'}" id="oc_${m.id}" data-st="outcome" data-id="${m.id}"><option value="">Choose…</option>${OUTCOMES.map(s => `<option ${s === m.outcome ? 'selected' : ''}>${s}</option>`).join('')}</select></div>` : ''}</div></section>
     <section class="card mp-files" id="files">${filesInner(m)}</section>
     </div><div class="mp-col">
@@ -570,12 +570,21 @@ const ONE_TIME_FIXES = [
   { id: '2026-10-21-saket-shankar-notice', find: m => /saket/i.test((m.title || '') + ' ' + (m.clients || '')) && /shankar|eshwar|ishwar/i.test((m.title || '') + ' ' + (m.clients || '')) && !m.caseNo,
     apply: m => { m.forum = 'Advisory'; m.status = 'Closed – notice served its purpose'; m.nextDate = ''; m.purpose = ''; m.closedOn = m.closedOn || todayIso(); m.calPending = true; }, label: 'Saket Shankar: Pre-litigation · Closed – notice served its purpose' },
 ];
+ONE_TIME_FIXES.push({ id: '2026-10-21-omaxe-retainer', create: true,
+  find: m => /omaxe/i.test((m.title || '') + ' ' + (m.clients || '')) && /rwa|association|retainer|aoa|committee|owners/i.test((m.title || '') + ' ' + (m.clients || '') + ' ' + (m.type || '')),
+  base: () => ({ id: uid(), year: 2026, n: nextNumber(2026), hearings: [], created: todayIso(), title: 'Omaxe Heights Apartment Owners Association – legal retainership', clients: 'Omaxe Heights Apartment Owners Association', side: 'Legal advisor', type: 'Retainership' }),
+  apply: m => { m.forum = 'Advisory'; m.status = 'Retainer – active'; m.nextDate = ''; m.purpose = ''; m.closedOn = '';
+    m.retainer = Object.assign({ from: '2026-10-13', to: '2027-10-12', every: 3, amount: '25000', billed: 1 }, m.retainer || {});
+    if (!+m.feeAgreed) m.feeAgreed = 100000; m.calPending = true;
+    if (!/Q1 bill/.test(m.notes || '')) m.notes = ((m.notes ? m.notes + '\n' : '') + 'Retainer ₹1,00,000/year in four quarterly instalments of ₹25,000. Q1 bill SM/OMAXE/BILL/2026-27/01 dated 21.10.2026 sent on the Association\'s letter; payment being sent.'); },
+  label: 'Omaxe Heights retainership: Retainer – active, Q1 bill raised' });
 function runOneTimeFixes() {
   if (!S.data || !S.account) return;
   const done = S.data.fixes || [];
   for (const fx of ONE_TIME_FIXES) {
     if (done.includes(fx.id)) continue;
-    const hits = live().filter(fx.find);
+    let hits = live().filter(fx.find);
+    if (!hits.length && fx.create) { const m = fx.base(); m.no = m.year + '/' + m.n; change(d => d.matters.push(m)); hits = [m]; }
     if (hits.length !== 1) continue;   // not sure which matter: leave it for the advocate
     change(d => { fx.apply(hits[0]); touch(hits[0]); d.fixes = [...(d.fixes || []), fx.id]; });
     toast(fx.label, 4000);
@@ -611,3 +620,29 @@ function sheetToCase(m) {
   };
 }
 document.addEventListener('click', e => { const el = e.target.closest('[data-act="tocase"]'); if (el) { const m = find(el.dataset.id); if (m) sheetToCase(m); } });
+
+/* retainership: term, bill amount, bills raised */
+function retainerBox(m) {
+  const r = m.retainer || {}, n = +r.billed || 0, every = +r.every || 3;
+  const next = r.from ? addMonths(r.from, every * n) : '';
+  return `<div class="retbox">
+    <div class="two"><div class="field" style="margin:10px 0 0"><label for="rf_${m.id}">Term from</label><input class="in" type="date" id="rf_${m.id}" data-rt="from" data-id="${m.id}" value="${esc(r.from || '')}"></div>
+    <div class="field" style="margin:10px 0 0"><label for="rt_${m.id}">Term to</label><input class="in" type="date" id="rt_${m.id}" data-rt="to" data-id="${m.id}" value="${esc(r.to || '')}"></div></div>
+    <div class="two"><div class="field" style="margin:10px 0 0"><label for="re_${m.id}">Bill every</label><select class="in" id="re_${m.id}" data-rt="every" data-id="${m.id}">${[[1, 'Month'], [3, 'Quarter'], [6, 'Half-year'], [12, 'Year']].map(([v, l]) => `<option value="${v}" ${v === every ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+    <div class="field" style="margin:10px 0 0"><label for="ra_${m.id}">Each bill (₹)</label><input class="in" inputmode="numeric" id="ra_${m.id}" data-rt="amount" data-id="${m.id}" value="${esc(r.amount || '')}"></div></div>
+    <p class="hint" style="margin:8px 0">${n} bill${n === 1 ? '' : 's'} raised${next && (!r.to || next <= r.to) ? ' · next due ' + dmy(next) : ''}</p>
+    <div class="two"><button class="act blue" data-act="billraised" data-id="${m.id}">Mark bill ${n + 1} raised</button>${n ? `<button class="act blue" data-act="billundo" data-id="${m.id}">Undo last</button>` : '<span></span>'}</div>
+  </div>`;
+}
+document.addEventListener('change', e => {
+  const el = e.target.closest('[data-rt]'); if (!el) return;
+  const m = find(el.dataset.id); if (!m) return;
+  change(() => { m.retainer = Object.assign({}, m.retainer, { [el.dataset.rt]: el.dataset.rt === 'every' ? +el.value : el.value }); touch(m); });
+});
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act="billraised"],[data-act="billundo"]'); if (!el) return;
+  const m = find(el.dataset.id); if (!m) return;
+  const up = el.dataset.act === 'billraised';
+  change(() => { const r = Object.assign({ every: 3 }, m.retainer); r.billed = Math.max(0, (+r.billed || 0) + (up ? 1 : -1)); m.retainer = r; touch(m); });
+  toast(up ? 'Bill ' + m.retainer.billed + ' marked raised' : 'Undone');
+});

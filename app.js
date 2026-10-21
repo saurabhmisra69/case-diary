@@ -24,8 +24,18 @@ const TYPES = ['Complaint','FIR','Writ','482','Bail','ABA','Revision','Appeal','
 const STATUSES = ['Not filed', 'Filed – under objection', 'Pending', 'Admitted', 'Part-heard', 'Reserved', 'Proceedings stayed', 'Adjourned sine die', 'Decided', 'Abated', 'Withdrawn', 'Dismissed in default', 'Infructuous', 'Returned', 'Transferred', 'Consigned to record', 'Dropped / Closed'];
 const OPEN_STATUSES = ['Not filed', 'Filed – under objection', 'Pending', 'Admitted', 'Part-heard', 'Reserved', 'Proceedings stayed', 'Adjourned sine die'];
 const OUTCOMES = ['In our favour', 'Against us', 'Partly in our favour', 'Disposed of with directions', 'Compromise / settled', 'Remanded'];
-const ADV_STATUSES = ['Instructions received', 'In progress', 'Draft / opinion sent', 'Legal notice sent – awaiting reply / instructions', 'Advice given – completed', 'Closed – notice served its purpose', 'Dropped'];
-const ADV_OPEN = ['Instructions received', 'In progress', 'Draft / opinion sent', 'Legal notice sent – awaiting reply / instructions'];
+const ADV_STATUSES = ['Instructions received', 'In progress', 'Draft / opinion sent', 'Legal notice sent – awaiting reply / instructions', 'Retainer – active', 'Retainer – on hold (payment awaited)', 'Advice given – completed', 'Closed – notice served its purpose', 'Retainer – expired / not renewed', 'Retainer – terminated', 'Dropped'];
+const ADV_OPEN = ['Instructions received', 'In progress', 'Draft / opinion sent', 'Legal notice sent – awaiting reply / instructions', 'Retainer – active', 'Retainer – on hold (payment awaited)'];
+const isRetainer = m => /^Retainer/.test(m.status || '') || !!m.retainer;
+/* retainer reminders: next bill and renewal */
+function retainerDue(m) {
+  const r = m.retainer; if (!r || !r.from || !ADV_OPEN.includes(m.status || '')) return [];
+  const out = [], t = todayIso(), every = +r.every || 3, n = +r.billed || 0;
+  const next = addMonths(r.from, every * n);
+  if ((!r.to || next <= r.to) && next <= addDays(t, 7)) out.push({ kind: 'bill', date: next, text: 'Raise bill ' + (n + 1) + (r.amount ? ' · ' + rupees(+r.amount) : '') });
+  if (r.to && r.to <= addDays(t, 30)) out.push({ kind: 'renew', date: r.to, text: r.to < t ? 'Term ended ' + dmy(r.to) + ' · renewal?' : 'Term ends ' + dmy(r.to) + ' · raise renewal' });
+  return out;
+}
 const statusList = m => m.forum === 'Advisory' ? ADV_STATUSES : STATUSES;
 const isOpen = m => m.forum === 'Advisory' ? ADV_OPEN.includes(m.status || 'In progress') : OPEN_STATUSES.includes(m.status || 'Pending');
 const HAPPENED = ['Adjourned','Evidence recorded','Heard','Reserved','Disposed','Not taken up'];
@@ -322,6 +332,7 @@ function viewHome() {
   </header>
   <main class="home-main">
     ${briefHtml(list, deadlines, fees)}
+    ${(() => { const rr = live().flatMap(m => retainerDue(m).map(x => ({ m, ...x }))); return rr.length ? `<section class="list"><div class="h2"><h2>Retainers</h2></div>${rr.map(x => `<button class="card row" data-act="open" data-id="${x.m.id}"><div class="item sm" style="background:var(--adv)"><small>${x.kind === 'bill' ? 'BILL' : 'TERM'}</small><b>${dmy(x.date).slice(0, 5)}</b></div><span class="m-col"><span class="m-title">${esc(x.m.title || x.m.clients)}</span><span class="m-meta">${esc(x.text)}</span></span></button>`).join('')}</section>` : ''; })()}
     <section class="list a-list">
       <div class="h2"><h2>${S.day === todayIso() ? 'Today in court' : 'In court · ' + DOWL[parseIso(S.day).getDay()] + ' ' + short(S.day)}</h2><button class="linkbtn" data-act="causelist" data-day="${S.day}">Cause list ↓</button></div>
       ${list.length && S.day <= todayIso() ? `<button class="save" data-act="results" data-day="${S.day}" style="min-height:50px;font-size:15px">Court over? Enter next dates for all ${list.length}</button>` : ''}

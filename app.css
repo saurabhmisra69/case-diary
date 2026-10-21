@@ -297,3 +297,8 @@ body{padding-left:24px} .nav{left:24px} .scrim{left:24px}
 .cat-sts button{border:0;background:var(--chip);padding:6px 10px;font-size:13px;font-weight:600}
 .cat-sts button b{margin-left:4px;color:var(--hc)}
 .cat-sts button.closed{opacity:.65}
+
+.retbox{border-top:1px solid var(--line);margin-top:12px;padding-top:4px}
+
+.retbox .two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.retbox .in{min-width:0;width:100%;box-sizing:border-box}
