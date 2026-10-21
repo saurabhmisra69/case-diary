@@ -77,7 +77,7 @@ const TEMPLATES = {
       ['अतः माननीय न्यायालय से विनम्र प्रार्थना है कि ' + (f.who || m.clients || '') + ' की ओर से प्रस्तुत वकालतनामा पत्रावली पर लेने तथा वाद सूची में ' + ourRole(m, true) + ' के अधिवक्ता के रूप में नाम दर्शाये जाने की न्यायहित में कृपा करें।', 'p']],
   },
   listing: {
-    en: 'Listing application (High Court)', hi: null, fields: [['facts', 'Facts (when filed, last listed, why urgent)']],
+    en: 'Listing application (High Court)', hi: null, forum: 'HC', fields: [['facts', 'Facts (when filed, last listed, why urgent)']],
     en_body: (m, f) => [
       ['APPLICATION FOR LISTING', 'cb'], ['OF ' + ((m.type ? m.type + ' ' : '') + (m.caseNo || '')).toUpperCase(), 'c'],
       ["To,\nThe Hon'ble the Chief Justice and\nHis other companion Judges of the aforesaid Court.", 'p'],
@@ -87,6 +87,69 @@ const TEMPLATES = {
       ['3.\tThat therefore it is expedient in the interest of Justice that the above noted case be listed for hearing.', 'p'],
       ['P R A Y E R', 'cb'],
       ["WHEREFORE, it is most respectfully prayed that this Hon'ble Court may graciously be pleased to direct the listing of the above noted case for hearing in the interest of justice.", 'p']],
+  },
+  interim: {
+    en: 'Interim order extension (High Court)', hi: null, forum: 'HC', fields: [['orderDate', 'Interim order dated (DD.MM.YYYY)'], ['gist', 'What the interim order gives (e.g. no coercive action / stay of proceedings)'], ['lapse', 'Why it needs extension (e.g. case not listed since; order operates till next listing)']],
+    en_body: (m, f) => [
+      ['APPLICATION FOR EXTENSION OF INTERIM ORDER', 'cb'], ['DATED ' + (f.orderDate || '__________'), 'c'],
+      ["To,\nThe Hon'ble the Chief Justice and\nHis other companion Judges of the aforesaid Court.", 'p'],
+      ['The ' + ourRole(m).toLowerCase() + ' most humbly and respectfully begs to submit herein as below:-', 'p'],
+      ["1.\tThat the above noted " + (m.type ? m.type + ' ' : '') + "case has been filed by the " + ourRole(m).toLowerCase() + " before this Hon'ble Court and is pending.", 'p'],
+      ["2.\tThat this Hon'ble Court vide order dated " + (f.orderDate || '__________') + ' was pleased to grant interim protection to the ' + ourRole(m).toLowerCase() + ', namely ' + (f.gist || '____________________') + ', till the next date of listing.', 'p'],
+      ['3.\tThat ' + (f.lapse || 'the above noted case has not been listed thereafter and the interim order is operating only till the next date of listing') + ', for no fault on the part of the ' + ourRole(m).toLowerCase() + '.', 'p'],
+      ['4.\tThat the ' + ourRole(m).toLowerCase() + ' has not misused the interim protection granted by this Hon\'ble Court and has complied with the conditions, if any, imposed therein.', 'p'],
+      ['5.\tThat the ' + ourRole(m).toLowerCase() + ' has a good prima facie case, the balance of convenience lies in favour of the ' + ourRole(m).toLowerCase() + ', and the ' + ourRole(m).toLowerCase() + ' shall suffer irreparable loss and injury if the interim order is not extended.', 'p'],
+      ["6.\tThat it is therefore expedient in the interest of Justice that the interim order dated " + (f.orderDate || '__________') + " be extended till the next date of listing or until further orders of this Hon'ble Court.", 'p'],
+      ['P R A Y E R', 'cb'],
+      ["WHEREFORE, it is most respectfully prayed that this Hon'ble Court may graciously be pleased to extend the interim order dated " + (f.orderDate || '__________') + " passed in the above noted case till the next date of listing or until further orders of this Hon'ble Court, in the interest of justice.", 'p'],
+      ['(Supported by affidavit)', 'c']],
+  },
+  slip: {
+    en: 'Mentioning slip (High Court)', hi: null, forum: 'HC', own: true, fields: [['courtNo', 'Court No.'], ['forWhat', 'Mentioned for (e.g. urgent listing / extension of interim order / listing today)'], ['why', 'Reason for urgency']],
+    en_body: (m, f) => {
+      const pt = parties(m);
+      return [
+        ["In The Hon'ble High Court of Judicature At Allahabad, LUCKNOW BENCH, LUCKNOW", 'c'],
+        ['M E N T I O N I N G   S L I P', 'cb'],
+        ['Court No.:\t' + (f.courtNo || '______') + '\t\tDate:\t' + dmy(todayIso()), 'p'],
+        ['Case No.:\t' + ((m.type ? m.type + ' ' : '') + (m.caseNo || '__________')), 'p'],
+        ['Parties:\t' + pt.first + (pt.second ? ' v. ' + pt.second : ''), 'p'],
+        ...(m.crimeNo ? [['Crime No.:\t' + m.crimeNo + (m.sections ? ', u/s ' + m.sections : '') + (m.ps ? ', P.S. ' + m.ps : ''), 'p']] : []),
+        ['Counsel:\t' + ADV.name + ', Advocate (' + ADV.aor + ') · Mobile ' + ADV.phone.split(',')[0] + ' · for the ' + ourRole(m), 'p'],
+        ['Last listed / next date:\t' + (m.lastDate ? dmy(m.lastDate) : '______') + ' / ' + (m.nextDate ? dmy(m.nextDate) : '______'), 'p'],
+        ['Mentioned for:\t' + (f.forWhat || 'urgent listing'), 'p'],
+        ['Urgency:\t' + (f.why || '____________________________________________'), 'p'],
+        ["Prayer:\tIt is most respectfully prayed that the above noted case may kindly be " + (/extension/i.test(f.forWhat || '') ? 'taken up for extension of the interim order' : 'listed for hearing') + " at the earliest, in the interest of justice.", 'p']];
+    },
+  },
+  early: {
+    en: 'Early hearing application (High Court)', hi: null, forum: 'HC', fields: [['facts', 'Facts (when filed, last listed, why early hearing is needed)']],
+    en_body: (m, f) => [
+      ['APPLICATION FOR EARLY HEARING', 'cb'], ['OF ' + ((m.type ? m.type + ' ' : '') + (m.caseNo || '')).toUpperCase(), 'c'],
+      ["To,\nThe Hon'ble the Chief Justice and\nHis other companion Judges of the aforesaid Court.", 'p'],
+      ['The ' + ourRole(m).toLowerCase() + ' most humbly and respectfully begs to submit herein as below:-', 'p'],
+      ['1.\tThat ' + (f.facts || 'the above noted case was filed on __________ and was last listed on __________.'), 'p'],
+      ['2.\tThat the matter involves the liberty / valuable rights of the ' + ourRole(m).toLowerCase() + ' and any further delay shall cause irreparable loss to the ' + ourRole(m).toLowerCase() + '.', 'p'],
+      ['3.\tThat therefore it is expedient in the interest of Justice that the above noted case be heard at an early date.', 'p'],
+      ['P R A Y E R', 'cb'],
+      ["WHEREFORE, it is most respectfully prayed that this Hon'ble Court may graciously be pleased to fix an early date of hearing in the above noted case in the interest of justice.", 'p']],
+  },
+  time: {
+    en: 'Time to file reply / objection', hi: 'जवाब/आपत्ति हेतु समय', forum: 'District', fields: [['what', 'Time for (e.g. reply to application dated __)']],
+    en_body: (m, f) => [
+      ['A P P L I C A T I O N', 'cb'], ['SEEKING TIME', 'c'],
+      ['The ' + ourRole(m).toLowerCase() + ' most respectfully begs to submit herein as below:-', 'p'],
+      ['1.\tThat the above noted case is fixed for today for ' + (f.what || 'filing of reply / objection') + '.', 'p'],
+      ['2.\tThat the ' + ourRole(m).toLowerCase() + ' requires some more time to collect the relevant documents and to prepare the ' + (f.what ? 'same' : 'reply / objection') + ', and therefore it is expedient in the interest of Justice that some time be granted.', 'p'],
+      ['P R A Y E R', 'cb'],
+      ["Wherefore, it is most respectfully prayed that this Hon'ble Court may graciously be pleased to grant some time to the " + ourRole(m).toLowerCase() + ' for ' + (f.what || 'filing reply / objection') + ' in the interest of Justice.', 'p']],
+    hi_body: (m, f) => [
+      ['प्रार्थना पत्र', 'cb'], ['समय दिये जाने हेतु', 'c'],
+      ['प्रार्थी निम्नलिखित निवेदन करता है:-', 'p'],
+      ['1.\tयह कि उपरोक्त वाद आज ' + (f.what || 'जवाब/आपत्ति प्रस्तुत करने') + ' हेतु नियत है।', 'p'],
+      ['2.\tयह कि ' + ourRole(m, true) + ' को आवश्यक अभिलेख एकत्र करने एवं ' + (f.what ? 'उसे' : 'जवाब/आपत्ति') + ' तैयार करने हेतु कुछ और समय की आवश्यकता है। अतः न्यायहित में समय दिया जाना आवश्यक है।', 'p'],
+      ['प्रार्थना', 'cb'],
+      ['अतः माननीय न्यायालय से विनम्र प्रार्थना है कि ' + ourRole(m, true) + ' को ' + (f.what || 'जवाब/आपत्ति प्रस्तुत करने') + ' हेतु न्यायहित में समय प्रदान करने की कृपा करें।', 'p']],
   },
 };
 
@@ -110,7 +173,8 @@ async function makeDraft(m, key, lang, f) {
     ...P(pt.first + (pt.second ? '' : '') , { align: D.AlignmentType.LEFT, after: 40 }),
     ...(pt.second ? [...P(hi ? 'बनाम' : 'Versus', { align: C, after: 40 }), ...P(pt.second, { align: D.AlignmentType.LEFT, after: 200 })] : []),
   ];
-  const body = (hi ? T.hi_body : T.en_body)(m, f).flatMap(([t, s]) => s === 'cb' ? P(t, { align: C, bold: true, u: true, after: 120 }) : s === 'c' ? P(t, { align: C, bold: true, after: 160 }) : P(t, { indent: /^\d/.test(t) ? { left: 720, hanging: 720 } : undefined }));
+  if (T.own) head.length = 0;
+  const body = (hi ? T.hi_body : T.en_body)(m, f).flatMap(([t, s]) => s === 'cb' ? P(t, { align: C, bold: true, u: true, after: 120 }) : s === 'c' ? P(t, { align: C, bold: true, after: 160 }) : P(t, T.own ? { align: D.AlignmentType.LEFT, indent: { left: 2160, hanging: 2160 } } : { indent: /^\d/.test(t) ? { left: 720, hanging: 720 } : undefined }));
   const today = dmy(todayIso());
   const sig = [
     new D.Paragraph({ spacing: { before: 360 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: (hi ? 'लखनऊ' : 'Lucknow') + '\t(' + (hi ? HI_ADV : ADV.name) + ')', size: SZ, font: FONT, bold: true })] }),
@@ -140,9 +204,9 @@ function sheetDraft(m) {
     const T = TEMPLATES[S2.key];
     if (!T.hi && S2.lang === 'hi') S2.lang = 'en';
     openSheet(`<div class="s-head"><div><small style="color:var(--hc)">${esc(m.no)} · draft</small><h1>${esc(m.title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
-      <div class="grp"><span class="lbl">Document</span><div class="chips">${Object.entries(TEMPLATES).map(([k, t]) => `<button class="chip ${S2.key === k ? 'on' : ''}" data-dr="key" data-v="${k}">${t.en}</button>`).join('')}</div></div>
+      <div class="grp"><span class="lbl">Document</span><div class="chips">${Object.entries(TEMPLATES).filter(([, t]) => !t.forum || (t.forum === 'HC' ? m.forum === 'HC' : m.forum !== 'HC')).map(([k, t]) => `<button class="chip ${S2.key === k ? 'on' : ''}" data-dr="key" data-v="${k}">${t.en}</button>`).join('')}</div></div>
       ${T.hi ? `<div class="grp"><span class="lbl">Language</span><div class="chips"><button class="chip ${S2.lang === 'en' ? 'on' : ''}" data-dr="lang" data-v="en">English</button><button class="chip ${S2.lang === 'hi' ? 'on' : ''}" data-dr="lang" data-v="hi">हिन्दी</button></div></div>` : ''}
-      ${(S2.key === 'adjournment' ? [['reason', S2.lang === 'hi' ? 'Reason (in Hindi, optional)' : 'Reason (optional; default "exigencies of work")']] : T.fields).map(([k, l]) => `<div class="field"><label for="dr_${k}">${esc(l.toUpperCase())}</label>${k === 'facts' ? `<textarea class="in" id="dr_${k}" data-df="${k}">${esc(S2.f[k] || '')}</textarea>` : `<input class="in" id="dr_${k}" data-df="${k}" value="${esc(S2.f[k] || (k === 'who' ? m.clients || '' : ''))}">`}</div>`).join('')}
+      ${(S2.key === 'adjournment' ? [['reason', S2.lang === 'hi' ? 'Reason (in Hindi, optional)' : 'Reason (optional; default "exigencies of work")']] : T.fields).map(([k, l]) => `<div class="field"><label for="dr_${k}">${esc(l.toUpperCase())}</label>${k === 'facts' || k === 'why' || k === 'lapse' || k === 'gist' ? `<textarea class="in" id="dr_${k}" data-df="${k}">${esc(S2.f[k] || '')}</textarea>` : `<input class="in" id="dr_${k}" data-df="${k}" value="${esc(S2.f[k] || (k === 'who' ? m.clients || '' : ''))}">`}</div>`).join('')}
       <p class="hint">Court, case no., parties, crime no. and your signature block are filled in from the diary. ${m.folderId ? 'Saved into the matter folder › 1 Pleadings.' : 'This matter has no folder yet, so use Download.'}</p>
       ${S2.done ? `<div class="two"><button class="act primary" data-dr="open">Open in Word</button><button class="act blue" data-dr="dl">Download</button></div><p class="hint">${esc(S2.done.name)}</p>` : `<button class="save" data-dr="make" ${S2.busy ? 'disabled' : ''}>${S2.busy ? 'Preparing…' : 'Make Word file'}</button>`}`);
   };
