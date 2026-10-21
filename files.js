@@ -359,6 +359,7 @@ const isPhone = () => /Android|iPhone|iPad/i.test(navigator.userAgent);
 const OFFICE = { doc: 'ms-word', docx: 'ms-word', rtf: 'ms-word', xls: 'ms-excel', xlsx: 'ms-excel', csv: 'ms-excel', ppt: 'ms-powerpoint', pptx: 'ms-powerpoint' };
 async function openNative(it) {
   const ext = (it.name.split('.').pop() || '').toLowerCase();
+  if (typeof VIEWABLE !== 'undefined' && VIEWABLE[ext]) return viewFile(it);   // PDFs, photos, audio, video: inside the app
   const scheme = OFFICE[ext];
   if (scheme && it.parentReference?.driveId) {
     const url = 'https://d.docs.live.net/' + it.parentReference.driveId + '/' + itemPath(it).split('/').map(encodeURIComponent).join('/');
