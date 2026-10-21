@@ -283,3 +283,6 @@ body{padding-left:24px} .nav{left:24px} .scrim{left:24px}
 .v-act.alt{background:var(--hc-soft,#E6EAF2);color:var(--hc,#1B2A4A)}
 
 .grp.ask{outline:2px solid var(--saffron);outline-offset:4px}
+
+.stbox{background:var(--chip);padding:12px;margin-bottom:12px}
+.stbox select.needs{outline:2px solid var(--saffron)}

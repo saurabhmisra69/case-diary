@@ -63,7 +63,7 @@ VIEWS.clients = function () {
   <main><div class="list">
     <div class="h2"><span class="sub">${gs.length} client${gs.length === 1 ? '' : 's'}</span></div>
     ${gs.length ? gs.map(gr => {
-      const pend = gr.ms.filter(m => !['Decided', 'Dropped / Closed'].includes(m.status));
+      const pend = gr.ms.filter(m => isOpen(m));
       const next = pend.map(m => m.nextDate).filter(d => d && d >= todayIso()).sort()[0];
       const due = gr.ms.reduce((s, m) => s + feeDue(m), 0);
       const init = gr.name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
@@ -269,7 +269,7 @@ function limCalc(s) {
 }
 VIEWS.limit = function () {
   const s = S.lim, res = limCalc(s), r = REMEDIES.find(x => x.k === s.rem);
-  const open = live().filter(m => !['Decided', 'Dropped / Closed'].includes(m.status)).sort((a, b) => a.title.localeCompare(b.title));
+  const open = live().filter(m => isOpen(m)).sort((a, b) => a.title.localeCompare(b.title));
   return pageHead('Limitation') + `<main class="lim-main">
     <section class="card grp" style="gap:14px">
       <div class="field"><label for="l_rem">REMEDY</label><select class="in" id="l_rem" data-lim="rem">${REMEDIES.map(x => `<option value="${x.k}" ${x.k === s.rem ? 'selected' : ''}>${esc(x.n)}</option>`).join('')}</select></div>

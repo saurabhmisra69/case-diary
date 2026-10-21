@@ -20,7 +20,10 @@ const FORUMS = {
   Revenue:  { label: 'Revenue court',     c: 'var(--rv)', soft: 'var(--rv-soft)', ink: 'var(--rv-ink)' },
 };
 const TYPES = ['Complaint','FIR','Writ','482','Bail','ABA','Revision','Appeal','Suit','WS','Execution','DV','125','138 NI','Arbitration','AFT','Consumer','RERA','Mutation','Opinion','Notice','Deed'];
-const STATUSES = ['Pending','Reserved','Not filed','Decided','Dropped / Closed'];
+const STATUSES = ['Not filed', 'Filed – under objection', 'Pending', 'Reserved', 'Proceedings stayed', 'Adjourned sine die', 'Decided', 'Withdrawn', 'Dismissed in default', 'Infructuous', 'Returned', 'Transferred', 'Consigned to record', 'Dropped / Closed'];
+const OPEN_STATUSES = ['Not filed', 'Filed – under objection', 'Pending', 'Reserved', 'Proceedings stayed', 'Adjourned sine die'];
+const OUTCOMES = ['In our favour', 'Against us', 'Partly in our favour', 'Disposed of with directions', 'Compromise / settled', 'Remanded'];
+const isOpen = m => OPEN_STATUSES.includes(m.status || 'Pending');
 const HAPPENED = ['Adjourned','Evidence recorded','Heard','Reserved','Disposed','Not taken up'];
 const FIXED_FOR = ['Hearing','Admission','Evidence','Cross-examination','Arguments','Orders','Reply / Objection','Framing of charge','313 statement','Judgment'];
 
@@ -210,7 +213,7 @@ async function weeklyBackup() {
 async function flushCalendar() {
   for (const m of live().filter(x => x.calPending)) {
     try {
-      if (!m.nextDate || m.status === 'Decided') {
+      if (!m.nextDate || !isOpen(m)) {
         if (m.eventId) await g('/me/events/' + m.eventId, { method: 'DELETE' });
         m.eventId = ''; m.calPending = false; touch(m); S.dirty = true; continue;
       }
@@ -237,7 +240,7 @@ function nextNumber(year) { return Math.max(0, ...live().filter(m => m.year === 
 const forumOf = m => FORUMS[m.forum] || FORUMS.District;
 const needsDate = m => (m.status === 'Pending') && (!m.nextDate || m.nextDate < todayIso());
 const feeDue = m => Math.max(0, num(m.feeAgreed) - num(m.feeReceived));
-const onDay = day => live().filter(m => m.nextDate === day && m.status !== 'Decided' && m.status !== 'Dropped / Closed');
+const onDay = day => live().filter(m => m.nextDate === day && isOpen(m));
 const doneOn = day => live().filter(m => (m.hearings || []).some(h => h.date === day));
 function phoneDigits(p) { let d = String(p || '').replace(/\D/g, ''); if (d.length === 10) d = '91' + d; if (d.length === 11 && d[0] === '0') d = '91' + d.slice(1); return d.length >= 11 ? d : ''; }
 function matches(m, q) {
@@ -380,12 +383,12 @@ function doneRow(m) {
 function viewMatters() {
   const f = S.filter;
   const tests = {
-    pending: m => m.status === 'Pending' || m.status === 'Reserved' || m.status === 'Not filed',
+    pending: m => isOpen(m),
     need: needsDate,
     deadline: m => m.deadline && !m.deadlineDone,
     fees: m => feeDue(m) > 0,
     HC: m => m.forum === 'HC', District: m => m.forum === 'District', Tribunal: m => m.forum === 'Tribunal', Consumer: m => m.forum === 'Consumer', Revenue: m => m.forum === 'Revenue',
-    decided: m => m.status === 'Decided' || m.status === 'Dropped / Closed',
+    decided: m => !isOpen(m),
     all: () => true,
   };
   const ms = live().filter(tests[f] || tests.all).filter(m => matches(m, S.q))
@@ -465,6 +468,7 @@ function sheetEdit(m) {
     <div class="two">${fld('crimeNo', 'Crime / FIR no.', m.crimeNo)}${fld('ps', 'Police station', m.ps)}</div>
     ${fld('sections', 'Under section(s)', m.sections)}
     <div class="two"><div class="field"><label for="f_nature">Nature</label><select class="in" id="f_nature" name="nature">${opt(['Criminal', 'Civil', 'Other'], m.nature)}</select></div><div class="field"><label for="f_status">Status</label><select class="in" id="f_status" name="status">${opt(STATUSES, m.status)}</select></div></div>
+    <div class="field" id="f_outwrap" style="${m.status === 'Decided' ? '' : 'display:none'}"><label for="f_outcome">Decided — result</label><select class="in" id="f_outcome" name="outcome"><option value="">—</option>${opt(OUTCOMES, m.outcome)}</select></div>
     ${fld('side', 'Appearing for', m.side, 'text', 'placeholder="e.g. Applicant, OP, Complainant"')}
     <div class="two">${fld('nextDate', 'Next date', m.nextDate, 'date')}${fld('item', 'Item no.', m.item)}</div>
     ${fld('purpose', 'Fixed for', m.purpose, 'text', 'list="ff"')}<datalist id="ff">${FIXED_FOR.map(x => `<option value="${x}">`).join('')}</datalist>
@@ -478,6 +482,7 @@ function sheetEdit(m) {
   $('#mform').onsubmit = e => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries());
+    if (fd.status !== 'Decided') fd.outcome = '';
     for (const k in fd) fd[k] = String(fd[k]).trim();
     fd.year = parseInt(fd.year, 10) || y;
     if (!fd.title) fd.title = fd.clients;

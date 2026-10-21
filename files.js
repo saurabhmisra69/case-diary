@@ -151,16 +151,19 @@ function viewMatter(m) {
   const due = feeDue(m);
   return `<header class="phead" style="background:${f.c}">
     <div class="top-row"><button class="backbtn" data-act="back" aria-label="Back">${I.back}</button><button id="syncbtn" class="sync" data-act="sync" style="background:rgba(255,255,255,.18)"></button></div>
-    <div><small style="font-weight:800;opacity:.85">${esc(m.no)} · ${esc(m.court || f.label)} · ${esc(m.status)}</small><h1 style="margin-top:4px">${esc(m.title || m.clients)}</h1>
+    <div><small style="font-weight:800;opacity:.85">${esc(m.no)} · ${esc(m.court || f.label)} · ${esc(m.status)}${m.status === 'Decided' && m.outcome ? ' (' + esc(m.outcome) + ')' : ''}</small><h1 style="margin-top:4px">${esc(m.title || m.clients)}</h1>
     <p class="m-meta" style="color:rgba(255,255,255,.85);margin:6px 0 0">${esc(metaLine(m))}</p></div>
     <div class="next-strip">${m.nextDate ? `<span>Next date</span><b>${DOWL[parseIso(m.nextDate).getDay()].slice(0, 3)}, ${dmy(m.nextDate)}</b>${m.purpose ? `<span>for ${esc(m.purpose)}</span>` : ''}` : `<b>${m.status === 'Pending' ? 'No next date' : esc(m.status)}</b>`}</div>
   </header>
   <main class="matter-main"><div class="mp-col">
     <div class="acts mp-acts" style="grid-template-columns:1.3fr 1fr 1fr 1fr"><button class="act primary" data-act="record" data-id="${m.id}">Next date</button><button class="act blue" data-act="edit" data-id="${m.id}">Edit</button><button class="act blue" data-act="draft" data-id="${m.id}">Draft</button><button class="act wa" data-act="wa" data-id="${m.id}" ${phoneDigits(m.phone) ? '' : 'disabled title="Add client mobile first"'}>${I.wa}Client</button></div>
     <div class="acts mp-acts" style="grid-template-columns:1.4fr 1fr;margin-top:-4px"><button class="act blue" data-act="readorder" data-id="${m.id}">Read order photo</button><button class="act blue" data-act="askclaude" data-id="${m.id}">Send to Claude</button></div>
+    <section class="card" style="padding:12px 16px"><div class="stbox" style="margin:0"><div class="field" style="margin:0"><label for="st_${m.id}">Status</label><select class="in" id="st_${m.id}" data-st="status" data-id="${m.id}">${STATUSES.map(s => `<option ${s === (m.status || 'Pending') ? 'selected' : ''}>${s}</option>`).join('')}${STATUSES.includes(m.status) || !m.status ? '' : `<option selected>${esc(m.status)}</option>`}</select></div>
+      ${m.status === 'Decided' ? `<div class="field" style="margin:10px 0 0"><label for="oc_${m.id}">Result</label><select class="in ${m.outcome ? '' : 'needs'}" id="oc_${m.id}" data-st="outcome" data-id="${m.id}"><option value="">Choose…</option>${OUTCOMES.map(s => `<option ${s === m.outcome ? 'selected' : ''}>${s}</option>`).join('')}</select></div>` : ''}</div></section>
     <section class="card mp-files" id="files">${filesInner(m)}</section>
     </div><div class="mp-col">
     <section class="card mp-details"><div class="h2" style="margin-bottom:12px"><h2>Details</h2></div>
+
       <div class="kv">${row('Client(s)', m.clients)}${row('Type', m.type)}${row('Case no.', m.caseNo)}${row('Crime / FIR', m.crimeNo)}${row('Police station', m.ps)}${row('Sections', m.sections)}${row('Nature', m.nature)}${row('Appearing for', m.side)}${row('Last date', dmy(m.lastDate))}${row('Item', m.item)}${row('Client mobile', m.phone)}${row('Notes', m.notes)}</div>
       ${m.deadline ? `<div class="mini ${m.deadlineDone ? '' : 'red'}"><span>${m.deadlineDone ? 'Deadline done' : 'Deadline'}</span><b>${esc(m.deadlineFor || 'Due')} · ${dmy(m.deadline)}</b>${m.deadlineDone ? '' : `<button data-act="deadlinedone" data-id="${m.id}">Mark done</button>`}</div>` : ''}
       ${m.feeAgreed || m.feeReceived ? `<div class="mini ${due ? 'saff' : 'green'}"><span>Fees</span><b>${rupees(m.feeReceived)} of ${rupees(m.feeAgreed)} received</b>${due ? `<span>${rupees(due)} pending</span>` : '<span>Paid</span>'}</div>` : ''}
@@ -485,7 +488,7 @@ async function processInbox() {
               if (c.hearing) {
                 const h = c.hearing; m.hearings = m.hearings || []; m.hearings.push(h);
                 m.lastDate = h.date || m.lastDate;
-                if (/dispos|decided/i.test(h.happened || '')) { m.status = 'Decided'; m.nextDate = ''; m.purpose = ''; }
+                if (/dispos|decided/i.test(h.happened || '')) { m.status = h.status || 'Decided'; if (h.outcome) m.outcome = h.outcome; m.nextDate = ''; m.purpose = ''; }
                 else { m.nextDate = h.next || ''; m.purpose = h.purpose || ''; m.status = /reserved/i.test(h.happened || '') ? 'Reserved' : 'Pending'; }
                 m.item = h.item || ''; m.calPending = true;
               }
@@ -523,3 +526,21 @@ async function processInbox() {
 }
 setInterval(processInbox, 30000);
 setTimeout(processInbox, 4000);
+
+/* status and result straight from the matter page */
+document.addEventListener('change', e => {
+  const el = e.target.closest('[data-st]'); if (!el) return;
+  const m = find(el.dataset.id); if (!m) return;
+  if (el.dataset.st === 'status') {
+    const v = el.value, was = m.status;
+    change(() => {
+      m.status = v; if (v !== 'Decided') m.outcome = '';
+      if (!OPEN_STATUSES.includes(v) && OPEN_STATUSES.includes(was || 'Pending')) { m.closedOn = todayIso(); m.calPending = true; }
+      if (OPEN_STATUSES.includes(v)) m.closedOn = '';
+      touch(m);
+    });
+    toast('Status: ' + v + (v === 'Decided' ? '. Now choose the result.' : ''), 3000);
+  } else { change(() => { m.outcome = el.value; touch(m); }); toast('Result: ' + (el.value || 'not set')); }
+  render();
+});
+document.addEventListener('change', e => { if (e.target.id === 'f_status') { const w = document.getElementById('f_outwrap'); if (w) w.style.display = e.target.value === 'Decided' ? '' : 'none'; } });
