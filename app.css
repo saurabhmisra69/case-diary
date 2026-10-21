@@ -302,3 +302,6 @@ body{padding-left:24px} .nav{left:24px} .scrim{left:24px}
 
 .retbox .two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .retbox .in{min-width:0;width:100%;box-sizing:border-box}
+
+.row>span:last-child{max-width:92px;overflow-wrap:anywhere}
+.item.sm b{font-size:11px;white-space:nowrap}

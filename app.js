@@ -26,6 +26,9 @@ const OPEN_STATUSES = ['Not filed', 'Filed – under objection', 'Pending', 'Adm
 const OUTCOMES = ['In our favour', 'Against us', 'Partly in our favour', 'Disposed of with directions', 'Compromise / settled', 'Remanded'];
 const ADV_STATUSES = ['Instructions received', 'In progress', 'Draft / opinion sent', 'Legal notice sent – awaiting reply / instructions', 'Retainer – active', 'Retainer – on hold (payment awaited)', 'Advice given – completed', 'Closed – notice served its purpose', 'Retainer – expired / not renewed', 'Retainer – terminated', 'Dropped'];
 const ADV_OPEN = ['Instructions received', 'In progress', 'Draft / opinion sent', 'Legal notice sent – awaiting reply / instructions', 'Retainer – active', 'Retainer – on hold (payment awaited)'];
+const SHORT_ST = { 'Filed – under objection': 'Objection', 'Proceedings stayed': 'Stayed', 'Adjourned sine die': 'Sine die', 'Dismissed in default': 'Dismissed (default)', 'Consigned to record': 'Consigned', 'Dropped / Closed': 'Dropped',
+  'Instructions received': 'Instructions', 'Draft / opinion sent': 'Draft sent', 'Legal notice sent – awaiting reply / instructions': 'Notice sent', 'Retainer – active': 'Retainer', 'Retainer – on hold (payment awaited)': 'On hold', 'Advice given – completed': 'Advised', 'Closed – notice served its purpose': 'Notice done', 'Retainer – expired / not renewed': 'Expired', 'Retainer – terminated': 'Terminated' };
+const shortSt = s => SHORT_ST[s] || s || '';
 const isRetainer = m => /^Retainer/.test(m.status || '') || !!m.retainer;
 /* retainer reminders: next bill and renewal */
 function retainerDue(m) {
@@ -419,7 +422,7 @@ function viewMatters() {
     <div class="h2"><span class="sub">${ms.length} matter${ms.length === 1 ? '' : 's'}${S.stf ? ' · ' + esc(S.stf) + ' <button class="linkbtn" data-act="filter" data-f="' + f + '">clear</button>' : ''}</span><button class="linkbtn" data-act="cats">Categories</button></div>
     ${ms.length ? ms.map(m => {
       const fo = forumOf(m), late = needsDate(m);
-      const right = f === 'fees' ? rupees(feeDue(m)) : f === 'deadline' ? dmy(m.deadline) : (m.nextDate ? dmy(m.nextDate) : m.status);
+      const right = f === 'fees' ? rupees(feeDue(m)) : f === 'deadline' ? dmy(m.deadline) : (m.nextDate ? dmy(m.nextDate) : shortSt(m.status));
       return `<button class="card row" data-act="open" data-id="${m.id}">
         <div class="item sm" style="background:${fo.c}"><small>NO.</small><b>${esc(m.no)}</b></div>
         <span class="m-col"><span class="m-title">${esc(m.title || m.clients)}</span><span class="m-meta">${esc([m.court, metaLine(m)].filter(Boolean).join(' · '))}</span></span>
