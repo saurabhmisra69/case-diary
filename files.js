@@ -159,6 +159,7 @@ function viewMatter(m) {
     <div class="acts mp-acts" style="grid-template-columns:1.3fr 1fr 1fr 1fr"><button class="act primary" data-act="record" data-id="${m.id}">Next date</button><button class="act blue" data-act="edit" data-id="${m.id}">Edit</button><button class="act blue" data-act="draft" data-id="${m.id}">Draft</button><button class="act wa" data-act="wa" data-id="${m.id}" ${phoneDigits(m.phone) ? '' : 'disabled title="Add client mobile first"'}>${I.wa}Client</button></div>
     <div class="acts mp-acts" style="grid-template-columns:1.4fr 1fr;margin-top:-4px"><button class="act blue" data-act="readorder" data-id="${m.id}">Read order photo</button><button class="act blue" data-act="askclaude" data-id="${m.id}">Send to Claude</button></div>
     <section class="card" style="padding:12px 16px"><div class="stbox" style="margin:0"><div class="field" style="margin:0"><label for="st_${m.id}">Status</label><select class="in" id="st_${m.id}" data-st="status" data-id="${m.id}">${statusList(m).map(s => `<option ${s === (m.status || statusList(m)[0]) ? 'selected' : ''}>${s}</option>`).join('')}${statusList(m).includes(m.status) || !m.status ? '' : `<option selected>${esc(m.status)}</option>`}</select></div>
+      ${m.forum === 'Advisory' ? `<button class="act primary" data-act="tocase" data-id="${m.id}" style="width:100%;margin-top:10px;min-height:44px">Convert to case</button>` : ''}${m.prelit ? `<p class="hint" style="margin:8px 0 0">Pre-litigation: ${esc(m.prelit.status || '')}${m.prelit.till ? ' (till ' + dmy(m.prelit.till) + ')' : ''}</p>` : ''}
       ${m.status === 'Decided' ? `<div class="field" style="margin:10px 0 0"><label for="oc_${m.id}">Result</label><select class="in ${m.outcome ? '' : 'needs'}" id="oc_${m.id}" data-st="outcome" data-id="${m.id}"><option value="">Choose…</option>${OUTCOMES.map(s => `<option ${s === m.outcome ? 'selected' : ''}>${s}</option>`).join('')}</select></div>` : ''}</div></section>
     <section class="card mp-files" id="files">${filesInner(m)}</section>
     </div><div class="mp-col">
@@ -557,6 +558,8 @@ document.addEventListener('change', e => {
 const ONE_TIME_FIXES = [
   { id: '2026-10-21-sarin-lease-advisory', find: m => /sarin/i.test((m.title || '') + ' ' + (m.clients || '')) && /lease|deed|mathura/i.test((m.title || '') + ' ' + (m.type || '') + ' ' + (m.notes || '')) && !/1431/.test(m.caseNo || ''),
     apply: m => { m.forum = 'Advisory'; m.status = 'Advice given – completed'; m.nextDate = ''; m.purpose = ''; m.closedOn = m.closedOn || todayIso(); m.calPending = true; }, label: 'Sarin lease marked Advisory · Advice given' },
+  { id: '2026-10-21-saket-shankar-notice', find: m => /saket/i.test((m.title || '') + ' ' + (m.clients || '')) && /shankar|eshwar|ishwar/i.test((m.title || '') + ' ' + (m.clients || '')) && !m.caseNo,
+    apply: m => { m.forum = 'Advisory'; m.status = 'Closed – notice served its purpose'; m.nextDate = ''; m.purpose = ''; m.closedOn = m.closedOn || todayIso(); m.calPending = true; }, label: 'Saket Shankar: Pre-litigation · Closed – notice served its purpose' },
 ];
 function runOneTimeFixes() {
   if (!S.data || !S.account) return;
@@ -569,3 +572,33 @@ function runOneTimeFixes() {
     toast(fx.label, 4000);
   }
 }
+
+/* an advisory / notice matter becomes a court case: same matter, same folder, notice stage kept in history */
+function sheetToCase(m) {
+  const fo = Object.entries(FORUMS).filter(([k]) => k !== 'Advisory');
+  openSheet(`<div class="s-head"><div><small>${esc(m.no)} · convert to case</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    <form id="tc_form">
+    <div class="field"><label for="tc_forum">FORUM</label><select class="in" id="tc_forum" name="forum">${fo.map(([k, x]) => `<option value="${k}" ${k === 'District' ? 'selected' : ''}>${x.label}</option>`).join('')}</select></div>
+    <div class="field"><label for="tc_court">HON'BLE COURT</label><input class="in" id="tc_court" name="court" placeholder="e.g. CJM, Lucknow / High Court, Lucknow Bench"></div>
+    <div class="two"><div class="field"><label for="tc_type">TYPE</label><input class="in" id="tc_type" name="type" list="tc_types" placeholder="e.g. Complaint, Suit, 138 NI"><datalist id="tc_types">${TYPES.map(t => `<option>${esc(t)}</option>`).join('')}</datalist></div>
+    <div class="field"><label for="tc_no">CASE NO.</label><input class="in" id="tc_no" name="caseNo" placeholder="blank if not yet filed"></div></div>
+    <div class="two"><div class="field"><label for="tc_side">APPEARING FOR</label><input class="in" id="tc_side" name="side" value="${esc(m.side || '')}" placeholder="e.g. Complainant"></div>
+    <div class="field"><label for="tc_next">NEXT DATE</label><input class="in" id="tc_next" name="nextDate" type="date"></div></div>
+    <p class="hint">The notice stage (${esc(m.status || 'advisory')}) stays in this matter's history; the folder and fees stay as they are.</p>
+    <button class="save" type="submit">Convert to case</button></form>`);
+  $('#tc_form').onsubmit = e => {
+    e.preventDefault();
+    const fd = Object.fromEntries(new FormData(e.target).entries());
+    change(() => {
+      m.prelit = { status: m.status, till: todayIso(), from: m.created || '' };
+      m.hearings = m.hearings || [];
+      m.hearings.push({ date: todayIso(), happened: 'Converted to case', note: 'Pre-litigation stage closed (' + (m.status || 'advisory') + '); now ' + (fd.type ? fd.type + ' ' : '') + (fd.caseNo || 'to be filed') + (fd.court ? ' before ' + fd.court : '') + '.' });
+      m.forum = fd.forum; m.court = fd.court || ''; m.type = fd.type || m.type || ''; m.caseNo = fd.caseNo || ''; m.side = fd.side || m.side || '';
+      m.status = fd.caseNo ? 'Pending' : 'Not filed'; m.closedOn = '';
+      if (fd.nextDate) { m.nextDate = fd.nextDate; m.calPending = true; }
+      touch(m);
+    });
+    closeSheet(); toast('Converted to a case · ' + (m.caseNo ? 'Pending' : 'Not filed'), 3500);
+  };
+}
+document.addEventListener('click', e => { const el = e.target.closest('[data-act="tocase"]'); if (el) { const m = find(el.dataset.id); if (m) sheetToCase(m); } });
