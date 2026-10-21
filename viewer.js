@@ -29,7 +29,7 @@ window.addEventListener('popstate', () => { if (document.getElementById('viewer'
 
 async function viewFile(it) {
   const ext = (it.name.split('.').pop() || '').toLowerCase();
-  V.kind = VIEWABLE[ext]; V.name = it.name; V.scale = 1;
+  V.kind = VIEWABLE[ext]; V.name = it.name; V.scale = 1; V.item = it; V.text = null;
   document.body.style.overflow = 'hidden';
   history.pushState({ viewer: 1 }, '');
   const root = document.createElement('div'); root.id = 'viewer';
@@ -37,7 +37,7 @@ async function viewFile(it) {
       <button class="v-btn" data-v="close" aria-label="Close">${I.x}</button>
       <b class="v-name">${esc(it.name)}</b>
       ${V.kind === 'pdf' ? `<button class="v-btn" data-v="out" aria-label="Zoom out">−</button><button class="v-btn" data-v="in" aria-label="Zoom in">+</button>` : ''}
-      ${V.kind === 'pdf' || V.kind === 'img' ? `<button class="v-btn v-read" data-v="read">Read</button>` : ''}
+      ${V.kind === 'pdf' || V.kind === 'img' ? `<button class="v-btn v-read" data-v="readmenu">Read</button>` : ''}
       <button class="v-btn v-dl" data-v="dl">Download</button>
       ${navigator.canShare ? `<button class="v-btn" data-v="share">Share</button>` : ''}
     </div>
@@ -100,6 +100,10 @@ async function onViewerClick(e) {
     try { await navigator.share({ files: [f], title: V.name }); } catch (er) { if (er.name !== 'AbortError') toast('Could not share this file'); }
   }
   else if (a === 'web') { if (V.webUrl) window.open(V.webUrl, '_blank'); }
+  else if (a === 'readmenu') readMenu();
+  else if (a === 'rfree') readFree();
+  else if (a === 'rapp') sendToClaudeApp();
+  else if (a === 'rpc') queueForPc();
   else if (a === 'read') readThisPaper();
   else if (a === 'rclose') { const p = document.getElementById('v_read'); if (p) p.remove(); }
   else if (a === 'go') { const fn = (V.actions || [])[+b.dataset.i]; if (fn) { closeViewer(); setTimeout(fn, 150); } }
@@ -147,6 +151,10 @@ async function readThisPaper() {
     o = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1));
   } catch (e) { panel.innerHTML = `<p class="v-msg">${esc(e.message)}</p><button class="v-btn" data-v="rclose">Close</button>`; return; }
   if (!document.getElementById('v_read')) return;
+  showReading(o, m, 'Read by Claude with your API key. Please check against the paper.');
+}
+function showReading(o, m, note) {
+  const panel = document.getElementById('v_read'); if (!panel) return;
   const iso = d => /^\d{4}-\d{2}-\d{2}$/.test(d || '');
   const dirs = (o.directions || []).filter(d => d && d.text);
   const dl = dirs.filter(d => iso(d.dueDate)).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
@@ -178,5 +186,140 @@ async function readThisPaper() {
     ${(o.watch || []).filter(Boolean).length ? '<p class="v-sub">Watch out</p><ul class="v-watch">' + o.watch.filter(Boolean).map(w => `<li>${esc(w)}</li>`).join('') + '</ul>' : ''}
     ${acts.length ? '<p class="v-sub">What would you like to do?</p><div class="v-acts">' + acts.map((a, i) => `<button class="v-act" data-v="go" data-i="${i}">${esc(a[0])}</button>`).join('') + '</div>' : '<p class="hint">Open this paper from a matter\'s folder to get next steps for that matter.</p>'}
     <button class="v-btn" data-v="copy" style="margin-top:8px">Copy summary</button>
-    <p class="hint">Read by Claude with your API key. Please check against the paper.</p>`;
+    <p class="hint">${esc(note)}</p>`;
+}
+
+/* ---------- the Read menu: free first ---------- */
+function readPanel(html) {
+  let p = document.getElementById('v_read');
+  if (!p) { p = document.createElement('div'); p.id = 'v_read'; p.className = 'v-read-panel'; document.getElementById('viewer').appendChild(p); }
+  p.innerHTML = html; return p;
+}
+function readMenu() {
+  if (!V.blob) { toast('Still opening…'); return; }
+  const m = S.tab === 'matter' ? find(S.mid) : null;
+  readPanel(`<div class="v-read-head"><b>Read this paper</b><button class="v-btn" data-v="rclose" aria-label="Close">${I.x}</button></div>
+    <div class="v-acts" style="margin-top:8px">
+      <button class="v-act" data-v="rfree">Quick read on this phone<small>Free · typed orders (High Court website PDFs, typed orders)</small></button>
+      <button class="v-act alt" data-v="rapp">Send to the Claude app<small>Free with your Claude plan · reads anything, even handwriting</small></button>
+      ${m ? `<button class="v-act alt" data-v="rpc">Claude reads it on my PC<small>Free · diary updated when your computer is on</small></button>` : ''}
+      ${aiKey() ? `<button class="v-act alt" data-v="read">Instant full read<small>Paid, about ₹1–3 · handwriting too</small></button>` : ''}
+    </div>`);
+}
+
+/* free reader: the text layer of a typed PDF, read with rules on the phone itself */
+const MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+function isoOf(d, mo, y) { y = +y; if (y < 100) y += 2000; d = +d; mo = +mo; if (!(d >= 1 && d <= 31 && mo >= 1 && mo <= 12 && y > 1990 && y < 2100)) return ''; return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0'); }
+function findDates(t) {
+  const out = [];
+  const re = /(\d{1,2})\s*[.\/-]\s*(\d{1,2})\s*[.\/-]\s*(\d{2,4})|(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[.,]?\s+(\d{4})/gi;
+  let x; while ((x = re.exec(t))) { const iso = x[1] ? isoOf(x[1], x[2], x[3]) : isoOf(x[4], MONTHS[x[5].toLowerCase().slice(0, 3)], x[6]); if (iso) out.push({ iso, at: x.index, end: re.lastIndex }); }
+  return out;
+}
+const toHindiDigits = s => s.replace(/[०-९]/g, d => '०१२३४५६७८९'.indexOf(d));
+async function paperText() {
+  if (V.text !== null) return V.text;
+  if (V.kind !== 'pdf') return (V.text = '');
+  const lib = await loadPdfLib(), pdf = V.pdf || await lib.getDocument({ data: await V.blob.arrayBuffer() }).promise;
+  let t = '';
+  for (let n = 1; n <= Math.min(pdf.numPages, 30); n++) { const c = await (await pdf.getPage(n)).getTextContent(); t += c.items.map(i => i.str + (i.hasEOL ? '\n' : ' ')).join('') + '\n'; }
+  return (V.text = toHindiDigits(t.replace(/[ \t]+/g, ' ')));
+}
+function sentences(t) { const P = '\u0001'; t = t.replace(/\b(No|Nos|Sri|Shri|Smt|Mr|Mrs|Dr|Ms|vs|v|J|JJ|Ltd|Pvt|Co|u\/s|U\/S|Sec|Cr|Crl|Misc|Govt|[A-Z])\./g, '$1' + P); return t.replace(/\n+/g, ' ').split(/(?<=[.।])\s+(?=[A-Z0-9(ऀ-ॿ"'])/).map(s => s.replace(/\u0001/g, '.').trim()).filter(s => s.length > 12); }
+function ruleRead(t, m) {
+  const ss = sentences(t), low = t.toLowerCase(), o = { kind: 'order', title: '', summary: '', orderDate: '', nextDate: '', purpose: '', item: '', courtNo: '', interimRelief: '', operatesTill: '', directions: [], watch: [], sameMatter: true, happened: '' };
+  const dates = findDates(t), today = todayIso();
+  // order date: "Dated:" / "Date :" / "Order Date" / दिनांक near the top, else the first date in the paper
+  const dm = /(?:dated|date of order|order date|date)\s*[:\-–]?\s*(\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4})/i.exec(t) || /दिनांक\s*[:\-]?\s*(\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4})/.exec(t);
+  if (dm) { const p = dm[1].split(/[.\/-]/); o.orderDate = isoOf(p[0], p[1], p[2]); }
+  if (!o.orderDate) { const past = dates.filter(d => d.iso <= today); if (past.length) o.orderDate = past[past.length - 1].iso > past[0].iso && /order/i.test(t.slice(0, 400)) ? past[0].iso : past[past.length - 1].iso; }
+  // next date: a future date after "list", "put up", "fixed", "posted", "on", पेश, नियत
+  const cues = /(list(?:ed)?|put up|fix(?:ed)?|post(?:ed)?|adjourn(?:ed)?|next date|come up|पेश|नियत|तिथि|हेतु)/i;
+  const fut = dates.filter(d => d.iso > (o.orderDate || '0'));
+  const withCue = fut.filter(d => cues.test(t.slice(Math.max(0, d.at - 90), d.end + 40)));
+  const nd = (withCue.length ? withCue : fut).slice(-1)[0];
+  if (nd) { o.nextDate = nd.iso; const after = t.slice(nd.end, nd.end + 80).replace(/\s+/g, ' '); const pm = /^\s*(?:for|हेतु)\s+([^.।\n]{3,60})/i.exec(after) || /(?:for|हेतु)\s+([^.।\n]{3,60})$/i.exec(t.slice(Math.max(0, nd.at - 80), nd.at)); if (pm) o.purpose = pm[1].trim(); }
+  if (/\b(dismissed|allowed|disposed of|stands disposed|rejected|is quashed|are quashed)\b/i.test(low.slice(-1500)) && !o.nextDate) o.happened = 'Disposed';
+  else if (/reserved/i.test(low.slice(-800))) o.happened = 'Reserved';
+  else if (o.nextDate) o.happened = 'Adjourned';
+  // interim relief
+  let ir = ss.find(s => /no coercive|coercive action|shall remain stayed|shall be stayed|stay(?:ed)? (?:the )?(?:further )?proceedings|shall not be arrested|not be taken into custody|interim (?:order|protection|relief)|अग्रिम कार्यवाही स्थगित|उत्पीड़नात्मक/i.test(s));
+  if (ir) { const clean = ir.replace(/\s+/g, ' ').replace(/[.।]\s*$/, ''); const k = clean.search(/no coercive|coercive action|further proceedings|proceedings of|shall not be arrested|not be taken into custody|shall remain stayed|अग्रिम|उत्पीड़नात्मक/i); const cut = k > 0 ? clean.lastIndexOf(',', k) : -1; o.interimRelief = (cut >= 0 ? clean.slice(cut + 1) : clean).trim().slice(0, 300); ir = clean; const tm = /(till|until)\s+(the\s+)?(next date[^.,;]*|next listing[^.,;]*|further orders?[^.,;]*|\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4})/i.exec(ir); if (tm) o.operatesTill = tm[0]; }
+  if (/(interim order|protection).{0,60}(not extended|vacated|stands vacated|lapse)/i.test(t)) o.watch.push('The interim order appears not extended / vacated. Check the operative part.');
+  if (o.operatesTill && /next (date|listing)/i.test(o.operatesTill)) o.watch.push('Interim protection lasts only till the next listing. If the case is not listed, apply for extension or mention it.');
+  if (/last (opportunity|chance)|अंतिम अवसर/i.test(t)) o.watch.push('Last opportunity given.');
+  if (/cost(s)? of rs|costs? of ₹|हर्जा/i.test(t)) o.watch.push('Costs have been imposed. Check the amount and who pays.');
+  if (/(non[- ]?bailable|nbw|warrant)/i.test(t)) o.watch.push('A warrant is mentioned.');
+  // directions: "... within N weeks/days"
+  const W = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, eight: 8, ten: 10, fifteen: 15, thirty: 30 };
+  let lastDue = '';
+  const due = (n, unit, from) => !n || !from ? '' : /month/i.test(unit) ? addMonths(from, n) : addDays(from, /week/i.test(unit) ? n * 7 : n);
+  const num = w => /^\d+$/.test(w) ? +w : W[(w || '').toLowerCase()] || 0;
+  for (const s of ss) {
+    for (const y of s.matchAll(/(\w+)\s*(?:\(\d+\)\s*)?(weeks?|days?|months?)'?s?'?\s+time\s+(?:to|for)\s+(?:file\s+|filing\s+)?(counter affidavit|rejoinder affidavit|reply|objections?|written statement|supplementary affidavit|compliance)/gi)) {
+      lastDue = due(num(y[1]), y[2], o.orderDate);
+      if (!o.directions.some(d => d.text.toLowerCase() === y[3].toLowerCase())) o.directions.push({ text: y[3].replace(/^\w/, c => c.toUpperCase()), by: '', dueDate: lastDue });
+    }
+    const x = /(counter affidavit|rejoinder affidavit|supplementary affidavit|reply|objection|written statement|compliance|deposit[^,.]*|steps|amendment|affidavit)[^.]{0,80}?within\s+(?:a\s+period\s+of\s+)?(\w+)\s*(?:\(\d+\))?\s*(weeks?|days?|months?)/i.exec(s);
+    if (x) {
+      const after = /thereafter/i.test(s.slice(x.index, x.index + x[0].length + 20)) && lastDue;
+      const d = due(num(x[2]), x[3], after ? lastDue : o.orderDate);
+      if (!o.directions.some(dd => dd.text.toLowerCase() === x[1].toLowerCase())) o.directions.push({ text: x[1].replace(/^\w/, c => c.toUpperCase()), by: '', dueDate: d });
+      lastDue = d || lastDue;
+    }
+  }
+  const im = /\bitem\s*(?:no\.?)?\s*[:\-]?\s*(\d{1,4})\b/i.exec(t); if (im) o.item = im[1];
+  const cm = /court\s*(?:no\.?|number)\s*[:\-]?\s*(\d{1,3})\b/i.exec(t); if (cm) o.courtNo = cm[1];
+  // which matter
+  if (m && m.caseNo) { const num = (m.caseNo.match(/\d+/) || [''])[0]; if (num && num.length >= 3 && !t.includes(num)) o.sameMatter = false; }
+  // summary: the operative sentences
+  const key = ss.filter(s => /(list|put up|issue notice|notice|counter|rejoinder|stay|coercive|dismiss|allow|dispos|adjourn|exempt|summon|bail|quash|direct|पेश|नियत|आदेश)/i.test(s));
+  o.summary = (key.length ? key.slice(-4) : ss.slice(-3)).join(' ').replace(/\s+/g, ' ').slice(0, 700);
+  o.title = (/judgment/i.test(t.slice(0, 600)) ? 'Judgment' : 'Order') + (o.orderDate ? ' dated ' + dmy(o.orderDate) : '');
+  return o;
+}
+async function readFree() {
+  const m = S.tab === 'matter' ? find(S.mid) : null;
+  readPanel('<p class="v-msg" style="margin:8px 0">Reading on this phone…</p>');
+  let t = '';
+  try { t = await paperText(); } catch (e) {}
+  if ((t.replace(/\s/g, '').length) < 120) {
+    readPanel(`<div class="v-read-head"><b>This paper is a scan or photo</b><button class="v-btn" data-v="rclose" aria-label="Close">${I.x}</button></div>
+      <p>There is no typed text in it, so the free reader cannot read it. Use one of these:</p>
+      <div class="v-acts"><button class="v-act alt" data-v="rapp">Send to the Claude app<small>Free with your plan</small></button>
+      ${m ? `<button class="v-act alt" data-v="rpc">Claude reads it on my PC<small>Free · when your computer is on</small></button>` : ''}
+      ${aiKey() ? `<button class="v-act alt" data-v="read">Instant full read<small>Paid, about ₹1–3</small></button>` : ''}</div>`);
+    return;
+  }
+  showReading(ruleRead(t, m), m, 'Quick read on this phone, by rules, not by Claude. It picks up dates and standard wording; always check against the paper.');
+}
+
+/* hand the paper to the Claude app, free under the Claude plan */
+function claudeAsk(m) {
+  return `Please read the attached ${V.kind === 'pdf' ? 'PDF' : 'photo'} "${V.name}"${m ? ` in my matter ${m.title} (${(m.type || '') + ' ' + (m.caseNo || '')}, ${m.court || ''}; I act for the ${m.side || 'client'})` : ''}. Tell me: 1) what it says in plain words; 2) order date, next date and what it is fixed for; 3) any interim protection and till when; 4) anything to be done, by whom and by when; 5) anything urgent. Then list what I should do next and offer to draft it (interim extension application, mentioning slip, listing/adjournment application, as fits). Refer to the court as Hon'ble Court.`;
+}
+async function sendToClaudeApp() {
+  const m = S.tab === 'matter' ? find(S.mid) : null, text = claudeAsk(m);
+  try { await navigator.clipboard.writeText(text); } catch (e) {}
+  const file = new File([V.blob], V.name, { type: V.blob.type || (V.kind === 'pdf' ? 'application/pdf' : 'image/jpeg') });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], text }); toast('Choose Claude. If the question is missing there, paste it (already copied).', 6000); return; }
+    catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = V.name; document.body.appendChild(a); a.click(); a.remove();
+  window.open('https://claude.ai/new', '_blank');
+  toast('Paper downloaded and the question copied. In Claude, attach the paper and paste.', 7000);
+}
+
+/* queue for Claude on the PC: a small request file in Case Diary/To read */
+async function queueForPc() {
+  const m = S.tab === 'matter' ? find(S.mid) : null; if (!m || !V.item) return;
+  try {
+    let dir; try { dir = await getItem(drivePath(DIARY_DIR + '/To read')); } catch (e) { dir = await makeFolder((await getItem(drivePath(DIARY_DIR))).id, 'To read'); }
+    const req = { no: m.no, title: m.title, itemId: V.item.id, name: V.item.name, path: itemPath(V.item), asked: new Date().toISOString() };
+    const nm = cleanName(m.no.replace('/', '-') + ' ' + V.item.name.replace(/\.[^.]+$/, '')) + '.json';
+    await uploadFile(dir.id, new File([JSON.stringify(req, null, 1)], nm, { type: 'application/json' }), nm);
+    readPanel(`<div class="v-read-head"><b>Sent to Claude on your PC</b><button class="v-btn" data-v="rclose" aria-label="Close">${I.x}</button></div>
+      <p>Claude will read it when your computer is on (it checks at about 6:45 am, 1:45 pm and 7:45 pm, Monday to Saturday). The summary, next date and things to do will appear on this matter's page under "Papers read by Claude", and you also get an email.</p>`);
+  } catch (e) { toast('Could not send: ' + e.message, 5000); }
 }

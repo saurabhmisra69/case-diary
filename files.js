@@ -158,6 +158,8 @@ function viewMatter(m) {
       ${m.feeAgreed || m.feeReceived ? `<div class="mini ${due ? 'saff' : 'green'}"><span>Fees</span><b>${rupees(m.feeReceived)} of ${rupees(m.feeAgreed)} received</b>${due ? `<span>${rupees(due)} pending</span>` : '<span>Paid</span>'}</div>` : ''}
       <button class="ghost" style="margin-top:12px;width:100%" data-act="pay" data-id="${m.id}">Record fee payment</button>
     </section>
+    ${(m.readings || []).length ? `<section class="card mp-hist"><div class="h2" style="margin-bottom:6px"><h2>Papers read by Claude</h2><span class="sub">${m.readings.length}</span></div>
+      <div class="hist">${m.readings.map(x => `<div><b>${dmy(x.date)}</b><span><b style="font-family:inherit">${esc(x.paper || '')}</b><br>${esc(x.summary || '')}${x.nextDate ? '<br>Next date ' + dmy(x.nextDate) : ''}${(x.todo || []).length ? '<br><span style="color:var(--saffron-ink)">To do: ' + x.todo.map(esc).join('; ') + '</span>' : ''}${(x.watch || []).length ? '<br><span style="color:#8E2A2A">Watch: ' + x.watch.map(esc).join('; ') + '</span>' : ''}</span></div>`).join('')}</div></section>` : ''}
     <section class="card mp-hist"><div class="h2" style="margin-bottom:6px"><h2>Hearing history</h2><span class="sub">${hist.length}</span></div>
       ${hist.length ? `<div class="hist">${hist.map(h => `<div><b>${dmy(h.date)}</b><span><b style="font-family:inherit">${esc(h.happened)}</b>${h.next ? ' → ' + dmy(h.next) : ''}${h.purpose ? ' · ' + esc(h.purpose) : ''}${h.note ? '<br><span style="color:var(--muted)">' + esc(h.note) + '</span>' : ''}</span></div>`).join('')}</div>` : '<p style="color:var(--muted);font-size:14px;margin:0">No hearings recorded yet. Use <b>Next date</b> after each hearing.</p>'}
     </section>
@@ -481,10 +483,21 @@ async function processInbox() {
                 const last = m.hearings[m.hearings.length - 1];
                 if (last && (!m.lastDate || last.date > m.lastDate)) m.lastDate = last.date;
               }
+              if (c.reading) {   // a paper Claude read on the PC
+                m.readings = (m.readings || []).filter(x => x.paper !== c.reading.paper || x.date !== c.reading.date);
+                m.readings.unshift(Object.assign({ date: todayIso() }, c.reading)); m.readings = m.readings.slice(0, 20);
+              }
               if (c.relink) { m.folderName = ''; autoTried.delete(m.id); }
               touch(m);
             }
           });
+          for (const c of (body.changes || [])) if (c.reading && c.reading.request) {   // the PC has read it: file the request away
+            try {
+              const rq = await getItem(drivePath(DIARY_DIR + '/To read/' + c.reading.request));
+              let rd; try { rd = await getItem(drivePath(DIARY_DIR + '/To read/Done')); } catch (e) { rd = await makeFolder(rq.parentReference.id, 'Done'); }
+              await g('/me/drive/items/' + rq.id + '?@microsoft.graph.conflictBehavior=replace', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parentReference: { id: rd.id } }) });
+            } catch (e) {}
+          }
           if (!done) { const d = await g(drivePath(DIARY_DIR + '/Inbox/Done')); done = d.ok ? await d.json() : await makeFolder((await getItem(drivePath(DIARY_DIR + '/Inbox'))).id, 'Done'); }
           await g('/me/drive/items/' + f.id + '?@microsoft.graph.conflictBehavior=rename', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parentReference: { id: done.id } }) });
           toast('Diary updated from Claude');
