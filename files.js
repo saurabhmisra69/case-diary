@@ -192,7 +192,7 @@ function filesInner(m) {
   else if (!F.items.length) body = '<p class="empty">This folder is empty.</p>';
   else body = `<div class="flist">${F.items.map(it => { const [ic, bg] = fileIcon(it); return `<button class="frow" data-act="${it.folder ? 'subdir' : 'openfile'}" data-fid="${it.id}"><span class="ficon" style="background:${bg}">${ic}</span><span class="fname">${esc(it.name)}<small>${it.folder ? (it.folder.childCount ?? '') + ' items' : kb(it.size || 0)} · ${new Date(it.lastModifiedDateTime).toLocaleDateString('en-GB').replace(/\//g, '.')}</small></span></button>`; }).join('')}</div>`;
   const missingStd = m.ownFolder && !F.stack.length && F.items ? STD_SUBFOLDERS.filter(n => !F.items.some(it => it.folder && it.name === n)) : [];
-  return `<div class="h2"><h2>Case folder</h2><button class="linkbtn" data-act="openweb">${I.ext} OneDrive</button></div>
+  return `<div class="h2"><h2>Case folder</h2><span style="display:flex;gap:6px">${isPhone() ? '' : `<button class="linkbtn" data-act="copypath" title="Copy this folder\'s path on your computer">PC path</button>`}<button class="linkbtn" data-act="openweb">${I.ext} OneDrive</button></span></div>
     <div class="crumbs">${crumbs.map((c, k) => `<button data-act="crumb" data-i="${c.i}" ${k === crumbs.length - 1 ? 'class="on"' : ''}>${esc(c.name)}</button>`).join('<span>›</span>')}</div>
     <div class="fbar">
       <label class="act primary">${I.cam}Photo<input type="file" accept="image/*" capture="environment" data-act="upload" hidden></label>
@@ -350,6 +350,35 @@ async function afterEdit(m, before) {
   } catch (e) { toast('Not renamed: ' + e.message); }
 }
 
+/* ---------- open a file the way the device opens it ----------
+   Word, Excel and PowerPoint files open in the Office app itself (Word on the computer, Word on the phone),
+   straight from OneDrive, so changes save back. Everything else (PDF, photos, audio) opens with the device's
+   own viewer. If the Office app is not installed, OneDrive in the browser opens instead. */
+const PC_ROOT = 'E:\\OneDrive';
+const isPhone = () => /Android|iPhone|iPad/i.test(navigator.userAgent);
+const OFFICE = { doc: 'ms-word', docx: 'ms-word', rtf: 'ms-word', xls: 'ms-excel', xlsx: 'ms-excel', csv: 'ms-excel', ppt: 'ms-powerpoint', pptx: 'ms-powerpoint' };
+async function openNative(it) {
+  const ext = (it.name.split('.').pop() || '').toLowerCase();
+  const scheme = OFFICE[ext];
+  if (scheme && it.parentReference?.driveId) {
+    const url = 'https://d.docs.live.net/' + it.parentReference.driveId + '/' + itemPath(it).split('/').map(encodeURIComponent).join('/');
+    let left = false; const mark = () => { left = true; };
+    document.addEventListener('visibilitychange', mark, { once: true }); window.addEventListener('blur', mark, { once: true });
+    toast('Opening in ' + { 'ms-word': 'Word', 'ms-excel': 'Excel', 'ms-powerpoint': 'PowerPoint' }[scheme] + '…', 2500);
+    location.href = scheme + ':ofe|u|' + url;
+    setTimeout(() => { if (!left) window.open(it.webUrl, '_blank'); }, 2500);
+    return;
+  }
+  // open the window first (still inside the tap), then point it at the file, so the phone does not block it
+  const w = window.open('', '_blank');
+  try {
+    const r = await g('/me/drive/items/' + it.id + '?select=id,@microsoft.graph.downloadUrl');
+    const dl = r.ok ? (await r.json())['@microsoft.graph.downloadUrl'] : '';
+    if (!dl) throw new Error('no link');
+    if (w) w.location.href = dl; else location.href = dl;
+  } catch (e) { if (w) w.location.href = it.webUrl; else window.open(it.webUrl, '_blank'); }
+}
+
 /* ---------- events for this module ---------- */
 document.addEventListener('click', async e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
@@ -360,7 +389,8 @@ document.addEventListener('click', async e => {
   else if (a === 'reloadfiles') loadFolder();
   else if (a === 'subdir') { const it = F.items.find(i => i.id === el.dataset.fid); F.stack.push({ id: it.id, name: it.name }); loadFolder(); }
   else if (a === 'crumb') { F.stack = F.stack.slice(0, +el.dataset.i + 1); loadFolder(); }
-  else if (a === 'openfile') { const it = F.items.find(i => i.id === el.dataset.fid); if (it) window.open(it.webUrl, '_blank'); }
+  else if (a === 'openfile') { const it = F.items.find(i => i.id === el.dataset.fid); if (it) openNative(it); }
+  else if (a === 'copypath') { const c = curFolder(); try { const it = c.id === m.folderId ? { name: m.folderName, parentReference: null, _p: m.folderPath } : await getItem(c.id); const p = PC_ROOT + '\\' + (it._p || itemPath(it)).replace(/\//g, '\\'); await navigator.clipboard.writeText(p); toast('Copied: ' + p + ' — paste it in the File Explorer address bar', 6000); } catch (er) { toast('Could not copy the path'); } }
   else if (a === 'openweb') { const c = curFolder(); try { const it = c.id === m.folderId && m.folderUrl ? { webUrl: m.folderUrl } : await getItem(c.id); window.open(it.webUrl, '_blank'); } catch (er) { toast(er.message); } }
   else if (a === 'mkstd') { try { await makeFolder(m.folderId, el.dataset.n); toast('Created ' + el.dataset.n); loadFolder(); } catch (er) { toast(er.message); } }
 });
