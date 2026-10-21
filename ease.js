@@ -122,12 +122,13 @@ async function sheetDiaryUpdate(files) {
   if (!all.length) { toast('No diary changes in this file'); return; }
   const line = c => {
     if (c.add) return `<div><b>New</b><span>${esc(c.add.title || c.add.clients || '')}${c.add.nextDate ? ' · next ' + dmy(c.add.nextDate) : ''}</span></div>`;
-    const m = live().find(x => x.no === c.no);
+    const m = c.no ? live().find(x => x.no === c.no) : findByMatch(c.match);
+    if (!m && c.addIfMissing) return `<div><b>New</b><span>${esc(c.addIfMissing.title || '')}<br><small>${esc([c.addIfMissing.court, c.addIfMissing.caseNo, c.set && c.set.nextDate ? 'next ' + dmy(c.set.nextDate) : ''].filter(Boolean).join(' · '))} — not found in the diary, will be added</small></span></div>`;
     const bits = [];
     if (c.hearing) bits.push((c.hearing.date ? dmy(c.hearing.date) + ': ' : '') + (c.hearing.happened || '') + (c.hearing.next ? ' → ' + dmy(c.hearing.next) : '') + (c.hearing.purpose ? ' (' + c.hearing.purpose + ')' : ''));
     if (c.history) bits.push(c.history.length + ' past hearing' + (c.history.length > 1 ? 's' : ''));
     if (c.set) bits.push(Object.entries(c.set).filter(([k]) => k !== 'calPending').map(([k, v]) => k === 'nextDate' ? 'next ' + dmy(v) : k + ': ' + v).join(', '));
-    return `<div><b>${esc(c.no || '')}</b><span>${m ? esc(m.title || m.clients) : '<span style="color:var(--red)">matter not found, will be skipped</span>'}<br><small>${esc(bits.join(' · '))}</small></span></div>`;
+    return `<div><b>${esc(m ? m.no : (c.no || ''))}</b><span>${m ? esc(m.title || m.clients) : '<span style="color:var(--red)">matter not found, will be skipped</span>'}<br><small>${esc(bits.join(' · '))}</small></span></div>`;
   };
   openSheet(`<div class="s-head"><div><small>${all.length} change${all.length > 1 ? 's' : ''}</small><h1>Update the diary?</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <div class="hist" style="max-height:55vh;overflow:auto">${all.map(line).join('')}</div>

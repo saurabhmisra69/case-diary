@@ -484,7 +484,11 @@ async function processInbox() {
           change(() => {
             for (const c of (body.changes || [])) {
               if (c.add) { if (!S.data.matters.some(x => x.no === c.add.no && !x.deleted)) S.data.matters.push(Object.assign({ id: uid(), hearings: [], created: todayIso(), u: Date.now() }, c.add)); continue; }
-              const m = live().find(x => x.no === c.no); if (!m) continue;
+              let m = c.no ? live().find(x => x.no === c.no) : findByMatch(c.match);
+              if (!m && c.match && c.addIfMissing) { const y = +(String(c.addIfMissing.caseNo || '').match(/(\d{4})\s*$/) || [])[1] || new Date().getFullYear(); m = Object.assign({ id: uid(), year: y, n: nextNumber(y), hearings: [], created: todayIso(), status: 'Pending', u: Date.now() }, c.addIfMissing); m.no = m.year + '/' + m.n; S.data.matters.push(m); }
+              if (!m) continue;
+              if (c.lastDate && (!m.lastDate || c.lastDate > m.lastDate)) m.lastDate = c.lastDate;
+              if (c.fill) for (const [k, v] of Object.entries(c.fill)) if (!m[k]) m[k] = v;
               if (c.set) Object.assign(m, c.set);
               if (c.hearing) {
                 const h = c.hearing; m.hearings = m.hearings || []; m.hearings.push(h);
@@ -656,3 +660,17 @@ document.addEventListener('click', e => {
   change(() => { const r = Object.assign({ every: 3 }, m.retainer); r.billed = Math.max(0, (+r.billed || 0) + (up ? 1 : -1)); m.retainer = r; touch(m); });
   toast(up ? 'Bill ' + m.retainer.billed + ' marked raised' : 'Undone');
 });
+
+/* find a matter by case number (number + year, punctuation ignored), crime number or party name */
+function caseKey(s) { const d = String(s || '').match(/(\d+)\s*(?:\/|of|-)\s*(\d{2,4})/i); if (!d) return ''; let y = d[2]; if (y.length === 2) y = '20' + y; return (+d[1]) + '/' + y; }
+function findByMatch(mt) {
+  if (!mt) return null;
+  const all = live();
+  const party = mt.party ? new RegExp(mt.party, 'i') : null;
+  let hits = [];
+  if (mt.caseNo) { const k = caseKey(mt.caseNo); hits = all.filter(m => k && caseKey(m.caseNo) === k); }
+  if (hits.length > 1 && party) hits = hits.filter(m => party.test((m.title || '') + ' ' + (m.clients || '')));
+  if (!hits.length && mt.crimeNo) { const k = caseKey(mt.crimeNo); hits = all.filter(m => k && caseKey(m.crimeNo) === k && (!party || party.test((m.title || '') + ' ' + (m.clients || '')))); }
+  if (!hits.length && mt.party && mt.partyOnly) hits = all.filter(m => party.test((m.title || '') + ' ' + (m.clients || '') + ' ' + (m.court || '')) && isOpen(m));
+  return hits.length === 1 ? hits[0] : null;
+}
