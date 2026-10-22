@@ -177,7 +177,7 @@ async function makeCauseList(day) {
     P('30 Amir Nagar, Near Aishbagh Railway Station, Lucknow-226004', { size: 20, align: CENTER }),
     P('Phone: 9554931312 ; Email:-saurabhmisra69@gmail.com', { size: 20, align: CENTER, after: 80, border: { bottom: { style: D.BorderStyle.SINGLE, size: 24, color: '000000', space: 6 } } }),
   ];
-  const W = [500, 650, 1700, 3076, 1600, 1500]; // twips, total 9026 (A4 with 1-inch margins)
+  const W = [500, 650, 1700, 3410, 1600, 1500]; // twips, total 9360 (legal size with 1-inch margins)
   const bd = { style: D.BorderStyle.SINGLE, size: 4, color: '7F7F7F' };
   const borders = { top: bd, bottom: bd, left: bd, right: bd };
   const cell = (text, w, o = {}) => new D.TableCell({ width: { size: w, type: D.WidthType.DXA }, borders, shading: o.fill ? { fill: o.fill, type: D.ShadingType.CLEAR, color: 'auto' } : undefined, columnSpan: o.span,
@@ -186,7 +186,7 @@ async function makeCauseList(day) {
   const head = new D.TableRow({ tableHeader: true, children: ['No.', 'Item', 'Case no.', 'Parties', 'Fixed for', 'Next date'].map((h, i) => cell(h, W[i], { bold: true, fill: 'D9D9D9', align: i < 2 ? CENTER : undefined })) });
   const rows = [head]; let n = 0;
   for (const [court, xs] of groups) {
-    rows.push(new D.TableRow({ cantSplit: true, children: [cell(court, 9026, { span: 6, bold: true, fill: 'F2F2F2' })] }));
+    rows.push(new D.TableRow({ cantSplit: true, children: [cell(court, 9360, { span: 6, bold: true, fill: 'F2F2F2' })] }));
     for (const m of xs) {
       n++;
       const caseTxt = [m.caseNo ? (m.type ? m.type + ' ' : '') + m.caseNo : (m.type || ''), m.crimeNo ? 'FIR ' + m.crimeNo + (m.ps ? ', PS ' + m.ps : '') : '', m.sections ? 'u/s ' + m.sections : ''].filter(Boolean).join('\n');
@@ -199,10 +199,10 @@ async function makeCauseList(day) {
     creator: 'Saurabh Misra', title: 'Cause List ' + dmy(day),
     styles: { default: { document: { run: { font: FONT, size: 22 } } } },
     sections: [{
-      properties: { titlePage: true, page: { size: { width: 11906, height: 16838 }, margin: { top: 1080, bottom: 1440, left: 1440, right: 1440, header: 500, footer: 500 } } },
+      properties: { titlePage: true, page: { size: { width: 12240, height: 20160 }, margin: { top: 1080, bottom: 1440, left: 1440, right: 1440, header: 500, footer: 500 } } },
       headers: {
         first: new D.Header({ children: [new D.Paragraph({ children: [] })] }),
-        default: new D.Header({ children: [new D.Paragraph({ alignment: CENTER, border: { bottom: { style: D.BorderStyle.SINGLE, size: 6, color: '000000', space: 4 } }, children: [new D.TextRun({ text: 'SAURABH MISRA, ADVOCATE', bold: true, size: 20, font: FONT }), new D.TextRun({ text: '\tCause List ' + dmy(day), size: 16, font: FONT, color: '7F7F7F' })], tabStops: [{ type: D.TabStopType.RIGHT, position: 9026 }] })] }),
+        default: new D.Header({ children: [new D.Paragraph({ alignment: CENTER, border: { bottom: { style: D.BorderStyle.SINGLE, size: 6, color: '000000', space: 4 } }, children: [new D.TextRun({ text: 'SAURABH MISRA, ADVOCATE', bold: true, size: 20, font: FONT }), new D.TextRun({ text: '\tCause List ' + dmy(day), size: 16, font: FONT, color: '7F7F7F' })], tabStops: [{ type: D.TabStopType.RIGHT, position: 9360 }] })] }),
       },
       footers: {
         first: new D.Footer({ children: [new D.Paragraph({ children: [] })] }),
@@ -214,7 +214,7 @@ async function makeCauseList(day) {
         P(DOWL[parseIso(day).getDay()] + ', ' + dmy(day), { bold: true, size: 22, align: CENTER, after: 60 }),
         smallGrey(n + ' matter' + (n === 1 ? '' : 's') + ' in ' + groups.length + ' court' + (groups.length === 1 ? '' : 's') + '. Prepared on ' + dmy(todayIso()) + '.', CENTER),
         new D.Paragraph({ spacing: { after: 160 }, children: [] }),
-        new D.Table({ width: { size: 9026, type: D.WidthType.DXA }, columnWidths: W, rows }),
+        new D.Table({ width: { size: 9360, type: D.WidthType.DXA }, columnWidths: W, rows }),
       ],
     }],
   });

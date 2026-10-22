@@ -179,10 +179,10 @@ async function makeDraft(m, key, lang, f) {
   const body = rows0.flatMap(([t, s]) => s === 'cb' ? P(t, { align: C, bold: true, u: true, after: 120 }) : s === 'c' ? P(t, { align: C, bold: true, after: 160 }) : P(t, T.own ? { align: D.AlignmentType.LEFT, indent: { left: 2160, hanging: 2160 } } : { indent: /^\d/.test(t) ? { left: 720, hanging: 720 } : undefined }));
   const today = dmy(todayIso());
   const sig = [
-    new D.Paragraph({ spacing: { before: 360 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: (hi ? 'लखनऊ' : 'Lucknow') + '\t(' + (hi ? HI_ADV : ADV.name) + ')', size: SZ, font: FONT, bold: true })] }),
-    new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: (hi ? 'दिनांक: ' : 'Dated: ') + today + '\t' + (hi ? 'अधिवक्ता' : 'Advocate'), size: SZ, font: FONT })] }),
-    new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: '\t' + (hi ? role + ' के अधिवक्ता' : 'Counsel for the ' + role), size: SZ, font: FONT })] }),
-    new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: '\t' + (hi ? 'पंजीकरण सं. ' : 'Enrolment No. ') + ADV.enrol, size: 22, font: FONT })] }),
+    new D.Paragraph({ spacing: { before: 360 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 8640 }], children: [new D.TextRun({ text: (hi ? 'लखनऊ' : 'Lucknow') + '\t(' + (hi ? HI_ADV : ADV.name) + ')', size: SZ, font: FONT, bold: true })] }),
+    new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 8640 }], children: [new D.TextRun({ text: (hi ? 'दिनांक: ' : 'Dated: ') + today + '\t' + (hi ? 'अधिवक्ता' : 'Advocate'), size: SZ, font: FONT })] }),
+    new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 8640 }], children: [new D.TextRun({ text: '\t' + (hi ? role + ' के अधिवक्ता' : 'Counsel for the ' + role), size: SZ, font: FONT })] }),
+    new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 8640 }], children: [new D.TextRun({ text: '\t' + (hi ? 'पंजीकरण सं. ' : 'Enrolment No. ') + ADV.enrol, size: 22, font: FONT })] }),
   ];
   // affidavit in support: added on its own pages whenever the application needs one
   const aff = [];
@@ -219,15 +219,15 @@ async function makeDraft(m, key, lang, f) {
       nAff = appParas.length + 1;
       lines.forEach(t => aff.push(...P(t)));
     } else paras.forEach(t => aff.push(...P(t)));
-    aff.push(new D.Paragraph({ spacing: { before: 240, after: 240 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: '\t' + (hi ? 'शपथकर्ता' : 'Deponent'), bold: true, size: SZ, font: FONT })] }));
+    aff.push(new D.Paragraph({ spacing: { before: 240, after: 240 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 8640 }], children: [new D.TextRun({ text: '\t' + (hi ? 'शपथकर्ता' : 'Deponent'), bold: true, size: SZ, font: FONT })] }));
     aff.push(...P(hi ? 'सत्यापन' : 'V E R I F I C A T I O N', { align: C, bold: true, u: true, after: 120 }));
     aff.push(...P(hi ? 'मैं, उपरोक्त नामित शपथकर्ता, सत्यापित करता हूँ कि इस शपथ पत्र के प्रस्तर 1 से ' + nAff + ' की बातें मेरे निजी ज्ञान से सत्य एवं सही हैं, इसका कोई भाग असत्य नहीं है और न ही कोई तथ्य छिपाया गया है। ईश्वर मेरी सहायता करे।'
       : 'I, the deponent above named, do hereby verify that the contents of paragraphs 1 to ' + nAff + ' of this affidavit are true to my personal knowledge' + (full ? ' and based on the record of the case, which I believe to be true' : '') + '; no part of it is false and nothing material has been concealed. So help me God.'));
     aff.push(...P(hi ? 'हस्ताक्षरित एवं सत्यापित दिनांक ____________ को लखनऊ में।' : 'Signed and verified this ____ day of ______________, ' + new Date().getFullYear() + ' at Lucknow.'));
-    aff.push(new D.Paragraph({ spacing: { before: 240, after: 240 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: '\t' + (hi ? 'शपथकर्ता' : 'Deponent'), bold: true, size: SZ, font: FONT })] }));
+    aff.push(new D.Paragraph({ spacing: { before: 240, after: 240 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 8640 }], children: [new D.TextRun({ text: '\t' + (hi ? 'शपथकर्ता' : 'Deponent'), bold: true, size: SZ, font: FONT })] }));
     aff.push(...P(hi ? 'मैं शपथकर्ता को पहचानता हूँ जिसने मेरे समक्ष हस्ताक्षर किए हैं।' : 'I identify the deponent who has signed before me.'));
-    aff.push(new D.Paragraph({ spacing: { before: 240 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: '\t(' + (hi ? HI_ADV : ADV.name) + ')', bold: true, size: SZ, font: FONT })] }));
-    aff.push(new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 9000 }], children: [new D.TextRun({ text: '\t' + (hi ? 'अधिवक्ता' : 'Advocate'), size: SZ, font: FONT })] }));
+    aff.push(new D.Paragraph({ spacing: { before: 240 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 8640 }], children: [new D.TextRun({ text: '\t(' + (hi ? HI_ADV : ADV.name) + ')', bold: true, size: SZ, font: FONT })] }));
+    aff.push(new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 8640 }], children: [new D.TextRun({ text: '\t' + (hi ? 'अधिवक्ता' : 'Advocate'), size: SZ, font: FONT })] }));
   }
   // documents attached as annexures follow the application, each from a new page
   const annex = [];
@@ -237,7 +237,7 @@ async function makeDraft(m, key, lang, f) {
     ax.images.forEach((im, k) => annex.push(new D.Paragraph({ alignment: C, pageBreakBefore: k > 0, children: [new D.ImageRun({ data: im.data, transformation: { width: im.w, height: im.h } })] })));
   });
   const doc = new D.Document({ creator: 'Saurabh Misra', styles: { default: { document: { run: { font: FONT, size: SZ } } } },
-    sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1440, bottom: 1440, left: 2160, right: 1440 } } }, children: [...head, ...body, ...sig, ...aff, ...annex] }] });
+    sections: [{ properties: { page: { size: { width: 12240, height: 20160 }, margin: { top: 1440, bottom: 1440, left: 2160, right: 1440 } } }, children: [...head, ...body, ...sig, ...aff, ...annex] }] });
   const blob = await D.Packer.toBlob(doc);
   const name = cleanName(today + ' ' + (hi ? T.hi : T.en)) + '.docx';
   let url = '';
@@ -327,7 +327,7 @@ function pickDoc(m, title, exts) {
 
 /* turn a picked paper into page images for an annexure */
 async function paperToImages(doc) {
-  const ext = (doc.name.split('.').pop() || '').toLowerCase(), out = [], W = 550, HMAX = 790;
+  const ext = (doc.name.split('.').pop() || '').toLowerCase(), out = [], W = 560, HMAX = 1000;
   const fit = (w, h) => { let ww = W, hh = Math.round(h * W / w); if (hh > HMAX) { hh = HMAX; ww = Math.round(w * HMAX / h); } return { w: ww, h: hh }; };
   if (ext === 'pdf') {
     const lib = await loadPdfLib(), pdf = await lib.getDocument({ data: await doc.blob.arrayBuffer() }).promise;
@@ -504,7 +504,7 @@ function sheetDraft(m, preset) {
 }
 document.addEventListener('click', e => { const el = e.target.closest('[data-act="draft"]'); if (el) sheetDraft(find(el.dataset.id)); });
 
-/* ---------- file cover: A4 sheet to paste on the physical file ---------- */
+/* ---------- file cover: legal-size sheet to paste on the physical file ---------- */
 async function makeCover(m) {
   const D = window.docx; if (!D) throw new Error('Word library still loading, try again');
   const FONT = 'Times New Roman', C = D.AlignmentType.CENTER, L = D.AlignmentType.LEFT;
