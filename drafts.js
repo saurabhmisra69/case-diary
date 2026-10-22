@@ -528,7 +528,7 @@ async function makeCover(m) {
   const W1 = 2600, W2 = 6426;
   const kv = list => new D.Table({ width: { size: W1 + W2, type: D.WidthType.DXA }, columnWidths: [W1, W2], borders,
     rows: list.map(([k, v]) => new D.TableRow({ children: [cell(k, { w: W1, bold: true, shade: 'EEF1F6' }), cell(v, { w: W2, size: 22 })] })) });
-  const dateRows = Math.max(12, 30 - rows.length - contacts.length);
+  const dateRows = Math.max(8, 27 - rows.length - contacts.length - (String(m.title || "").length > 70 ? 1 : 0));
   const DW = [1500, 5226, 1300, 1000];
   const dates = new D.Table({ width: { size: 9026, type: D.WidthType.DXA }, columnWidths: DW, borders,
     rows: [new D.TableRow({ tableHeader: true, children: ['Date', 'Proceedings', 'Next date', 'Item'].map((h, i) => cell(h, { w: DW[i], bold: true, shade: 'EEF1F6', align: C })) }),
