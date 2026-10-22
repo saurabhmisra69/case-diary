@@ -497,7 +497,7 @@ async function processInbox() {
               if (c.set) logDiff(m, { ...m }, c.set, c.from || 'automatic update');
               if (c.set) Object.assign(m, c.set);
               if (c.hearing) {
-                const h = c.hearing; m.hearings = m.hearings || []; m.hearings.push(h);
+                const h = c.hearing; m.hearings = m.hearings || []; const ph = m.hearings.find(x => x.date === h.date && x.happened === 'Listed'); if (ph) Object.assign(ph, h); else m.hearings.push(h); m.hearings.sort((x, y) => (x.date || '').localeCompare(y.date || ''));
                 m.lastDate = h.date || m.lastDate;
                 if (/dispos|decided/i.test(h.happened || '')) { m.status = h.status || 'Decided'; if (h.outcome) m.outcome = h.outcome; m.nextDate = ''; m.purpose = ''; }
                 else { m.nextDate = h.next || ''; m.purpose = h.purpose || ''; m.status = /reserved/i.test(h.happened || '') ? 'Reserved' : 'Pending'; }
