@@ -503,3 +503,76 @@ function sheetDraft(m, preset) {
   bind();
 }
 document.addEventListener('click', e => { const el = e.target.closest('[data-act="draft"]'); if (el) sheetDraft(find(el.dataset.id)); });
+
+/* ---------- file cover: A4 sheet to paste on the physical file ---------- */
+async function makeCover(m) {
+  const D = window.docx; if (!D) throw new Error('Word library still loading, try again');
+  const FONT = 'Times New Roman', C = D.AlignmentType.CENTER, L = D.AlignmentType.LEFT;
+  const run = (t, o = {}) => new D.TextRun({ text: String(t ?? ''), font: o.font || FONT, size: o.size || 22, bold: o.bold, color: o.color, allCaps: o.caps });
+  const para = (kids, o = {}) => new D.Paragraph({ alignment: o.align || L, spacing: { before: o.before || 0, after: o.after ?? 40 }, border: o.border, children: Array.isArray(kids) ? kids : [kids] });
+  const thin = { style: D.BorderStyle.SINGLE, size: 4, color: '7F7F7F' };
+  const borders = { top: thin, bottom: thin, left: thin, right: thin, insideHorizontal: thin, insideVertical: thin };
+  const cell = (t, o = {}) => new D.TableCell({ width: { size: o.w, type: D.WidthType.DXA }, shading: o.shade ? { fill: o.shade, type: D.ShadingType.CLEAR, color: 'auto' } : undefined,
+    margins: { top: 50, bottom: 50, left: 90, right: 90 }, verticalAlign: D.VerticalAlign.CENTER,
+    children: String(t ?? '').split('\n').map(line => para(run(line, { bold: o.bold, size: o.size || 21 }), { after: 0, align: o.align })) });
+  const pt = parties(m), fo = (FORUMS[m.forum] || {}).label || '';
+  const caseLine = [m.type, m.caseNo].filter(Boolean).join(' ');
+  const rows = [
+    ['Diary no.', m.no], ["Hon'ble Court", m.court || fo],
+    ['Case', caseLine], ['CNR', m.cnr], ['Filing no.', m.filingNo],
+    ['Crime / FIR', [m.crimeNo, m.sections ? 'u/s ' + m.sections : '', m.ps ? 'P.S. ' + m.ps : ''].filter(Boolean).join(', ')],
+    ['Parties', pt.first + (pt.second ? '\nv.\n' + pt.second : '')], ['Appearing for', m.side], ['Client(s)', m.clients],
+    ['Nature / Category', [m.nature, fo].filter(Boolean).join(' · ')],
+  ].filter(r => r[1]);
+  const contacts = [['Client mobile', m.phone], ['WhatsApp', m.whatsapp || (m.phone ? 'same as mobile' : '')], ['Alternate' + (m.altName ? ' (' + m.altName + ')' : ''), m.altPhone]].filter(r => r[1]);
+  const W1 = 2600, W2 = 6426;
+  const kv = list => new D.Table({ width: { size: W1 + W2, type: D.WidthType.DXA }, columnWidths: [W1, W2], borders,
+    rows: list.map(([k, v]) => new D.TableRow({ children: [cell(k, { w: W1, bold: true, shade: 'EEF1F6' }), cell(v, { w: W2, size: 22 })] })) });
+  const dateRows = Math.max(12, 30 - rows.length - contacts.length);
+  const DW = [1500, 5226, 1300, 1000];
+  const dates = new D.Table({ width: { size: 9026, type: D.WidthType.DXA }, columnWidths: DW, borders,
+    rows: [new D.TableRow({ tableHeader: true, children: ['Date', 'Proceedings', 'Next date', 'Item'].map((h, i) => cell(h, { w: DW[i], bold: true, shade: 'EEF1F6', align: C })) }),
+      ...Array.from({ length: dateRows }, () => new D.TableRow({ height: { value: 400, rule: D.HeightRule.ATLEAST }, children: DW.map(w => cell('', { w })) }))] });
+  const doc = new D.Document({ creator: 'Saurabh Misra', styles: { default: { document: { run: { font: FONT, size: 22 } } } },
+    sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 720, bottom: 720, left: 1440, right: 1440 } } }, children: [
+      para(run('SAURABH MISRA & ASSOCIATES', { bold: true, size: 32 }), { align: C, after: 0 }),
+      para(run('CHAMBERS OF SAURABH MISRA, ADVOCATE', { size: 18, bold: true }), { align: C, after: 0 }),
+      para(run(ADV.addr, { size: 18 }), { align: C, after: 0 }),
+      para(run('Mobile ' + ADV.phone + '  ·  ' + ADV.email, { size: 18 }), { align: C, after: 120, border: { bottom: { style: D.BorderStyle.SINGLE, size: 12, color: '1B2A4A', space: 4 } } }),
+      para(run('CASE FILE', { bold: true, size: 28 }), { align: C, before: 80, after: 120 }),
+      kv(rows),
+      ...(contacts.length ? [para(run('Contacts', { bold: true, size: 22 }), { before: 160, after: 60 }), kv(contacts)] : []),
+      para(run('Dates', { bold: true, size: 22 }), { before: 160, after: 60 }),
+      dates,
+      para(run('Printed ' + dmy(todayIso()) + ' from Case Diary', { size: 14, color: '7F7F7F' }), { align: D.AlignmentType.RIGHT, before: 80 }),
+    ] }] });
+  const blob = await D.Packer.toBlob(doc);
+  const name = cleanName('File cover ' + m.no.replace('/', '-') + ' ' + (m.title || m.clients || '').slice(0, 60)) + '.docx';
+  let itemId = '', parentId = '';
+  if (m.folderId) { try { const it = await uploadFile(m.folderId, new File([blob], name), name); itemId = it.id; parentId = m.folderId; } catch (e) {} }
+  return { blob, name, itemId, parentId };
+}
+async function sheetCover(m) {
+  openSheet(`<div class="s-head"><div><small>${esc(m.no)} · file cover</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div><p class="hint">Making the A4 cover…</p>`);
+  let r; try { r = await makeCover(m); } catch (e) { closeSheet(); toast(e.message); return; }
+  openSheet(`<div class="s-head"><div><small>${esc(m.no)} · file cover</small><h1>Ready to print</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    <p class="hint">${esc(r.name)}${r.itemId ? ' · saved in the case folder' : ''}. A4 page: chamber header, case details, contacts and a ruled table for dates.</p>
+    <div class="three"><button class="act primary" data-cv="open">Open in Word</button><button class="act blue" data-cv="pdf">PDF to print</button><button class="act blue" data-cv="share">Share</button></div>
+    <button class="ghost" data-cv="dl" style="width:100%;margin-top:8px">Download</button>`);
+  $('#sheet-root').onclick = async e => {
+    const b = e.target.closest('[data-cv]'); if (!b) return;
+    const a = b.dataset.cv;
+    const dl = (blob, n) => { const x = document.createElement('a'); x.href = URL.createObjectURL(blob); x.download = n; document.body.appendChild(x); x.click(); x.remove(); };
+    if (a === 'open') { if (r.itemId) { try { openNative(await getItem(r.itemId)); } catch (er) { dl(r.blob, r.name); } } else { dl(r.blob, r.name); toast('Downloaded; open it in Word to print'); } }
+    else if (a === 'dl') { dl(r.blob, r.name); toast('Saved to Downloads'); }
+    else if (a === 'pdf') {
+      if (!r.itemId) return toast('PDF needs the matter folder linked; use Download and print from Word');
+      b.textContent = 'Making PDF…';
+      try { const p = await g('/me/drive/items/' + r.itemId + '/content?format=pdf'); if (!p.ok) throw new Error('OneDrive ' + p.status); const pb = await p.blob(); const u = URL.createObjectURL(pb); window.open(u, '_blank') || dl(pb, r.name.replace(/\.docx$/, '.pdf')); }
+      catch (er) { toast('Could not make the PDF: ' + er.message); }
+      b.textContent = 'PDF to print';
+    }
+    else if (a === 'share') { const f = new File([r.blob], r.name, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }); if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f], title: r.name }); } catch (er) {} } else { dl(r.blob, r.name); } }
+  };
+}
+document.addEventListener('click', e => { const el = e.target.closest('[data-act="cover"]'); if (el) { const m = find(el.dataset.id); if (m) sheetCover(m); } });
