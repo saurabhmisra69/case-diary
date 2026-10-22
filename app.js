@@ -260,6 +260,22 @@ const needsDate = m => m.forum !== 'Advisory' && (m.status === 'Pending') && (!m
 const feeDue = m => Math.max(0, num(m.feeAgreed) - num(m.feeReceived));
 const onDay = day => live().filter(m => m.nextDate === day && isOpen(m));
 const doneOn = day => live().filter(m => (m.hearings || []).some(h => h.date === day));
+/* keep every listing: when a matter's next date is replaced, the old date goes into Hearing history */
+function logListing(m, oldDate, newDate, how) {
+  if (!oldDate || oldDate === newDate || oldDate > todayIso()) return;
+  m.hearings = m.hearings || [];
+  const ex = m.hearings.find(h => h.date === oldDate); if (ex) { if (!ex.next && newDate) ex.next = newDate; return; }
+  m.hearings.push({ date: oldDate, happened: 'Listed', next: newDate || '', purpose: m.purpose || '', item: m.item || '', court: m.court || '', note: how || '' });
+  m.hearings.sort((x, y) => (x.date || '').localeCompare(y.date || ''));
+  if (!m.lastDate || oldDate > m.lastDate) m.lastDate = oldDate;
+}
+function logPast(m, date, how) {
+  if (!date || date > todayIso()) return;
+  m.hearings = m.hearings || [];
+  if (m.hearings.some(h => h.date === date)) return;
+  m.hearings.push({ date, happened: 'Listed', note: how || '' });
+  m.hearings.sort((x, y) => (x.date || '').localeCompare(y.date || ''));
+}
 const waOf = m => phoneDigits(m.whatsapp) || phoneDigits(m.phone);
 function phoneDigits(p) { let d = String(p || '').replace(/\D/g, ''); if (d.length === 10) d = '91' + d; if (d.length === 11 && d[0] === '0') d = '91' + d.slice(1); return d.length >= 11 ? d : ''; }
 function matches(m, q) {
@@ -518,6 +534,8 @@ function sheetEdit(m) {
       const old = find(m.id); const before = { caseNo: old.caseNo, type: old.type, court: old.court };
       change(() => {
         if (old.year !== fd.year) { old.n = nextNumber(fd.year); old.no = fd.year + '/' + old.n; }
+        if (fd.nextDate !== old.nextDate) logListing(old, old.nextDate, fd.nextDate, 'date changed in Edit');
+        if (fd.lastDate && fd.lastDate !== old.lastDate) logPast(old, fd.lastDate, 'last date entered in Edit');
         if (old.nextDate !== fd.nextDate || old.status !== fd.status || old.purpose !== fd.purpose || old.court !== fd.court) old.calPending = true;
         Object.assign(old, fd); touch(old);
       });

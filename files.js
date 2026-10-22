@@ -490,6 +490,8 @@ async function processInbox() {
               if (!m) continue;
               if (c.lastDate && (!m.lastDate || c.lastDate > m.lastDate)) m.lastDate = c.lastDate;
               if (c.fill) for (const [k, v] of Object.entries(c.fill)) if (!m[k]) m[k] = v;
+              if (c.lastDate) logPast(m, c.lastDate, 'from ' + (c.from || 'diary update'));
+              if (c.set && 'nextDate' in c.set && c.set.nextDate !== m.nextDate) logListing(m, m.nextDate, c.set.nextDate, c.from || 'updated automatically');
               if (c.set) Object.assign(m, c.set);
               if (c.hearing) {
                 const h = c.hearing; m.hearings = m.hearings || []; m.hearings.push(h);
@@ -596,6 +598,19 @@ ONE_TIME_FIXES.push({ id: '2026-10-21-baghel-writ-308-decided',
 function runOneTimeFixes() {
   if (!S.data || !S.account) return;
   const done = S.data.fixes || [];
+  if (!done.includes('2026-10-22-history-backfill')) {
+    let n = 0;
+    change(d => {
+      for (const m of live()) {
+        const before = (m.hearings || []).length;
+        if (m.lastDate) logPast(m, m.lastDate, 'last date (added to history)');
+        if (m.nextDate && m.nextDate < todayIso()) logPast(m, m.nextDate, 'listed; outcome not yet recorded');
+        if ((m.hearings || []).length !== before) { n++; touch(m); }
+      }
+      d.fixes = [...(d.fixes || []), '2026-10-22-history-backfill'];
+    });
+    if (n) toast('Hearing history filled in for ' + n + ' matter' + (n > 1 ? 's' : ''), 4000);
+  }
   for (const fx of ONE_TIME_FIXES) {
     if (done.includes(fx.id)) continue;
     let hits = live().filter(fx.find);
