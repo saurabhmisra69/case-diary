@@ -492,6 +492,7 @@ async function processInbox() {
               if (!m) continue;
               if (c.lastDate && (!m.lastDate || c.lastDate > m.lastDate)) m.lastDate = c.lastDate;
               if (c.fill) for (const [k, v] of Object.entries(c.fill)) if (!m[k]) m[k] = v;
+              if (c.unhearing) m.hearings = (m.hearings || []).filter(h => !(h.date === c.unhearing.date && h.happened === c.unhearing.happened && /eCourts/.test(h.note || '')));
               if (c.lastDate) logPast(m, c.lastDate, 'from ' + (c.from || 'diary update'));
               if (c.set && 'nextDate' in c.set && c.set.nextDate !== m.nextDate) logListing(m, m.nextDate, c.set.nextDate, c.from || 'updated automatically');
               if (c.set) logDiff(m, { ...m }, c.set, c.from || 'automatic update');
