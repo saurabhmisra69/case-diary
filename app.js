@@ -17,6 +17,7 @@ const FORUMS = {
   District: { label: 'District courts',   c: 'var(--dc)', soft: 'var(--dc-soft)', ink: 'var(--dc-ink)' },
   Tribunal: { label: 'Tribunal (AFT/DRT/RERA)', c: 'var(--tr)', soft: 'var(--tr-soft)', ink: 'var(--tr-ink)' },
   Consumer: { label: 'Consumer commission', c: 'var(--co)', soft: 'var(--co-soft)', ink: 'var(--co-ink)' },
+  Family:   { label: 'Family Court',      c: 'var(--fam)', soft: 'var(--fam-soft)', ink: 'var(--fam-ink)' },
   Revenue:  { label: 'Revenue court',     c: 'var(--rv)', soft: 'var(--rv-soft)', ink: 'var(--rv-ink)' },
   Advisory: { label: 'Advisory / Pre-litigation', c: 'var(--adv)', soft: 'var(--adv-soft)', ink: 'var(--adv-ink)' },
 };
@@ -389,7 +390,7 @@ function viewHome() {
   </main>`;
 }
 function groupByCourt(ms) {
-  const order = ['HC', 'Tribunal', 'Consumer', 'District', 'Revenue', 'Advisory'];
+  const order = ['HC', 'Tribunal', 'Consumer', 'Family', 'District', 'Revenue', 'Advisory'];
   const map = new Map();
   [...ms].sort((a, b) => (order.indexOf(a.forum) - order.indexOf(b.forum)) || (num(a.item) - num(b.item))).forEach(m => {
     const k = m.court || forumOf(m).label; if (!map.has(k)) map.set(k, []); map.get(k).push(m);
