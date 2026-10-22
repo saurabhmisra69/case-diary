@@ -207,7 +207,7 @@ async function writeExcel() {
     'Type': m.type, 'Case no.': m.caseNo, 'Crime / FIR no.': m.crimeNo, 'Police station': m.ps, 'Sections': m.sections,
     'Nature': m.nature, 'Appearing for': m.side, 'Status': m.status, 'Last date': dmy(m.lastDate), 'Next date': dmy(m.nextDate),
     'Fixed for': m.purpose, 'Item': m.item, 'Fees agreed': num(m.feeAgreed), 'Fees received': num(m.feeReceived),
-    'Balance': Math.max(0, num(m.feeAgreed) - num(m.feeReceived)), 'Client phone': m.phone, 'WhatsApp': m.whatsapp || '', 'Alternate contact': [m.altName, m.altPhone].filter(Boolean).join(' '), 'Deadline': dmy(m.deadline), 'Deadline for': m.deadlineFor, 'OneDrive folder': m.folderPath || '', 'Notes': m.notes,
+    'Balance': Math.max(0, num(m.feeAgreed) - num(m.feeReceived)), 'CNR': m.cnr || '', 'Filing no.': m.filingNo || '', 'Client phone': m.phone, 'WhatsApp': m.whatsapp || '', 'Alternate contact': [m.altName, m.altPhone].filter(Boolean).join(' '), 'Deadline': dmy(m.deadline), 'Deadline for': m.deadlineFor, 'OneDrive folder': m.folderPath || '', 'Notes': m.notes,
   }));
   const hist = [];
   for (const m of ms) for (const h of (m.hearings || [])) hist.push({ 'Matter No.': m.no, 'Title': m.title, 'Date': dmy(h.date), 'What happened': h.happened, 'Next date': dmy(h.next), 'Fixed for': h.purpose, 'Note': h.note });
@@ -265,7 +265,7 @@ function logChange(m, text) {
   const now = new Date(), stamp = todayIso() + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
   m.changes = (m.changes || []).concat([{ at: stamp, t: text }]).slice(-60);
 }
-const FIELD_NAMES = { title: 'Title', clients: 'Client', forum: 'Category', court: "Hon'ble Court", type: 'Type', caseNo: 'Case no.', crimeNo: 'Crime no.', ps: 'Police station', sections: 'Sections', side: 'Appearing for', nextDate: 'Next date', item: 'Item', purpose: 'Fixed for', status: 'Status', outcome: 'Result', feeAgreed: 'Fees agreed', feeReceived: 'Fees received', phone: 'Mobile', whatsapp: 'WhatsApp', altName: 'Alternate contact', altPhone: 'Alternate mobile', deadline: 'Deadline', notes: 'Notes' };
+const FIELD_NAMES = { title: 'Title', clients: 'Client', forum: 'Category', court: "Hon'ble Court", type: 'Type', caseNo: 'Case no.', crimeNo: 'Crime no.', cnr: 'CNR', filingNo: 'Filing no.', ps: 'Police station', sections: 'Sections', side: 'Appearing for', nextDate: 'Next date', item: 'Item', purpose: 'Fixed for', status: 'Status', outcome: 'Result', feeAgreed: 'Fees agreed', feeReceived: 'Fees received', phone: 'Mobile', whatsapp: 'WhatsApp', altName: 'Alternate contact', altPhone: 'Alternate mobile', deadline: 'Deadline', notes: 'Notes' };
 function logDiff(m, before, after, how) {
   const bits = [];
   for (const k of Object.keys(FIELD_NAMES)) {
@@ -297,7 +297,7 @@ const waOf = m => phoneDigits(m.whatsapp) || phoneDigits(m.phone);
 function phoneDigits(p) { let d = String(p || '').replace(/\D/g, ''); if (d.length === 10) d = '91' + d; if (d.length === 11 && d[0] === '0') d = '91' + d.slice(1); return d.length >= 11 ? d : ''; }
 function matches(m, q) {
   q = q.toLowerCase().trim(); if (!q) return true;
-  const hay = [m.no, m.title, m.clients, m.caseNo, m.crimeNo, m.ps, m.court, m.sections, m.type, m.side, m.item, m.phone, m.whatsapp, m.altPhone, m.altName, m.folderName, m.purpose, m.notes].join(' ').toLowerCase();
+  const hay = [m.no, m.title, m.clients, m.caseNo, m.crimeNo, m.ps, m.court, m.sections, m.type, m.side, m.item, m.cnr, m.filingNo, m.phone, m.whatsapp, m.altPhone, m.altName, m.folderName, m.purpose, m.notes].join(' ').toLowerCase();
   const flat = s => s.replace(/[^a-z0-9\u0900-\u097f]/g, ''), hayFlat = flat(hay);
   // every word must match; "2787/2024", "2787-2024" and "27872024" all find the same case
   return q.split(/\s+/).every(w => hay.includes(w) || (flat(w) && hayFlat.includes(flat(w))));
@@ -508,7 +508,7 @@ function sheetEdit(m) {
   const isNew = !m;
   const y = new Date().getFullYear();
   m = m || { year: y, forum: 'HC', status: 'Pending', nature: 'Criminal' };
-  const opt = (arr, v) => arr.map(x => `<option ${x === v ? 'selected' : ''}>${esc(x)}</option>`).join('');
+  const opt = (arr, v) => (v && !arr.includes(v) ? `<option selected>${esc(v)}</option>` : '') + arr.map(x => `<option ${x === v ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const fopt = Object.entries(FORUMS).map(([k, f]) => `<option value="${k}" ${k === m.forum ? 'selected' : ''}>${f.label}</option>`).join('');
   const fld = (id, label, val, type = 'text', extra = '') => `<div class="field"><label for="f_${id}">${label}</label><input class="in" id="f_${id}" name="${id}" type="${type}" value="${esc(val || '')}" ${extra}></div>`;
   openSheet(`<div class="s-head"><div><small style="color:var(--hc)">${isNew ? 'New matter' : 'Edit ' + esc(m.no)}</small><h1>${isNew ? 'Add a matter' : esc(m.title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
@@ -519,6 +519,8 @@ function sheetEdit(m) {
     ${fld('court', 'Court', m.court, 'text', 'list="courts" placeholder="e.g. High Court, Lucknow Bench · Court 7"')}
     <datalist id="courts">${[...new Set(live().map(x => x.court).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('')}</datalist>
     <div class="two"><div class="field"><label for="f_type">Type</label><select class="in" id="f_type" name="type"><option value=""></option>${opt(TYPES, m.type)}</select></div>${fld('caseNo', 'Case no.', m.caseNo, 'text', 'placeholder="e.g. 8027/2026"')}</div>
+    ${fld('cnr', 'CNR no.', m.cnr, 'text', 'placeholder="16 characters, e.g. UPHC020344252026" style="text-transform:uppercase;font-family:var(--mono);letter-spacing:.03em" autocapitalize="characters" spellcheck="false"')}
+    <div class="two">${fld('filingNo', 'Filing no.', m.filingNo)}<span></span></div>
     <div class="two">${fld('crimeNo', 'Crime / FIR no.', m.crimeNo)}${fld('ps', 'Police station', m.ps)}</div>
     ${fld('sections', 'Under section(s)', m.sections)}
     <div class="two"><div class="field"><label for="f_nature">Nature</label><select class="in" id="f_nature" name="nature">${opt(['Criminal', 'Civil', 'Other'], m.nature)}</select></div><div class="field"><label for="f_status">Status</label><select class="in" id="f_status" name="status">${opt(statusList(m), m.status)}</select></div></div>
@@ -541,6 +543,7 @@ function sheetEdit(m) {
     for (const k in fd) fd[k] = String(fd[k]).trim();
     fd.year = parseInt(fd.year, 10) || y;
     if (!fd.title) fd.title = fd.clients;
+    if (fd.cnr) fd.cnr = fd.cnr.toUpperCase().replace(/\s+/g, '');
     if (isNew) {
       const rec = touch({ id: uid(), n: nextNumber(fd.year), hearings: [], created: todayIso(), ...fd });
       rec.no = rec.year + '/' + rec.n;
