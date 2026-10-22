@@ -516,7 +516,9 @@ async function makeCover(m) {
     margins: { top: 50, bottom: 50, left: 90, right: 90 }, verticalAlign: D.VerticalAlign.CENTER,
     children: String(t ?? '').split('\n').map(line => para(run(line, { bold: o.bold, size: o.size || 21 }), { after: 0, align: o.align })) });
   const pt = parties(m), fo = (FORUMS[m.forum] || {}).label || '';
-  const caseLine = [m.type, m.caseNo].filter(Boolean).join(' ');
+  const PROV = { '482': 'U/S 482 Cr.P.C.', '528 BNSS': 'U/S 528 B.N.S.S.', '138 NI': 'U/S 138 N.I. Act', '125': 'U/S 125 Cr.P.C.' };
+  const prov = PROV[String(m.type || '').trim()] || m.type || '';
+  const caseLine = [m.caseNo, prov].filter(Boolean).join('; ');
   const rows = [
     ['Diary no.', m.no], ["Hon'ble Court", m.court || fo],
     ['Case', caseLine], ['CNR', m.cnr], ['Filing no.', m.filingNo],
