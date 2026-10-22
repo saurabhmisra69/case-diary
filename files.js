@@ -602,6 +602,7 @@ ONE_TIME_FIXES.push({ id: '2026-10-21-baghel-writ-308-decided',
     m.hearings = m.hearings || []; if (!m.hearings.some(h => /withdrawn/i.test(h.note || h.happened || ''))) m.hearings.push({ date: todayIso(), happened: 'Decided', note: 'Writ petition dismissed as withdrawn by the petitioner (Baghel). Folder kept with Anuj Gupta\'s matters: papers may be needed in his other cases.' });
     m.keepFolder = true; },
   label: 'Baghel writ (FIR 308): Decided · In our favour. Folder left in place.' });
+ONE_TIME_FIXES.push({ id: '2026-10-23-family-court-undo', find: m => m.forum === 'Family', apply: m => { m.forum = 'District'; }, label: 'Family Court case moved back to District courts' });
 function runOneTimeFixes() {
   if (!S.data || !S.account) return;
   const done = S.data.fixes || [];
