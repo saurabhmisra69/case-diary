@@ -114,7 +114,7 @@ function sheetPay(m) {
       <div class="field"><label>MODE</label><div class="chips">${['Cash', 'UPI', 'Bank transfer', 'Cheque'].map((x, i) => `<label class="chip radio"><input type="radio" name="mode" value="${x}" ${i === 1 ? 'checked' : ''}>${x}</label>`).join('')}</div></div>
       ${!num(m.feeAgreed) ? `<div class="field"><label for="p_agreed">FEES AGREED FOR THIS MATTER (₹, optional)</label><input class="in" id="p_agreed" name="agreed" inputmode="numeric"></div>` : ''}
       <div class="field"><label for="p_note">NOTE</label><input class="in" id="p_note" name="note" placeholder="e.g. for filing of writ"></div>
-      ${phoneDigits(m.phone) ? '<div class="toggles"><label><span>Send acknowledgement on WhatsApp</span><input type="checkbox" name="wa" checked></label></div>' : ''}
+      ${waOf(m) ? '<div class="toggles"><label><span>Send acknowledgement on WhatsApp</span><input type="checkbox" name="wa" checked></label></div>' : ''}
       <button class="save" type="submit">Save payment</button>
     </form>`);
   $('#payform').onsubmit = e => {
@@ -129,10 +129,10 @@ function sheetPay(m) {
       touch(m);
     });
     closeSheet(); toast('Payment of ' + rupees(amt) + ' recorded');
-    if (fd.wa && phoneDigits(m.phone)) {
+    if (fd.wa && waOf(m)) {
       const bal = feeDue(m);
       const txt = `Namaste.\nReceived with thanks ${rupees(amt)} on ${dmy(fd.date)}${fd.mode ? ' by ' + fd.mode : ''} towards professional fees in your matter: ${m.title}${m.caseNo ? ' (' + m.caseNo + ')' : ''}.${num(m.feeAgreed) ? '\nBalance: ' + (bal ? rupees(bal) : 'Nil') + '.' : ''}\n\nSaurabh Misra, Advocate`;
-      window.open('https://wa.me/' + phoneDigits(m.phone) + '?text=' + encodeURIComponent(txt), '_blank');
+      window.open('https://wa.me/' + waOf(m) + '?text=' + encodeURIComponent(txt), '_blank');
     }
   };
 }

@@ -207,7 +207,7 @@ async function writeExcel() {
     'Type': m.type, 'Case no.': m.caseNo, 'Crime / FIR no.': m.crimeNo, 'Police station': m.ps, 'Sections': m.sections,
     'Nature': m.nature, 'Appearing for': m.side, 'Status': m.status, 'Last date': dmy(m.lastDate), 'Next date': dmy(m.nextDate),
     'Fixed for': m.purpose, 'Item': m.item, 'Fees agreed': num(m.feeAgreed), 'Fees received': num(m.feeReceived),
-    'Balance': Math.max(0, num(m.feeAgreed) - num(m.feeReceived)), 'Client phone': m.phone, 'Deadline': dmy(m.deadline), 'Deadline for': m.deadlineFor, 'OneDrive folder': m.folderPath || '', 'Notes': m.notes,
+    'Balance': Math.max(0, num(m.feeAgreed) - num(m.feeReceived)), 'Client phone': m.phone, 'WhatsApp': m.whatsapp || '', 'Alternate contact': [m.altName, m.altPhone].filter(Boolean).join(' '), 'Deadline': dmy(m.deadline), 'Deadline for': m.deadlineFor, 'OneDrive folder': m.folderPath || '', 'Notes': m.notes,
   }));
   const hist = [];
   for (const m of ms) for (const h of (m.hearings || [])) hist.push({ 'Matter No.': m.no, 'Title': m.title, 'Date': dmy(h.date), 'What happened': h.happened, 'Next date': dmy(h.next), 'Fixed for': h.purpose, 'Note': h.note });
@@ -260,10 +260,11 @@ const needsDate = m => m.forum !== 'Advisory' && (m.status === 'Pending') && (!m
 const feeDue = m => Math.max(0, num(m.feeAgreed) - num(m.feeReceived));
 const onDay = day => live().filter(m => m.nextDate === day && isOpen(m));
 const doneOn = day => live().filter(m => (m.hearings || []).some(h => h.date === day));
+const waOf = m => phoneDigits(m.whatsapp) || phoneDigits(m.phone);
 function phoneDigits(p) { let d = String(p || '').replace(/\D/g, ''); if (d.length === 10) d = '91' + d; if (d.length === 11 && d[0] === '0') d = '91' + d.slice(1); return d.length >= 11 ? d : ''; }
 function matches(m, q) {
   q = q.toLowerCase().trim(); if (!q) return true;
-  const hay = [m.no, m.title, m.clients, m.caseNo, m.crimeNo, m.ps, m.court, m.sections, m.type, m.side, m.item, m.phone, m.folderName, m.purpose, m.notes].join(' ').toLowerCase();
+  const hay = [m.no, m.title, m.clients, m.caseNo, m.crimeNo, m.ps, m.court, m.sections, m.type, m.side, m.item, m.phone, m.whatsapp, m.altPhone, m.altName, m.folderName, m.purpose, m.notes].join(' ').toLowerCase();
   const flat = s => s.replace(/[^a-z0-9\u0900-\u097f]/g, ''), hayFlat = flat(hay);
   // every word must match; "2787/2024", "2787-2024" and "27872024" all find the same case
   return q.split(/\s+/).every(w => hay.includes(w) || (flat(w) && hayFlat.includes(flat(w))));
@@ -380,7 +381,7 @@ function itemBox(m) {
 }
 function metaLine(m) { return [m.caseNo ? (m.type ? m.type + ' ' : '') + m.caseNo : m.type, m.crimeNo ? 'FIR ' + m.crimeNo + (m.ps ? ', PS ' + m.ps : '') : '', m.side ? 'for ' + m.side : ''].filter(Boolean).join(' · '); }
 function matterCard(m) {
-  const wa = phoneDigits(m.phone);
+  const wa = waOf(m);
   return `<article class="card matter">
     <div class="m-top">${itemBox(m)}<div class="m-col" data-act="open" data-id="${m.id}" style="cursor:pointer">
       <span class="m-title">${esc(m.title || m.clients)}</span>
@@ -465,7 +466,7 @@ function sheetDetail(m) {
   const hist = [...(m.hearings || [])].reverse();
   openSheet(`<div class="s-head"><div><small style="color:${f.ink}">${esc(m.no)} · ${esc(m.court || f.label)}</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <div class="kv">${row('Client(s)', m.clients)}${row('Status', m.status)}${row('Type', m.type)}${row('Case no.', m.caseNo)}${row('Crime / FIR', m.crimeNo)}${row('Police station', m.ps)}${row('Sections', m.sections)}${row('Nature', m.nature)}${row('Appearing for', m.side)}${row('Last date', dmy(m.lastDate))}${row('Next date', dmy(m.nextDate))}${row('Fixed for', m.purpose)}${row('Item', m.item)}${row('Deadline', m.deadline ? dmy(m.deadline) + (m.deadlineFor ? ' · ' + m.deadlineFor : '') + (m.deadlineDone ? ' (done)' : '') : '')}${row('Fees', m.feeAgreed ? rupees(m.feeAgreed) + ' agreed · ' + rupees(m.feeReceived) + ' received' : '')}${row('Client phone', m.phone)}${row('Notes', m.notes)}</div>
-    <div class="acts" style="grid-template-columns:1fr 1fr 1fr"><button class="act primary" data-act="record" data-id="${m.id}">Next date</button><button class="act blue" data-act="edit" data-id="${m.id}">Edit</button><button class="act wa" data-act="wa" data-id="${m.id}" ${phoneDigits(m.phone) ? '' : 'disabled'}>${I.wa}Client</button></div>
+    <div class="acts" style="grid-template-columns:1fr 1fr 1fr"><button class="act primary" data-act="record" data-id="${m.id}">Next date</button><button class="act blue" data-act="edit" data-id="${m.id}">Edit</button><button class="act wa" data-act="wa" data-id="${m.id}" ${waOf(m) ? '' : 'disabled'}>${I.wa}Client</button></div>
     ${m.deadline && !m.deadlineDone ? `<button class="ghost" data-act="deadlinedone" data-id="${m.id}">Mark deadline as done</button>` : ''}
     <div class="grp"><span class="lbl">Hearing history</span>${hist.length ? `<div class="hist">${hist.map(h => `<div><b>${dmy(h.date)}</b><span><b style="font-family:inherit">${esc(h.happened)}</b>${h.next ? ' → ' + dmy(h.next) : ''}${h.purpose ? ' · ' + esc(h.purpose) : ''}${h.note ? '<br><span style="color:var(--muted)">' + esc(h.note) + '</span>' : ''}</span></div>`).join('')}</div>` : '<span style="color:var(--muted);font-size:14px">No hearings recorded yet.</span>'}</div>`);
 }
@@ -494,7 +495,8 @@ function sheetEdit(m) {
     ${fld('purpose', 'Fixed for', m.purpose, 'text', 'list="ff"')}<datalist id="ff">${FIXED_FOR.map(x => `<option value="${x}">`).join('')}</datalist>
     <div class="two">${fld('deadline', 'Deadline', m.deadline, 'date')}${fld('deadlineFor', 'Deadline for', m.deadlineFor, 'text', 'placeholder="e.g. Reply, Appeal"')}</div>
     <div class="two">${fld('feeAgreed', 'Fees agreed (₹)', m.feeAgreed, 'text', 'inputmode="numeric"')}${fld('feeReceived', 'Fees received (₹)', m.feeReceived, 'text', 'inputmode="numeric"')}</div>
-    ${fld('phone', 'Client mobile (for WhatsApp)', m.phone, 'tel', 'placeholder="10-digit mobile"')}
+    <div class="two">${fld('phone', 'Client mobile', m.phone, 'tel', 'placeholder="10-digit mobile"')}${fld('whatsapp', 'WhatsApp no. (if different)', m.whatsapp, 'tel', 'placeholder="blank = same as mobile"')}</div>
+    <div class="two">${fld('altName', 'Alternate contact – name', m.altName, 'text', 'placeholder="e.g. son, pairokar"')}${fld('altPhone', 'Alternate mobile', m.altPhone, 'tel', 'placeholder="10-digit mobile"')}</div>
     <div class="field"><label for="f_notes">Notes</label><textarea class="in" id="f_notes" name="notes">${esc(m.notes || '')}</textarea></div>
     <button class="save" type="submit">${isNew ? 'Add matter' : 'Save changes'}</button>
     ${isNew ? '' : `<button class="ghost" type="button" data-act="del" data-id="${m.id}" style="color:var(--red)">Remove from diary</button>`}
@@ -526,7 +528,7 @@ function sheetEdit(m) {
 
 function sheetRecord(m, pre) {
   const t = todayIso();
-  const R = Object.assign({ happened: 'Adjourned', next: '', purpose: m.purpose || '', note: '', wa: !!phoneDigits(m.phone), cal: true }, pre || {});
+  const R = Object.assign({ happened: 'Adjourned', next: '', purpose: m.purpose || '', note: '', wa: !!waOf(m), cal: true }, pre || {});
   const f = forumOf(m);
   const base = m.nextDate && m.nextDate > t ? t : (m.nextDate || t);
   const quick = [['+1 week', skipSunday(addDays(base, 7))], ['+2 weeks', skipSunday(addDays(base, 14))], ['+1 month', skipSunday(addMonths(base, 1))]];
@@ -547,7 +549,7 @@ function sheetRecord(m, pre) {
       <input class="in" data-r="purposeText" value="${esc(FIXED_FOR.includes(R.purpose) ? '' : R.purpose)}" placeholder="Or type, e.g. Cross of PW2"></div>`}
     <div class="field"><label for="r_note">NOTE (TYPE OR SPEAK)</label><div style="display:flex;gap:8px"><textarea class="in" id="r_note" data-r="note" style="flex:1">${esc(R.note)}</textarea><button class="ghost" data-r="mic" aria-label="Dictate note" style="width:56px;background:var(--saffron-soft);color:var(--saffron-ink);border:0">${I.mic}</button></div></div>
     <div class="toggles">
-      <label><span>Tell client on WhatsApp${phoneDigits(m.phone) ? '' : ' <small style="color:var(--muted)">(no mobile saved)</small>'}</span><input type="checkbox" data-r="wa" ${R.wa ? 'checked' : ''} ${phoneDigits(m.phone) ? '' : 'disabled'}></label>
+      <label><span>Tell client on WhatsApp${waOf(m) ? '' : ' <small style="color:var(--muted)">(no WhatsApp no. saved)</small>'}</span><input type="checkbox" data-r="wa" ${R.wa ? 'checked' : ''} ${waOf(m) ? '' : 'disabled'}></label>
       <label><span>Remind me the evening before (Outlook)</span><input type="checkbox" data-r="cal" ${R.cal ? 'checked' : ''}></label>
     </div>
     <button class="save" data-r="save" ${(!R.next && !closing && R.happened !== 'Reserved') ? 'disabled' : ''}>Save${R.next && !closing ? ' · next date ' + dmy(R.next) : ''}</button>`);
@@ -599,7 +601,7 @@ function sheetRecord(m, pre) {
     closeSheet(); root.onclick = root.oninput = root.onchange = null;
     toast(closing ? 'Recorded · matter marked Decided' : 'Saved · next date ' + dmy(R.next));
     if (R.deadline) change(() => { m.deadline = R.deadline; m.deadlineFor = R.deadlineFor || 'Direction in order'; m.deadlineDone = false; touch(m); });
-    if (R.wa && phoneDigits(m.phone)) sendWa(m, R);
+    if (R.wa && waOf(m)) sendWa(m, R);
     if (typeof R.after === 'function') setTimeout(R.after, 350);
   }
 }
@@ -614,7 +616,7 @@ function waText(m, R) {
   lines.push('', 'Saurabh Misra, Advocate');
   return lines.join('\n');
 }
-function sendWa(m, R) { const p = phoneDigits(m.phone); if (p) window.open('https://wa.me/' + p + '?text=' + encodeURIComponent(waText(m, R)), '_blank'); }
+function sendWa(m, R) { const p = waOf(m); if (p) window.open('https://wa.me/' + p + '?text=' + encodeURIComponent(waText(m, R)), '_blank'); }
 
 function dictate(ta) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
