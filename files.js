@@ -158,6 +158,7 @@ function viewMatter(m) {
   <main class="matter-main"><div class="mp-col">
     <div class="acts mp-acts" style="grid-template-columns:1.3fr 1fr 1fr 1fr"><button class="act primary" data-act="record" data-id="${m.id}">Next date</button><button class="act blue" data-act="edit" data-id="${m.id}">Edit</button><button class="act blue" data-act="draft" data-id="${m.id}">Draft</button><button class="act wa" data-act="wa" data-id="${m.id}" ${waOf(m) ? '' : 'disabled title="Add client mobile first"'}>${I.wa}Client</button></div>
     <div class="acts mp-acts" style="grid-template-columns:1.4fr 1fr;margin-top:-4px"><button class="act blue" data-act="readorder" data-id="${m.id}">Read order photo</button><button class="act blue" data-act="askclaude" data-id="${m.id}">Send to Claude</button></div>
+    ${pendingOutcome(m) ? `<section class="card ask-card"><b>What happened on ${dmy(m.nextDate)}?</b><div class="chips" style="margin-top:8px">${HAPPENED.map(h => `<button class="chip" data-act="outcome" data-id="${m.id}" data-v="${h}">${h}</button>`).join('')}</div></section>` : ''}
     <section class="card" style="padding:12px 16px"><div class="stbox" style="margin:0"><div class="field" style="margin:0 0 10px"><label for="fo_${m.id}">Category</label><select class="in" id="fo_${m.id}" data-st="forum" data-id="${m.id}">${Object.entries(FORUMS).map(([k, x]) => `<option value="${k}" ${k === (m.forum || 'District') ? 'selected' : ''}>${x.label}</option>`).join('')}</select></div><div class="field" style="margin:0"><label for="st_${m.id}">Status</label><select class="in" id="st_${m.id}" data-st="status" data-id="${m.id}">${statusList(m).map(s => `<option ${s === (m.status || statusList(m)[0]) ? 'selected' : ''}>${s}</option>`).join('')}${statusList(m).includes(m.status) || !m.status ? '' : `<option selected>${esc(m.status)}</option>`}</select></div>
       ${m.forum === 'Advisory' && isRetainer(m) ? retainerBox(m) : ''}${m.forum === 'Advisory' && !isRetainer(m) ? `<button class="act primary" data-act="tocase" data-id="${m.id}" style="width:100%;margin-top:10px;min-height:44px">Convert to case</button>` : ''}${m.prelit ? `<p class="hint" style="margin:8px 0 0">Pre-litigation: ${esc(m.prelit.status || '')}${m.prelit.till ? ' (till ' + dmy(m.prelit.till) + ')' : ''}</p>` : ''}
       ${m.status === 'Decided' ? `<div class="field" style="margin:10px 0 0"><label for="oc_${m.id}">Result</label><select class="in ${m.outcome ? '' : 'needs'}" id="oc_${m.id}" data-st="outcome" data-id="${m.id}"><option value="">Choose…</option>${OUTCOMES.map(s => `<option ${s === m.outcome ? 'selected' : ''}>${s}</option>`).join('')}</select></div>` : ''}</div></section>
@@ -174,7 +175,8 @@ function viewMatter(m) {
     ${(m.readings || []).length ? `<section class="card mp-hist"><div class="h2" style="margin-bottom:6px"><h2>Papers read by Claude</h2><span class="sub">${m.readings.length}</span></div>
       <div class="hist">${m.readings.map(x => `<div><b>${dmy(x.date)}</b><span><b style="font-family:inherit">${esc(x.paper || '')}</b><br>${esc(x.summary || '')}${x.nextDate ? '<br>Next date ' + dmy(x.nextDate) : ''}${(x.todo || []).length ? '<br><span style="color:var(--saffron-ink)">To do: ' + x.todo.map(esc).join('; ') + '</span>' : ''}${(x.watch || []).length ? '<br><span style="color:#8E2A2A">Watch: ' + x.watch.map(esc).join('; ') + '</span>' : ''}</span></div>`).join('')}</div></section>` : ''}
     <section class="card mp-hist"><div class="h2" style="margin-bottom:6px"><h2>Hearing history</h2><span class="sub">${hist.length}</span></div>
-      ${hist.length ? `<div class="hist">${hist.map(h => `<div><b>${dmy(h.date)}</b><span><b style="font-family:inherit">${esc(h.happened)}</b>${h.next ? ' → ' + dmy(h.next) : ''}${h.purpose ? ' · ' + esc(h.purpose) : ''}${h.note ? '<br><span style="color:var(--muted)">' + esc(h.note) + '</span>' : ''}</span></div>`).join('')}</div>` : '<p style="color:var(--muted);font-size:14px;margin:0">No hearings recorded yet. Use <b>Next date</b> after each hearing.</p>'}
+      ${hist.length ? `<div class="hist">${hist.map(h => `<button class="hrow" data-act="hedit" data-id="${m.id}" data-i="${(m.hearings || []).indexOf(h)}"><b>${dmy(h.date)}</b><span><b style="font-family:inherit;${h.happened === 'Listed' && !h.next ? 'color:var(--red)' : ''}">${esc(h.happened === 'Listed' && !h.next ? 'Listed · what happened?' : h.happened)}</b>${h.next ? ' → ' + dmy(h.next) : ''}${h.purpose ? ' · ' + esc(h.purpose) : ''}${h.item ? ' · item ' + esc(h.item) : ''}${h.note ? '<br><span style="color:var(--muted)">' + esc(h.note) + '</span>' : ''}${h.edited ? '<br><small style="color:var(--muted)">edited ' + dmy(h.edited) + '</small>' : ''}</span></button>`).join('')}</div>` : '<p style="color:var(--muted);font-size:14px;margin:0">No hearings recorded yet. Use <b>Next date</b> after each hearing.</p>'}
+    ${(m.changes || []).length ? `<details style="margin-top:12px"><summary style="font-weight:700;cursor:pointer">Record of changes (${m.changes.length})</summary><div class="hist" style="margin-top:8px">${m.changes.slice().reverse().map(c => `<div><b>${dmy(c.at.slice(0, 10))}<br><small>${esc(c.at.slice(11))}</small></b><span>${esc(c.t)}</span></div>`).join('')}</div></details>` : ''}
     </section>
   </div></main>`;
 }
@@ -492,6 +494,7 @@ async function processInbox() {
               if (c.fill) for (const [k, v] of Object.entries(c.fill)) if (!m[k]) m[k] = v;
               if (c.lastDate) logPast(m, c.lastDate, 'from ' + (c.from || 'diary update'));
               if (c.set && 'nextDate' in c.set && c.set.nextDate !== m.nextDate) logListing(m, m.nextDate, c.set.nextDate, c.from || 'updated automatically');
+              if (c.set) logDiff(m, { ...m }, c.set, c.from || 'automatic update');
               if (c.set) Object.assign(m, c.set);
               if (c.hearing) {
                 const h = c.hearing; m.hearings = m.hearings || []; m.hearings.push(h);
@@ -548,6 +551,7 @@ document.addEventListener('change', e => {
       if (isOpen(m)) m.closedOn = '';
       touch(m);
     });
+    change(() => logChange(m, 'Status: ' + (was || '—') + ' → ' + v));
     toast('Status: ' + v + (v === 'Decided' ? '. Now choose the result.' : ''), 3000);
   } else if (el.dataset.st === 'forum') {
     const v = el.value;
@@ -557,8 +561,9 @@ document.addEventListener('change', e => {
       if (!statusList(m).includes(m.status)) m.status = v === 'Advisory' ? 'In progress' : 'Pending';
       m.calPending = true; touch(m);
     });
+    change(() => logChange(m, 'Category → ' + FORUMS[v].label));
     toast('Category: ' + FORUMS[v].label + ' · status ' + m.status, 3500);
-  } else { change(() => { m.outcome = el.value; touch(m); }); toast('Result: ' + (el.value || 'not set')); }
+  } else { change(() => { m.outcome = el.value; logChange(m, 'Result → ' + (el.value || '—')); touch(m); }); toast('Result: ' + (el.value || 'not set')); }
   render();
 });
 document.addEventListener('change', e => { if (e.target.id === 'f_status') { const w = document.getElementById('f_outwrap'); if (w) w.style.display = e.target.value === 'Decided' ? '' : 'none'; } });
@@ -692,3 +697,56 @@ function matchHits(mt) {
   if (mt.kind) { const kr = new RegExp(mt.kind, 'i'); hits = hits.filter(m => kr.test((m.type || '') + ' ' + (m.title || '') + ' ' + (m.caseNo || ''))); }
   return hits;
 }
+
+/* a listed date has passed and nothing was recorded for it */
+function pendingOutcome(m) {
+  if (!m.nextDate || m.nextDate >= todayIso() || !isOpen(m) || m.forum === 'Advisory') return false;
+  return !(m.hearings || []).some(h => h.date === m.nextDate && h.happened !== 'Listed');
+}
+/* edit one entry of Hearing history */
+function sheetHearing(m, i) {
+  const h = m.hearings[i]; if (!h) return;
+  const st = { happened: h.happened || 'Listed' };
+  const draw = () => openSheet(`<div class="s-head"><div><small>${esc(m.no)} · hearing history</small><h1>${dmy(h.date)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    <form id="hform" class="grp" style="gap:12px">
+      <div class="field"><label for="h_date">DATE OF LISTING</label><input class="in" type="date" id="h_date" name="date" value="${esc(h.date || '')}"></div>
+      <div class="field"><label>WHAT HAPPENED</label><div class="chips">${['Listed', ...HAPPENED].map(x => `<button type="button" class="chip ${st.happened === x ? 'on' : ''}" data-hh="${x}">${x}</button>`).join('')}</div></div>
+      <div class="two"><div class="field"><label for="h_next">NEXT DATE GIVEN</label><input class="in" type="date" id="h_next" name="next" value="${esc(h.next || '')}"></div><div class="field"><label for="h_item">ITEM</label><input class="in" id="h_item" name="item" value="${esc(h.item || '')}"></div></div>
+      <div class="field"><label for="h_purpose">FIXED FOR</label><input class="in" id="h_purpose" name="purpose" list="h_fixed" value="${esc(h.purpose || '')}"><datalist id="h_fixed">${FIXED_FOR.map(x => `<option>${x}</option>`).join('')}</datalist></div>
+      <div class="field"><label for="h_note">NOTE</label><textarea class="in" id="h_note" name="note">${esc(h.note || '')}</textarea></div>
+      <button class="save" type="submit">Save</button>
+      <button type="button" class="ghost" data-hdel="1" style="color:var(--red)">Remove this entry</button>
+    </form>`);
+  draw();
+  const root = $('#sheet-root');
+  const keep = () => Object.fromEntries(new FormData($('#hform')).entries());
+  const bind = () => { $('#hform').onsubmit = e => {
+    e.preventDefault();
+    const fd = keep();
+    const latest = m.hearings.reduce((a, b) => (b.date || '') > (a.date || '') ? b : a, m.hearings[0]) === h;
+    change(() => {
+      const was = dmy(h.date) + ' ' + (h.happened || '') + (h.next ? ' → ' + dmy(h.next) : '');
+      Object.assign(h, { date: fd.date || h.date, happened: st.happened, next: fd.next || '', item: fd.item || '', purpose: fd.purpose || '', note: fd.note || '', edited: todayIso() });
+      m.hearings.sort((x, y) => (x.date || '').localeCompare(y.date || ''));
+      logChange(m, 'History entry edited: ' + was + ' → ' + dmy(h.date) + ' ' + h.happened + (h.next ? ' → ' + dmy(h.next) : ''));
+      if (latest && h.next && h.next !== m.nextDate && h.next >= todayIso()) { logChange(m, 'Next date: ' + (m.nextDate ? dmy(m.nextDate) : '—') + ' → ' + dmy(h.next) + ' (from history)'); m.nextDate = h.next; m.purpose = h.purpose || m.purpose; m.item = h.item || ''; m.calPending = true; }
+      touch(m);
+    });
+    root.onclick = null; closeSheet(); toast('History updated');
+  }; };
+  bind();
+  root.onclick = e => {
+    const b = e.target.closest('[data-hh]');
+    if (b) { const v = keep(); st.happened = b.dataset.hh; draw(); Object.entries({ h_date: v.date, h_next: v.next, h_item: v.item, h_purpose: v.purpose, h_note: v.note }).forEach(([id, val]) => { const el = $('#' + id); if (el && val != null) el.value = val; }); bind(); return; }
+    if (e.target.closest('[data-hdel]') && confirm('Remove the entry of ' + dmy(h.date) + ' from history?')) {
+      change(() => { logChange(m, 'History entry removed: ' + dmy(h.date) + ' ' + (h.happened || '')); m.hearings.splice(m.hearings.indexOf(h), 1); touch(m); });
+      root.onclick = null; closeSheet(); toast('Removed');
+    }
+  };
+}
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act="hedit"],[data-act="outcome"]'); if (!el) return;
+  const m = find(el.dataset.id); if (!m) return;
+  if (el.dataset.act === 'hedit') sheetHearing(m, +el.dataset.i);
+  else sheetRecord(m, { happened: el.dataset.v, heardOn: m.nextDate });
+});

@@ -310,3 +310,7 @@ body{padding-left:24px} .nav{left:24px} .scrim{left:24px}
 .menu-file b{font-size:15px}.menu-file small{color:var(--muted);font-size:12.5px}
 
 .micbtn{border:0;background:var(--saffron);color:#1B2A4A;min-width:52px;display:flex;align-items:center;justify-content:center;border-radius:6px}
+
+.hrow{display:grid;grid-template-columns:92px minmax(0,1fr);gap:10px;font-size:13px !important;width:100%;border:0;background:none;text-align:left;padding:8px 0;border-bottom:1px solid var(--line);font:inherit;color:inherit;cursor:pointer}
+.hrow:hover{background:#FAF8F3}
+.ask-card{border-left:6px solid var(--saffron);padding:12px 16px}

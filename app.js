@@ -260,6 +260,23 @@ const needsDate = m => m.forum !== 'Advisory' && (m.status === 'Pending') && (!m
 const feeDue = m => Math.max(0, num(m.feeAgreed) - num(m.feeReceived));
 const onDay = day => live().filter(m => m.nextDate === day && isOpen(m));
 const doneOn = day => live().filter(m => (m.hearings || []).some(h => h.date === day));
+/* record of changes made to a matter (shown under Hearing history) */
+function logChange(m, text) {
+  const now = new Date(), stamp = todayIso() + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+  m.changes = (m.changes || []).concat([{ at: stamp, t: text }]).slice(-60);
+}
+const FIELD_NAMES = { title: 'Title', clients: 'Client', forum: 'Category', court: "Hon'ble Court", type: 'Type', caseNo: 'Case no.', crimeNo: 'Crime no.', ps: 'Police station', sections: 'Sections', side: 'Appearing for', nextDate: 'Next date', item: 'Item', purpose: 'Fixed for', status: 'Status', outcome: 'Result', feeAgreed: 'Fees agreed', feeReceived: 'Fees received', phone: 'Mobile', whatsapp: 'WhatsApp', altName: 'Alternate contact', altPhone: 'Alternate mobile', deadline: 'Deadline', notes: 'Notes' };
+function logDiff(m, before, after, how) {
+  const bits = [];
+  for (const k of Object.keys(FIELD_NAMES)) {
+    if (!(k in after)) continue;
+    const o = String(before[k] ?? ''), n = String(after[k] ?? '');
+    if (o === n) continue;
+    const show = v => /Date$|deadline/.test(k) && /^\d{4}-/.test(v) ? dmy(v) : (k === 'forum' && FORUMS[v] ? FORUMS[v].label : v);
+    bits.push(k === 'notes' ? 'Notes edited' : FIELD_NAMES[k] + ': ' + (o ? show(o) : '—') + ' → ' + (n ? show(n) : '—'));
+  }
+  if (bits.length) logChange(m, bits.join('; ') + (how ? ' (' + how + ')' : ''));
+}
 /* keep every listing: when a matter's next date is replaced, the old date goes into Hearing history */
 function logListing(m, oldDate, newDate, how) {
   if (!oldDate || oldDate === newDate || oldDate > todayIso()) return;
@@ -534,6 +551,7 @@ function sheetEdit(m) {
       const old = find(m.id); const before = { caseNo: old.caseNo, type: old.type, court: old.court };
       change(() => {
         if (old.year !== fd.year) { old.n = nextNumber(fd.year); old.no = fd.year + '/' + old.n; }
+        logDiff(old, { ...old }, fd, 'Edit');
         if (fd.nextDate !== old.nextDate) logListing(old, old.nextDate, fd.nextDate, 'date changed in Edit');
         if (fd.lastDate && fd.lastDate !== old.lastDate) logPast(old, fd.lastDate, 'last date entered in Edit');
         if (old.nextDate !== fd.nextDate || old.status !== fd.status || old.purpose !== fd.purpose || old.court !== fd.court) old.calPending = true;
@@ -609,7 +627,10 @@ function sheetRecord(m, pre) {
     const closing = R.happened === 'Disposed';
     change(() => {
       m.hearings = m.hearings || [];
-      m.hearings.push({ date: heardOn, happened: R.happened, next: closing ? '' : R.next, purpose: closing ? '' : R.purpose, note: R.note });
+      const entry = { date: heardOn, happened: R.happened, next: closing ? '' : R.next, purpose: closing ? '' : R.purpose, note: R.note, item: m.item || '', court: m.court || '' };
+      const ph = m.hearings.find(h => h.date === heardOn && h.happened === 'Listed');
+      if (ph) Object.assign(ph, entry); else m.hearings.push(entry);
+      m.hearings.sort((x, y) => (x.date || '').localeCompare(y.date || ''));
       m.lastDate = heardOn;
       if (closing) { m.status = 'Decided'; m.nextDate = ''; m.purpose = ''; m.item = ''; }
       else { m.nextDate = R.next; m.purpose = R.purpose; m.item = R.item || ''; m.status = R.happened === 'Reserved' ? 'Reserved' : 'Pending'; }
