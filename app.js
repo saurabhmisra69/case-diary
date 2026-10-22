@@ -294,6 +294,26 @@ function logPast(m, date, how) {
   m.hearings.push({ date, happened: 'Listed', note: how || '' });
   m.hearings.sort((x, y) => (x.date || '').localeCompare(y.date || ''));
 }
+/* matters entered more than once: same CNR, or same case no./year in the same forum, or same title with no case no. */
+function dupKeys(m) {
+  const ks = [];
+  if (m.cnr) ks.push('cnr:' + m.cnr.toUpperCase());
+  const d = String(m.caseNo || '').match(/(\d+)\s*(?:\/|of|-)\s*(\d{2,4})/i);
+  if (d) { let y = d[2]; if (y.length === 2) y = '20' + y; ks.push('no:' + (m.forum || '') + ':' + (+d[1]) + '/' + y); }
+  else if (m.title) ks.push('t:' + (m.forum || '') + ':' + m.title.toLowerCase().replace(/[^a-z0-9]+/g, ''));
+  return ks;
+}
+let dupCache = null, dupStamp = '';
+function dupsOf(m) {
+  const stamp = (S.data?.updated || 0) + ':' + live().length;
+  if (dupStamp !== stamp) {
+    dupStamp = stamp; dupCache = new Map(); const by = new Map();
+    for (const x of live()) for (const k of dupKeys(x)) { if (!by.has(k)) by.set(k, []); by.get(k).push(x); }
+    for (const list of by.values()) if (list.length > 1) for (const x of list) { const s = dupCache.get(x.id) || new Set(); list.forEach(y => y.id !== x.id && s.add(y)); dupCache.set(x.id, s); }
+  }
+  return [...(dupCache.get(m.id) || [])];
+}
+const dupStar = m => dupsOf(m).length ? '<span class="dupstar" title="Entered more than once">★</span> ' : '';
 const waOf = m => phoneDigits(m.whatsapp) || phoneDigits(m.phone);
 function phoneDigits(p) { let d = String(p || '').replace(/\D/g, ''); if (d.length === 10) d = '91' + d; if (d.length === 11 && d[0] === '0') d = '91' + d.slice(1); return d.length >= 11 ? d : ''; }
 function matches(m, q) {
@@ -418,7 +438,7 @@ function matterCard(m) {
   const wa = waOf(m);
   return `<article class="card matter">
     <div class="m-top">${itemBox(m)}<div class="m-col" data-act="open" data-id="${m.id}" style="cursor:pointer">
-      <span class="m-title">${esc(m.title || m.clients)}</span>
+      <span class="m-title">${dupStar(m)}${esc(m.title || m.clients)}</span>
       <span class="m-meta">${esc(metaLine(m))}</span>
       ${m.purpose ? `<span class="purpose">For: ${esc(m.purpose)}</span>` : ''}
     </div></div>
@@ -443,6 +463,7 @@ function viewMatters() {
     fees: m => feeDue(m) > 0,
     HC: m => m.forum === 'HC', District: m => m.forum === 'District', Tribunal: m => m.forum === 'Tribunal', Consumer: m => m.forum === 'Consumer', Revenue: m => m.forum === 'Revenue', Advisory: m => m.forum === 'Advisory',
     decided: m => !isOpen(m),
+    dups: m => dupsOf(m).length > 0,
     all: () => true,
   };
   const ms = live().filter(tests[f] || tests.all).filter(m => !S.stf || (m.status || 'Pending') === S.stf).filter(m => matches(m, S.q))
@@ -451,7 +472,7 @@ function viewMatters() {
   return `<header class="phead">
     <div class="top-row"><h1>Matters</h1><button id="syncbtn" class="sync" data-act="sync"></button></div>
     <label class="search">${I.search}<input type="search" placeholder="Search matters" data-act="q" value="${esc(S.q)}"></label>
-    <div class="filters">${chip('pending', 'Pending')}${chip('need', 'Need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory / Pre-litigation')}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
+    <div class="filters">${chip('pending', 'Pending')}${chip('need', 'Need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory / Pre-litigation')}${live().some(m => dupsOf(m).length) ? chip('dups', '<span class="dupstar">★</span> Duplicates') : ''}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
   </header>
   <main><div class="list">
     <div class="h2"><span class="sub">${ms.length} matter${ms.length === 1 ? '' : 's'}${S.stf ? ' · ' + esc(S.stf) + ' <button class="linkbtn" data-act="filter" data-f="' + f + '">clear</button>' : ''}</span><button class="linkbtn" data-act="cats">Categories</button></div>
@@ -460,7 +481,7 @@ function viewMatters() {
       const right = f === 'fees' ? rupees(feeDue(m)) : f === 'deadline' ? dmy(m.deadline) : (m.nextDate ? dmy(m.nextDate) : shortSt(m.status));
       return `<button class="card row" data-act="open" data-id="${m.id}">
         <div class="item sm" style="background:${fo.c}"><small>NO.</small><b>${esc(m.no)}</b></div>
-        <span class="m-col"><span class="m-title">${esc(m.title || m.clients)}</span><span class="m-meta">${esc([m.court, metaLine(m)].filter(Boolean).join(' · '))}</span></span>
+        <span class="m-col"><span class="m-title">${dupStar(m)}${esc(m.title || m.clients)}</span><span class="m-meta">${esc([m.court, metaLine(m)].filter(Boolean).join(' · '))}</span></span>
         <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:${late ? 'var(--red)' : 'var(--muted)'};text-align:right">${esc(right)}</span>
       </button>`;
     }).join('') : `<div class="card empty">No matters here.</div>`}
