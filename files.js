@@ -691,6 +691,8 @@ function matchHits(mt) {
   const party = mt.party ? new RegExp(mt.party, 'i') : null;
   let hits = [];
   if (mt.caseNo) { const k = caseKey(mt.caseNo); hits = all.filter(m => k && caseKey(m.caseNo) === k); }
+  if (mt.forum) hits = hits.filter(m => !m.forum || m.forum === mt.forum);
+  if (mt.cnr) { const c = all.filter(m => m.cnr === mt.cnr); if (c.length) hits = c; }
   if (hits.length > 1 && party) hits = hits.filter(m => party.test((m.title || '') + ' ' + (m.clients || '')));
   if (!hits.length && mt.crimeNo) { const k = caseKey(mt.crimeNo); hits = all.filter(m => k && caseKey(m.crimeNo) === k && (!party || party.test((m.title || '') + ' ' + (m.clients || '')))); }
   if (!hits.length && mt.party && mt.partyOnly) hits = all.filter(m => party.test((m.title || '') + ' ' + (m.clients || '') + ' ' + (m.court || '')) && isOpen(m));
