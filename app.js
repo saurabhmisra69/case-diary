@@ -310,6 +310,22 @@ function dupsOf(m) {
     dupStamp = stamp; dupCache = new Map(); const by = new Map();
     for (const x of live()) for (const k of dupKeys(x)) { if (!by.has(k)) by.set(k, []); by.get(k).push(x); }
     for (const list of by.values()) if (list.length > 1) for (const x of list) { const s = dupCache.get(x.id) || new Set(); list.forEach(y => y.id !== x.id && s.add(y)); dupCache.set(x.id, s); }
+    // possible copies: same parties (allowing a spelling slip) where one has no case no., or the numbers match
+    const STOP = /^(state|thru|through|prin|secy|home|deptt|civil|secrt|lucknow|govt|government|another|others|other|and|smt|shri|versus|pvt|ltd|private|limited|the|with|anr|ors)$/;
+    const toks = x => new Set(String(x.title || x.clients || '').toLowerCase().replace(/u\.?p\.?|m\/s|dr\./g, ' ').split(/[^a-z\u0900-\u097f]+/).filter(w => w.length >= 4 && !STOP.test(w)));
+    const key = x => { const d = String(x.caseNo || '').match(/(\d+)\s*(?:\/|of|-)\s*(\d{2,4})/i); return d ? (+d[1]) + '/' + (d[2].length === 2 ? '20' + d[2] : d[2]) : ''; };
+    const L = live().filter(x => !x.deleted), T = new Map(L.map(x => [x.id, toks(x)]));
+    for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) {
+      const p = L[i], q = L[j];
+      if (p.forum && q.forum && p.forum !== q.forum) continue;
+      const kp = key(p), kq = key(q); if (kp && kq && kp !== kq) continue;
+      if (p.cnr && q.cnr && p.cnr !== q.cnr) continue;
+      const A = T.get(p.id), B = T.get(q.id); if (A.size < 2 || B.size < 2) continue;
+      let shared = 0; A.forEach(w => { if (B.has(w)) shared++; });
+      if (shared >= 2 && shared / (A.size + B.size - shared) >= 0.6) {
+        for (const [x, y] of [[p, q], [q, p]]) { const s = dupCache.get(x.id) || new Set(); s.add(y); dupCache.set(x.id, s); }
+      }
+    }
   }
   return [...(dupCache.get(m.id) || [])];
 }
