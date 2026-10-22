@@ -317,3 +317,53 @@ document.addEventListener('input', e => {
   S.cq = e.target.value; const pos = e.target.selectionStart; render();
   const i = document.querySelector('[data-act="cq"]'); if (i) { i.focus(); try { i.setSelectionRange(pos, pos); } catch (_) {} }
 });
+
+/* ---------- expenses on a matter: junior, filing, clerk/typing ----------
+   each one is marked "from my fee" (reduces what he keeps) or "recover from client" (client owes it) */
+const EXP_TYPES = ['Paid to junior', 'Filing / court fee / stamps', 'Clerk, typing & photocopy', 'Other'];
+const expList = m => (m.expenses || []).filter(x => !x.deleted);
+const expFromFee = m => expList(m).filter(x => x.bearer !== 'client').reduce((s, x) => s + num(x.amount), 0);
+const expToRecover = m => expList(m).filter(x => x.bearer === 'client' && !x.recovered).reduce((s, x) => s + num(x.amount), 0);
+function expensesBlock(m) {
+  const xs = expList(m); if (!xs.length) return '';
+  const fromFee = expFromFee(m), rec = expToRecover(m), kept = num(m.feeReceived) - fromFee;
+  return `<div class="mini" style="margin-top:10px;display:block">
+    <div class="kv" style="margin:0 0 6px"><span>Expenses from my fee</span><b>${rupees(fromFee)}</b><span>Net kept so far</span><b>${rupees(kept)}</b>${rec ? `<span>To recover from client</span><b style="color:var(--red)">${rupees(rec)}</b>` : ''}</div>
+    <details><summary style="font-weight:700;cursor:pointer">${xs.length} expense${xs.length > 1 ? 's' : ''}</summary>
+    <div class="hist" style="margin-top:8px">${xs.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(x => `<div><b>${dmy(x.date)}</b><span><b style="font-family:inherit">${rupees(x.amount)}</b> · ${esc(x.type)}${x.to ? ' · ' + esc(x.to) : ''}${x.note ? '<br><span style="color:var(--muted)">' + esc(x.note) + '</span>' : ''}<br><small>${x.bearer === 'client' ? (x.recovered ? 'recovered from client' : 'to recover from client') : 'from my fee'}</small>
+      ${x.bearer === 'client' && !x.recovered ? ` <button class="linkbtn" data-act="exprec" data-id="${m.id}" data-x="${x.id}">Mark recovered</button>` : ''} <button class="linkbtn" data-act="expdel" data-id="${m.id}" data-x="${x.id}" style="color:var(--red)">Remove</button></span></div>`).join('')}</div></details></div>`;
+}
+function sheetExpense(m) {
+  const juniors = [...new Set(live().flatMap(x => expList(x).map(e => e.to)).filter(Boolean))].sort();
+  const st = { type: EXP_TYPES[0], bearer: '' };
+  const draw = () => openSheet(`<div class="s-head"><div><small style="color:var(--saffron-ink)">${esc(m.no)} · add expense</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    <form id="expform" class="grp" style="gap:14px">
+      <div class="field"><label>TYPE</label><div class="chips">${EXP_TYPES.map(t => `<button type="button" class="chip ${st.type === t ? 'on' : ''}" data-ex="type" data-v="${t}">${t}</button>`).join('')}</div></div>
+      <div class="two"><div class="field"><label for="e_amt">AMOUNT (₹)</label><input class="in" id="e_amt" name="amount" inputmode="numeric" required></div><div class="field"><label for="e_date">DATE</label><input class="in" id="e_date" name="date" type="date" value="${todayIso()}"></div></div>
+      ${st.type === 'Paid to junior' ? `<div class="field"><label for="e_to">JUNIOR</label><input class="in" id="e_to" name="to" list="e_juniors" placeholder="name"><datalist id="e_juniors">${juniors.map(j => `<option>${esc(j)}</option>`).join('')}</datalist></div>` : ''}
+      <div class="field"><label for="e_note">NOTE</label><input class="in" id="e_note" name="note" placeholder="${st.type === 'Paid to junior' ? 'e.g. appearance on 22.10' : st.type.startsWith('Filing') ? 'e.g. court fee, affidavit, notary' : 'e.g. certified copy'}"></div>
+      <div class="field"><label>WHO BEARS IT</label><div class="chips"><button type="button" class="chip ${st.bearer === 'fee' ? 'on' : ''}" data-ex="bearer" data-v="fee">From my fee</button><button type="button" class="chip ${st.bearer === 'client' ? 'on' : ''}" data-ex="bearer" data-v="client">Recover from client</button></div></div>
+      <button class="save" type="submit">Save expense</button>
+    </form>`);
+  draw();
+  const keep = () => { const v = {}; ['e_amt', 'e_date', 'e_to', 'e_note'].forEach(id => { const el = $('#' + id); if (el) v[id] = el.value; }); return v; };
+  const restore = v => Object.entries(v).forEach(([id, val]) => { const el = $('#' + id); if (el) el.value = val; });
+  $('#sheet-root').onclick = e => { const el = e.target.closest('[data-ex]'); if (!el) return; const v = keep(); st[el.dataset.ex] = el.dataset.v; draw(); restore(v); bind(); };
+  const bind = () => { $('#expform').onsubmit = e => {
+    e.preventDefault();
+    const fd = Object.fromEntries(new FormData(e.target).entries()), amt = num(fd.amount);
+    if (!amt) return toast('Enter the amount');
+    if (!st.bearer) return toast('Choose: from my fee, or recover from client');
+    change(() => { m.expenses = m.expenses || []; m.expenses.push({ id: uid(), date: fd.date || todayIso(), type: st.type, amount: amt, to: (fd.to || '').trim(), note: (fd.note || '').trim(), bearer: st.bearer }); touch(m); });
+    $('#sheet-root').onclick = null; closeSheet(); toast('Expense of ' + rupees(amt) + ' saved');
+  }; };
+  bind();
+}
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act="addexp"],[data-act="exprec"],[data-act="expdel"]'); if (!el) return;
+  const m = find(el.dataset.id); if (!m) return;
+  if (el.dataset.act === 'addexp') return sheetExpense(m);
+  const x = (m.expenses || []).find(y => y.id === el.dataset.x); if (!x) return;
+  if (el.dataset.act === 'exprec') { change(() => { x.recovered = todayIso(); touch(m); }); toast('Marked recovered'); }
+  else if (confirm('Remove this expense of ' + rupees(x.amount) + '?')) { change(() => { x.deleted = true; touch(m); }); toast('Removed'); }
+});
