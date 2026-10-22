@@ -691,7 +691,7 @@ function matchHits(mt) {
   const all = live();
   const party = mt.party ? new RegExp(mt.party, 'i') : null;
   let hits = [];
-  if (mt.caseNo) { const k = caseKey(mt.caseNo); hits = all.filter(m => k && caseKey(m.caseNo) === k); }
+  if (mt.caseNo || mt.caseNos) { const ks = [mt.caseNo, ...(mt.caseNos || [])].filter(Boolean).map(caseKey).filter(Boolean); hits = all.filter(m => ks.includes(caseKey(m.caseNo))); }
   if (mt.forum) hits = hits.filter(m => !m.forum || m.forum === mt.forum);
   if (mt.cnr) { const c = all.filter(m => m.cnr === mt.cnr); if (c.length) hits = c; }
   if (hits.length > 1 && party) hits = hits.filter(m => party.test((m.title || '') + ' ' + (m.clients || '')));
