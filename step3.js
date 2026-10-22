@@ -320,7 +320,8 @@ document.addEventListener('input', e => {
 
 /* ---------- expenses on a matter: junior, filing, clerk/typing ----------
    each one is marked "from my fee" (reduces what he keeps) or "recover from client" (client owes it) */
-const EXP_TYPES = ['Paid to junior', 'Filing / court fee / stamps', 'Clerk, typing & photocopy', 'Other'];
+const EXP_TYPES = ['Lump sum', 'Paid to junior', 'Filing / court fee / stamps', 'Clerk, typing & photocopy', 'Other'];
+const LUMP_PARTS = ['Filing', 'Photocopy', 'Affidavit', 'Stamp', 'Junior fee', 'Typing', 'Notary'];
 const expList = m => (m.expenses || []).filter(x => !x.deleted);
 const expFromFee = m => expList(m).filter(x => x.bearer !== 'client').reduce((s, x) => s + num(x.amount), 0);
 const expToRecover = m => expList(m).filter(x => x.bearer === 'client' && !x.recovered).reduce((s, x) => s + num(x.amount), 0);
@@ -335,26 +336,27 @@ function expensesBlock(m) {
 }
 function sheetExpense(m) {
   const juniors = [...new Set(live().flatMap(x => expList(x).map(e => e.to)).filter(Boolean))].sort();
-  const st = { type: EXP_TYPES[0], bearer: '' };
+  const st = { type: EXP_TYPES[0], bearer: '', parts: ['Filing', 'Photocopy', 'Affidavit', 'Stamp', 'Junior fee'] };
   const draw = () => openSheet(`<div class="s-head"><div><small style="color:var(--saffron-ink)">${esc(m.no)} · add expense</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <form id="expform" class="grp" style="gap:14px">
       <div class="field"><label>TYPE</label><div class="chips">${EXP_TYPES.map(t => `<button type="button" class="chip ${st.type === t ? 'on' : ''}" data-ex="type" data-v="${t}">${t}</button>`).join('')}</div></div>
       <div class="two"><div class="field"><label for="e_amt">AMOUNT (₹)</label><input class="in" id="e_amt" name="amount" inputmode="numeric" required></div><div class="field"><label for="e_date">DATE</label><input class="in" id="e_date" name="date" type="date" value="${todayIso()}"></div></div>
-      ${st.type === 'Paid to junior' ? `<div class="field"><label for="e_to">JUNIOR</label><input class="in" id="e_to" name="to" list="e_juniors" placeholder="name"><datalist id="e_juniors">${juniors.map(j => `<option>${esc(j)}</option>`).join('')}</datalist></div>` : ''}
-      <div class="field"><label for="e_note">NOTE</label><input class="in" id="e_note" name="note" placeholder="${st.type === 'Paid to junior' ? 'e.g. appearance on 22.10' : st.type.startsWith('Filing') ? 'e.g. court fee, affidavit, notary' : 'e.g. certified copy'}"></div>
+      ${st.type === 'Lump sum' ? `<div class="field"><label>COVERS</label><div class="chips">${LUMP_PARTS.map(p => `<button type="button" class="chip ${st.parts.includes(p) ? 'on' : ''}" data-ex="part" data-v="${p}">${p}</button>`).join('')}</div></div>` : ''}
+      ${st.type === 'Paid to junior' || (st.type === 'Lump sum' && st.parts.includes('Junior fee')) ? `<div class="field"><label for="e_to">JUNIOR${st.type === 'Lump sum' ? ' (optional)' : ''}</label><input class="in" id="e_to" name="to" list="e_juniors" placeholder="name"><datalist id="e_juniors">${juniors.map(j => `<option>${esc(j)}</option>`).join('')}</datalist></div>` : ''}
+      <div class="field"><label for="e_note">NOTE</label><input class="in" id="e_note" name="note" placeholder="${st.type === 'Lump sum' ? 'e.g. filing of revision on 22.10' : st.type === 'Paid to junior' ? 'e.g. appearance on 22.10' : st.type.startsWith('Filing') ? 'e.g. court fee, affidavit, notary' : 'e.g. certified copy'}"></div>
       <div class="field"><label>WHO BEARS IT</label><div class="chips"><button type="button" class="chip ${st.bearer === 'fee' ? 'on' : ''}" data-ex="bearer" data-v="fee">From my fee</button><button type="button" class="chip ${st.bearer === 'client' ? 'on' : ''}" data-ex="bearer" data-v="client">Recover from client</button></div></div>
       <button class="save" type="submit">Save expense</button>
     </form>`);
   draw();
   const keep = () => { const v = {}; ['e_amt', 'e_date', 'e_to', 'e_note'].forEach(id => { const el = $('#' + id); if (el) v[id] = el.value; }); return v; };
   const restore = v => Object.entries(v).forEach(([id, val]) => { const el = $('#' + id); if (el) el.value = val; });
-  $('#sheet-root').onclick = e => { const el = e.target.closest('[data-ex]'); if (!el) return; const v = keep(); st[el.dataset.ex] = el.dataset.v; draw(); restore(v); bind(); };
+  $('#sheet-root').onclick = e => { const el = e.target.closest('[data-ex]'); if (!el) return; const v = keep(); if (el.dataset.ex === 'part') { const p = el.dataset.v; st.parts = st.parts.includes(p) ? st.parts.filter(x => x !== p) : [...st.parts, p]; } else st[el.dataset.ex] = el.dataset.v; draw(); restore(v); bind(); };
   const bind = () => { $('#expform').onsubmit = e => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries()), amt = num(fd.amount);
     if (!amt) return toast('Enter the amount');
     if (!st.bearer) return toast('Choose: from my fee, or recover from client');
-    change(() => { m.expenses = m.expenses || []; m.expenses.push({ id: uid(), date: fd.date || todayIso(), type: st.type, amount: amt, to: (fd.to || '').trim(), note: (fd.note || '').trim(), bearer: st.bearer }); touch(m); });
+    change(() => { m.expenses = m.expenses || []; m.expenses.push({ id: uid(), date: fd.date || todayIso(), type: st.type === 'Lump sum' ? 'Lump sum' + (st.parts.length ? ' (' + st.parts.join(', ') + ')' : '') : st.type, amount: amt, to: (fd.to || '').trim(), note: (fd.note || '').trim(), bearer: st.bearer }); touch(m); });
     $('#sheet-root').onclick = null; closeSheet(); toast('Expense of ' + rupees(amt) + ' saved');
   }; };
   bind();
