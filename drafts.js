@@ -525,16 +525,16 @@ async function makeCover(m) {
     ['Nature / Category', [m.nature, fo].filter(Boolean).join(' · ')],
   ].filter(r => r[1]);
   const contacts = [['Client mobile', m.phone], ['WhatsApp', m.whatsapp || (m.phone ? 'same as mobile' : '')], ['Alternate' + (m.altName ? ' (' + m.altName + ')' : ''), m.altPhone]].filter(r => r[1]);
-  const W1 = 2600, W2 = 6426;
+  const W1 = 2700, W2 = 6660;
   const kv = list => new D.Table({ width: { size: W1 + W2, type: D.WidthType.DXA }, columnWidths: [W1, W2], borders,
     rows: list.map(([k, v]) => new D.TableRow({ children: [cell(k, { w: W1, bold: true, shade: 'EEF1F6' }), cell(v, { w: W2, size: 22 })] })) });
-  const dateRows = Math.max(8, 27 - rows.length - contacts.length - (String(m.title || "").length > 70 ? 1 : 0));
-  const DW = [1500, 5226, 1300, 1000];
-  const dates = new D.Table({ width: { size: 9026, type: D.WidthType.DXA }, columnWidths: DW, borders,
+  const dateRows = Math.max(14, 38 - rows.length - contacts.length - (String(m.title || "").length > 70 ? 1 : 0));
+  const DW = [1500, 5460, 1400, 1000];
+  const dates = new D.Table({ width: { size: 9360, type: D.WidthType.DXA }, columnWidths: DW, borders,
     rows: [new D.TableRow({ tableHeader: true, children: ['Date', 'Proceedings', 'Next date', 'Item'].map((h, i) => cell(h, { w: DW[i], bold: true, shade: 'EEF1F6', align: C })) }),
       ...Array.from({ length: dateRows }, () => new D.TableRow({ height: { value: 400, rule: D.HeightRule.ATLEAST }, children: DW.map(w => cell('', { w })) }))] });
   const doc = new D.Document({ creator: 'Saurabh Misra', styles: { default: { document: { run: { font: FONT, size: 22 } } } },
-    sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 720, bottom: 720, left: 1440, right: 1440 } } }, children: [
+    sections: [{ properties: { page: { size: { width: 12240, height: 20160 }, margin: { top: 720, bottom: 720, left: 1440, right: 1440 } } }, children: [
       para(run('SAURABH MISRA & ASSOCIATES', { bold: true, size: 32 }), { align: C, after: 0 }),
       para(run('CHAMBERS OF SAURABH MISRA, ADVOCATE', { size: 18, bold: true }), { align: C, after: 0 }),
       para(run(ADV.addr, { size: 18 }), { align: C, after: 0 }),
@@ -556,7 +556,7 @@ async function sheetCover(m) {
   openSheet(`<div class="s-head"><div><small>${esc(m.no)} · file cover</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div><p class="hint">Making the A4 cover…</p>`);
   let r; try { r = await makeCover(m); } catch (e) { closeSheet(); toast(e.message); return; }
   openSheet(`<div class="s-head"><div><small>${esc(m.no)} · file cover</small><h1>Ready to print</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
-    <p class="hint">${esc(r.name)}${r.itemId ? ' · saved in the case folder' : ''}. A4 page: chamber header, case details, contacts and a ruled table for dates.</p>
+    <p class="hint">${esc(r.name)}${r.itemId ? ' · saved in the case folder' : ''}. Legal-size page (8.5 × 14 in): chamber header, case details, contacts and a ruled table for dates.</p>
     <div class="three"><button class="act primary" data-cv="open">Open in Word</button><button class="act blue" data-cv="pdf">PDF to print</button><button class="act blue" data-cv="share">Share</button></div>
     <button class="ghost" data-cv="dl" style="width:100%;margin-top:8px">Download</button>`);
   $('#sheet-root').onclick = async e => {
