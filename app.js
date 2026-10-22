@@ -17,7 +17,6 @@ const FORUMS = {
   District: { label: 'District courts',   c: 'var(--dc)', soft: 'var(--dc-soft)', ink: 'var(--dc-ink)' },
   Tribunal: { label: 'Tribunal (AFT/DRT/RERA)', c: 'var(--tr)', soft: 'var(--tr-soft)', ink: 'var(--tr-ink)' },
   Consumer: { label: 'Consumer commission', c: 'var(--co)', soft: 'var(--co-soft)', ink: 'var(--co-ink)' },
-  Family:   { label: 'Family Court',      c: 'var(--fam)', soft: 'var(--fam-soft)', ink: 'var(--fam-ink)' },
   Revenue:  { label: 'Revenue court',     c: 'var(--rv)', soft: 'var(--rv-soft)', ink: 'var(--rv-ink)' },
   Advisory: { label: 'Advisory / Pre-litigation', c: 'var(--adv)', soft: 'var(--adv-soft)', ink: 'var(--adv-ink)' },
 };
@@ -390,7 +389,7 @@ function viewHome() {
   </main>`;
 }
 function groupByCourt(ms) {
-  const order = ['HC', 'Tribunal', 'Consumer', 'Family', 'District', 'Revenue', 'Advisory'];
+  const order = ['HC', 'Tribunal', 'Consumer', 'District', 'Revenue', 'Advisory'];
   const map = new Map();
   [...ms].sort((a, b) => (order.indexOf(a.forum) - order.indexOf(b.forum)) || (num(a.item) - num(b.item))).forEach(m => {
     const k = m.court || forumOf(m).label; if (!map.has(k)) map.set(k, []); map.get(k).push(m);
@@ -441,7 +440,7 @@ function viewMatters() {
     need: needsDate,
     deadline: m => m.deadline && !m.deadlineDone,
     fees: m => feeDue(m) > 0,
-    HC: m => m.forum === 'HC', District: m => m.forum === 'District', Tribunal: m => m.forum === 'Tribunal', Consumer: m => m.forum === 'Consumer', Revenue: m => m.forum === 'Revenue', Family: m => m.forum === 'Family', Advisory: m => m.forum === 'Advisory',
+    HC: m => m.forum === 'HC', District: m => m.forum === 'District', Tribunal: m => m.forum === 'Tribunal', Consumer: m => m.forum === 'Consumer', Revenue: m => m.forum === 'Revenue', Advisory: m => m.forum === 'Advisory',
     decided: m => !isOpen(m),
     all: () => true,
   };
@@ -451,7 +450,7 @@ function viewMatters() {
   return `<header class="phead">
     <div class="top-row"><h1>Matters</h1><button id="syncbtn" class="sync" data-act="sync"></button></div>
     <label class="search">${I.search}<input type="search" placeholder="Search matters" data-act="q" value="${esc(S.q)}"></label>
-    <div class="filters">${chip('pending', 'Pending')}${chip('need', 'Need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Family', 'Family Court')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory / Pre-litigation')}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
+    <div class="filters">${chip('pending', 'Pending')}${chip('need', 'Need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory / Pre-litigation')}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
   </header>
   <main><div class="list">
     <div class="h2"><span class="sub">${ms.length} matter${ms.length === 1 ? '' : 's'}${S.stf ? ' · ' + esc(S.stf) + ' <button class="linkbtn" data-act="filter" data-f="' + f + '">clear</button>' : ''}</span><button class="linkbtn" data-act="cats">Categories</button></div>
