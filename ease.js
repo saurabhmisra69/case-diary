@@ -60,19 +60,32 @@ async function fileShared(m, files, sub) {
     let n = 0;
     for (const f of files) {
       const ext = (f.name.match(/\.([a-z0-9]{2,5})$/i) || [, f.type === 'application/pdf' ? 'pdf' : 'jpg'])[1].toLowerCase();
-      const base = dmy(todayIso()) + (sub.startsWith('2') ? ' Order' : ' ' + (f.name.replace(/\.[^.]+$/, '').slice(0, 60) || 'Paper'));
+      const own = f.name.replace(/\.[^.]+$/, '');
+      const base = sub.startsWith('1') && /^\d{2}\.\d{2}\.\d{4}/.test(own) ? own.slice(0, 90) : dmy(todayIso()) + (sub.startsWith('2') ? ' Order' : ' ' + (own.slice(0, 60) || 'Paper'));
       let nm = base + '.' + ext; for (let i = 2; names.has(nm.toLowerCase()); i++) nm = base + ' (' + i + ').' + ext;
       names.add(nm.toLowerCase()); await uploadFile(dest.id, f, nm); n++;
     }
     toast(n + ' saved in ' + (m.folderName || 'the folder') + ' › ' + dest.name, 4000);
   } catch (e) { toast('Could not save: ' + e.message, 5000); }
 }
-function sheetShared(files) {
-  const one = files[0], isOrderLike = files.length === 1 && /^image\/|pdf/.test(one.type);
+function sheetShared(files, skipAsk) {
+  const one = files[0], isOrderLike = files.length === 1 && /^image\/|pdf/.test(one.type), isDoc = files.every(f => /\.(pdf|docx?)$/i.test(f.name) || /pdf|word/.test(f.type));
+  if (isDoc && !skipAsk && typeof libFolder === 'function') {   // a judgment downloaded from Supreme Today can go straight into the library
+    openSheet(`<div class="s-head"><div><small>${files.length} file${files.length > 1 ? 's' : ''} shared</small><h1>Where should this go?</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+      <div class="menu" style="gap:10px"><button data-sq="matter">Into a matter folder <small>a draft from Claude, an order, a paper</small></button><button data-sq="lib">Judgment library <small>a judgment / ruling you downloaded</small></button><button data-sq="both">Library, and use it in a matter <small>adds it to the matter's authorities</small></button></div>`);
+    $('#sheet-root').onclick = async e => { const b = e.target.closest('[data-sq]'); if (!b) return; $('#sheet-root').onclick = null;
+      if (b.dataset.sq === 'matter') return sheetShared(files, true);
+      const add = async m => { closeSheet(); toast('Adding to the library…', 4000); try { const dir = await libFolder(); const recs = []; for (const f of files) { const it = await uploadFile(dir.id, f, f.name); recs.push(await indexFile({ ...it, name: it.name || f.name })); } await saveTextIndex();
+        if (m) change(() => { m.authorities = m.authorities || []; recs.forEach(r => { if (!m.authorities.includes(r.id)) m.authorities.push(r.id); logChange(m, 'Authority added: ' + r.title); }); touch(m); });
+        toast(recs.length + ' added to the Judgment library' + (m ? ' and to ' + m.no : '') + '. Check the details under Edit / tag.', 5000); sheetLibrary(m && m.id); } catch (er) { toast('Could not add: ' + er.message, 5000); } };
+      if (b.dataset.sq === 'lib') add(null); else pickMatter('Use it in which matter?', m => add(m)); };
+    return;
+  }
   pickMatter('Which matter is this for?', m => {
     openSheet(`<div class="s-head"><div><small>${esc(m.no)} · ${files.length} file${files.length > 1 ? 's' : ''} shared</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
       <div class="menu" style="gap:10px">
         ${isOrderLike ? `<button data-sh="read">Read the order <small>${aiKey() ? 'fills the next date; files it in 2 Orders' : 'needs your key in More › Order reading'}</small></button>` : ''}
+        ${files.some(f => /\.docx?$/i.test(f.name)) ? '<button data-sh="1 Pleadings">Save in 1 Pleadings <small>a draft from Claude, kept with its own name</small></button>' : ''}
         <button data-sh="2 Orders">Save in 2 Orders <small>named with today's date</small></button>
         <button data-sh="3 Documents">Save in 3 Documents</button>
         <button data-sh="4 Correspondence">Save in 4 Correspondence</button>

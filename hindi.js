@@ -60,6 +60,7 @@ const HI = {
   ', or create a new folder for it.': ', या इसके लिए नया फ़ोल्डर बनाएँ।', 'Saved into:': 'यहाँ सहेजा:', 'No hearings recorded yet. Use': 'अभी कोई सुनवाई दर्ज नहीं। हर सुनवाई के बाद', 'after each hearing.': 'का प्रयोग करें।',
   'PC path': 'PC पथ', 'Synced': 'सिंक हुआ', 'Fees agreed': 'तय फीस', 'Fees received': 'प्राप्त फीस', 'Generate bill': 'बिल बनाएँ', 'Generate receipt': 'रसीद बनाएँ', 'Bills': 'बिल', 'Receipts': 'रसीदें',
   'Agreed': 'तय', 'Received': 'प्राप्त', 'Balance': 'शेष',
+  'Draft with Claude': 'Claude से ड्राफ्ट', 'Research': 'शोध', 'Share with client — WhatsApp · Email · SMS': 'मुवक्किल को भेजें — WhatsApp · Email · SMS', 'Share…': 'भेजें…', 'Matter update': 'मुकदमे की जानकारी', 'Document': 'दस्तावेज़', 'Fee reminder': 'फीस अनुस्मारक', 'Contact card': 'संपर्क कार्ड', 'Email': 'ईमेल',
   'Sun': 'रवि', 'Mon': 'सोम', 'Tue': 'मंगल', 'Wed': 'बुध', 'Thu': 'गुरु', 'Fri': 'शुक्र', 'Sat': 'शनि',
 };
 const HI_PH = { 'Case no., FIR, party, client': 'वाद संख्या, FIR, पक्षकार, मुवक्किल', 'Search matters': 'मुकदमे खोजें', 'Search clients': 'मुवक्किल खोजें', 'Or type, e.g. Cross of PW2': 'या लिखें, जैसे PW2 की जिरह' };

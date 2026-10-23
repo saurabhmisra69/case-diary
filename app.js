@@ -274,7 +274,7 @@ function logChange(m, text) {
   const now = new Date(), stamp = todayIso() + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
   m.changes = (m.changes || []).concat([{ at: stamp, t: text }]).slice(-60);
 }
-const FIELD_NAMES = { clientCode: 'Client code', title: 'Title', clients: 'Client', forum: 'Category', court: "Hon'ble Court", type: 'Type', caseNo: 'Case no.', crimeNo: 'Crime no.', cnr: 'CNR', filingNo: 'Filing no.', ps: 'Police station', sections: 'Sections', side: 'Appearing for', nextDate: 'Next date', item: 'Item', purpose: 'Fixed for', status: 'Status', outcome: 'Result', feeAgreed: 'Fees agreed', feeReceived: 'Fees received', phone: 'Mobile', whatsapp: 'WhatsApp', altName: 'Alternate contact', altPhone: 'Alternate mobile', deadline: 'Deadline', notes: 'Notes' };
+const FIELD_NAMES = { email: 'Email', clientCode: 'Client code', title: 'Title', clients: 'Client', forum: 'Category', court: "Hon'ble Court", type: 'Type', caseNo: 'Case no.', crimeNo: 'Crime no.', cnr: 'CNR', filingNo: 'Filing no.', ps: 'Police station', sections: 'Sections', side: 'Appearing for', nextDate: 'Next date', item: 'Item', purpose: 'Fixed for', status: 'Status', outcome: 'Result', feeAgreed: 'Fees agreed', feeReceived: 'Fees received', phone: 'Mobile', whatsapp: 'WhatsApp', altName: 'Alternate contact', altPhone: 'Alternate mobile', deadline: 'Deadline', notes: 'Notes' };
 function logDiff(m, before, after, how) {
   const bits = [];
   for (const k of Object.keys(FIELD_NAMES)) {
@@ -589,6 +589,7 @@ function sheetEdit(m) {
     <div class="two">${fld('deadline', 'Deadline', m.deadline, 'date')}${fld('deadlineFor', 'Deadline for', m.deadlineFor, 'text', 'placeholder="e.g. Reply, Appeal"')}</div>
     ${isNew ? `<div class="two">${fld('feeAgreed', 'Fees agreed (₹)', m.feeAgreed, 'text', 'inputmode="numeric"')}${fld('feeReceived', 'Fees received (₹)', m.feeReceived, 'text', 'inputmode="numeric"')}</div>` : `<p class="hint" style="margin:0 0 12px">Fees: ${rupees(m.feeReceived)} received of ${rupees(m.feeAgreed)} agreed. Add, edit or remove amounts under <b>Fees</b> on the matter page.</p>`}
     <div class="two">${fld('phone', 'Client mobile', m.phone, 'tel', 'placeholder="10-digit mobile"')}${fld('whatsapp', 'WhatsApp no. (if different)', m.whatsapp, 'tel', 'placeholder="blank = same as mobile"')}</div>
+    ${fld('email', 'Client email', m.email, 'email', 'placeholder="for bills, receipts and updates" autocapitalize="off" spellcheck="false"')}
     <div class="two">${fld('altName', 'Alternate contact – name', m.altName, 'text', 'placeholder="e.g. son, pairokar"')}${fld('altPhone', 'Alternate mobile', m.altPhone, 'tel', 'placeholder="10-digit mobile"')}</div>
     <div class="field"><label for="f_notes">Notes</label><textarea class="in" id="f_notes" name="notes">${esc(m.notes || '')}</textarea></div>
     <button class="save" type="submit">${isNew ? 'Add matter' : 'Save changes'}</button>
