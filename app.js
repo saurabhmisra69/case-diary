@@ -152,6 +152,11 @@ function merge(local, remote) {
   const fx = [...new Set([...(local.fixes || []), ...(remote.fixes || [])])]; if (fx.length) out.fixes = fx;
   const lm = local.meta || {}, rm = remote.meta || {}, meta = { ...rm, ...lm };
   for (const k of new Set([...Object.keys(lm), ...Object.keys(rm)])) if (/^seq:/.test(k)) meta[k] = Math.max(+lm[k] || 0, +rm[k] || 0);
+  for (const k of ['juniors', 'library']) {   // lists kept on several devices: join them entry by entry
+    if (!Array.isArray(lm[k]) && !Array.isArray(rm[k])) continue;
+    const mp = new Map(); for (const x of [...(rm[k] || []), ...(lm[k] || [])]) { const o = mp.get(x.id); if (!o || (x.u || 0) >= (o.u || 0)) mp.set(x.id, x); }
+    meta[k] = [...mp.values()];
+  }
   if (Object.keys(meta).length) out.meta = meta;
   return out;
 }
@@ -409,6 +414,8 @@ function viewHome() {
   </header>
   <main class="home-main">
     ${typeof guardCards === 'function' ? guardCards() : ''}
+    ${typeof limitsToday === 'function' ? limitsToday() : ''}
+    ${typeof tasksToday === 'function' ? tasksToday() : ''}
     ${briefHtml(list, deadlines, fees)}
     ${(() => { const rr = live().flatMap(m => retainerDue(m).map(x => ({ m, ...x }))); return rr.length ? `<section class="list"><div class="h2"><h2>Retainers</h2></div>${rr.map(x => `<button class="card row" data-act="open" data-id="${x.m.id}"><div class="item sm" style="background:var(--adv)"><small>${x.kind === 'bill' ? 'BILL' : 'TERM'}</small><b>${dmy(x.date).slice(0, 5)}</b></div><span class="m-col"><span class="m-title">${esc(x.m.title || x.m.clients)}</span><span class="m-meta">${esc(x.text)}</span></span></button>`).join('')}</section>` : ''; })()}
     <section class="list a-list">
@@ -517,6 +524,9 @@ function viewMore() {
     <button data-act="causelist" data-day="${S.day}">Cause list in Word <small>on your letterhead</small></button>
     <button data-act="lock">App lock <small>${typeof hasPin === 'function' && hasPin() ? 'PIN set · locks after 5 min' : 'set a PIN'}</small></button>
     <button data-act="offbackup">Download full backup <small>${typeof lastOffline === 'function' && lastOffline() ? 'last ' + dmy(lastOffline().slice(0, 10)) : 'Excel + data file, for a pen drive'}</small></button>
+    <button data-act="jtasks">Juniors &amp; tasks <small>open tasks, your juniors</small></button>
+    <button data-act="library">Judgment library <small>your own judgments, searchable</small></button>
+    <button data-act="templates">My templates <small>made from your past drafts</small></button>
     <button data-act="conflict">Conflict check <small>before taking a new matter</small></button>
     <button data-act="paper">Paper size <small>A4 or Legal for each kind of document</small></button>
     <button data-act="tab" data-tab="limit">Limitation calculator <small>last date to file</small></button>

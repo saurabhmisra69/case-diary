@@ -193,12 +193,12 @@ async function makeReceiptDoc(m, rc, p, b, withSig) {
 }
 
 /* ---------- after a document is made: open / PDF / share / download ---------- */
-function docReady(m, r, title, back) {
+function docReady(m, r, title, back, backLabel) {
   openSheet(`<div class="s-head"><div><small>${esc(m.no)}</small><h1>${esc(title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <p class="hint">${esc(r.name)}${r.itemId ? ' · saved in the case folder › ' + (r.where || FEE_DIR_NAME[m.id] || '5 Fees') : ''}</p>
     <div class="three"><button class="act primary" data-dk="open">Open in Word</button><button class="act blue" data-dk="pdf">PDF</button><button class="act blue" data-dk="share">Share</button></div>
     <button class="ghost" data-dk="dl" style="width:100%;margin-top:8px">Download</button>
-    <button class="linkbtn" data-dk="back" style="margin-top:10px">‹ Back to ${back ? 'Letters &amp; notices' : 'Fees &amp; payments'}</button>`);
+    <button class="linkbtn" data-dk="back" style="margin-top:10px">‹ ${back ? (backLabel || 'Back to Letters &amp; notices') : 'Back to Fees &amp; payments'}</button>`);
   const dl = (blob, n) => { const x = document.createElement('a'); x.href = URL.createObjectURL(blob); x.download = n; document.body.appendChild(x); x.click(); x.remove(); };
   $('#sheet-root').onclick = async e => {
     const b = e.target.closest('[data-dk]'); if (!b) return;

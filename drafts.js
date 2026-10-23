@@ -391,6 +391,7 @@ function sheetDraft(m, preset) {
         ${S2.format ? '' : `<button class="act blue" data-dr="fromorder">Fill from an order</button>`}
         ${S2.format ? '' : `<button class="act blue" data-dr="annex">Attach annexure</button>`}
         <button class="act blue" data-dr="format">${S2.format ? 'Change format' : 'Use my own format'}</button></div>
+        <button class="ghost" data-dr="tpl" style="width:100%;margin-top:8px">From my templates</button>
         ${S2.annex.length ? `<div class="hist">${S2.annex.map((a, i) => `<div><b>Annexure ${i + 1}</b><span>${esc(a.title)} · ${a.images.length} page${a.images.length > 1 ? 's' : ''} <button class="linkbtn" data-dr="rmannex" data-i="${i}">Remove</button></span></div>`).join('')}</div>` : ''}
       </div>
       ${S2.format ? `<p class="hint">${esc(FIELD_HINT)}</p>` : fields.map(([k, l]) => `<div class="field"><label for="dr_${k}">${esc(l.toUpperCase())}</label>${['facts', 'why', 'lapse', 'gist'].includes(k) ? `<textarea class="in" id="dr_${k}" data-df="${k}">${esc(S2.f[k] || '')}</textarea>` : `<input class="in" id="dr_${k}" data-df="${k}" value="${esc(S2.f[k] || (k === 'who' ? m.clients || '' : ''))}">`}</div>`).join('')}
@@ -443,6 +444,11 @@ function sheetDraft(m, preset) {
       S2.busy = 'Adding ' + doc.name + '…'; draw();
       try { S2.annex.push({ title: doc.name.replace(/\.[^.]+$/, ''), images: await paperToImages(doc) }); S2.done = null; } catch (er) { toast('Could not attach: ' + er.message); }
       S2.busy = ''; draw();
+    }
+    else if (k === 'tpl') {
+      const doc = await pickTemplate(); bind();
+      if (doc) { S2.format = { name: doc.name, buf: await doc.blob.arrayBuffer() }; S2.done = null; }
+      draw();
     }
     else if (k === 'format') {
       const doc = await pickDoc(m, 'Pick your Word format (.docx)', ['docx']); bind();
