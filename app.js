@@ -347,7 +347,7 @@ const waOf = m => phoneDigits(m.whatsapp) || phoneDigits(m.phone);
 function phoneDigits(p) { let d = String(p || '').replace(/\D/g, ''); if (d.length === 10) d = '91' + d; if (d.length === 11 && d[0] === '0') d = '91' + d.slice(1); return d.length >= 11 ? d : ''; }
 function matches(m, q) {
   q = q.toLowerCase().trim(); if (!q) return true;
-  const hay = [m.no, mref(m), m.title, m.clients, m.caseNo, m.crimeNo, m.ps, m.court, m.sections, m.type, m.side, m.item, m.cnr, m.filingNo, m.phone, m.whatsapp, m.altPhone, m.altName, m.folderName, m.purpose, m.notes].join(' ').toLowerCase();
+  const hay = [m.no, mref(m), m.title, m.clients, ...(typeof aliasesOf === 'function' ? aliasesOf(m.clients) : []), m.caseNo, m.crimeNo, m.ps, m.court, m.sections, m.type, m.side, m.item, m.cnr, m.filingNo, m.phone, m.whatsapp, m.altPhone, m.altName, m.folderName, m.purpose, m.notes].join(' ').toLowerCase();
   const flat = s => s.replace(/[^a-z0-9\u0900-\u097f]/g, ''), hayFlat = flat(hay);
   // every word must match; "2787/2024", "2787-2024" and "27872024" all find the same case
   return q.split(/\s+/).every(w => hay.includes(w) || (flat(w) && hayFlat.includes(flat(w))));
@@ -580,6 +580,7 @@ function sheetEdit(m) {
   <form id="mform" class="grp" style="gap:14px" autocomplete="off">
     <div class="two">${fld('year', 'Year (for numbering)', m.year, 'number', 'min="1990" max="2100" required')}<div class="field"><label for="f_forum">Forum</label><select class="in" id="f_forum" name="forum">${fopt}</select></div></div>
     ${fld('clients', 'Client name(s)', m.clients, 'text', 'required placeholder="e.g. Nikhil Agnihotri & Anr."')}
+    ${fld('aka', 'Client also known as', (typeof aliasesOf === 'function' ? aliasesOf(m.clients) : []).join(', '), 'text', 'placeholder="other names of the same client, e.g. Anuj Kumar Gupta (separate with commas)"')}
     ${fld('title', 'Parties (title)', m.title, 'text', 'placeholder="e.g. Ritz Restaurant v. Ram Dular Pathak"')}
     ${fld('court', 'Court', m.court, 'text', 'list="courts" placeholder="e.g. High Court, Lucknow Bench · Court 7"')}
     <datalist id="courts">${[...new Set(live().map(x => x.court).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('')}</datalist>
@@ -611,12 +612,16 @@ function sheetEdit(m) {
     if (!fd.title) fd.title = fd.clients;
     if (fd.cnr) fd.cnr = fd.cnr.toUpperCase().replace(/\s+/g, '');
     delete fd.clientCode;   // set in Client codes
+    const aka = (fd.aka || '').split(/[,;]/).map(x => x.trim()).filter(Boolean); delete fd.aka;   // kept per client, not per matter
+    const akaHad = typeof aliasesOf === 'function' ? aliasesOf(fd.clients) : [];
+    if (isNew) aka.unshift(...akaHad);   // a new matter only adds names; it never drops names saved earlier
+    const akaChanged = typeof aliasesOf === 'function' && (aka.length || !isNew) && [...new Set(aka)].join('|') !== akaHad.join('|');
     if (isNew && typeof conflictGate === 'function' && !(await conflictGate(fd))) return;
     if (isNew) {
       const rec = touch({ id: uid(), n: nextNumber(fd.year), hearings: [], created: todayIso(), ...fd });
       rec.no = rec.year + '/' + rec.n;
       if (rec.nextDate) rec.calPending = true;
-      change(d => d.matters.push(rec));
+      change(d => { d.matters.push(rec); if (akaChanged) setAliases(d, rec.clients, aka); });
       closeSheet(); toast('Matter ' + mref(rec) + ' added');
     } else {
       const old = find(m.id); const before = { caseNo: old.caseNo, type: old.type, court: old.court };
@@ -627,6 +632,7 @@ function sheetEdit(m) {
         if (fd.lastDate && fd.lastDate !== old.lastDate) logPast(old, fd.lastDate, 'last date entered in Edit');
         if (old.nextDate !== fd.nextDate || old.status !== fd.status || old.purpose !== fd.purpose || old.court !== fd.court) old.calPending = true;
         Object.assign(old, fd); touch(old);
+        if (akaChanged) setAliases(S.data, old.clients, aka);
       });
       closeSheet(); toast('Saved'); if (typeof afterEdit === 'function') afterEdit(old, before);
     }

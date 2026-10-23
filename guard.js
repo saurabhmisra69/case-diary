@@ -131,6 +131,7 @@ function conflictHits(forNames, againstNames, skipId) {
   for (const m of (S.data.matters || [])) {
     if (m.id === skipId) continue;
     const sd = sidesOf(m), why = [];
+    if (typeof aliasesOf === 'function') { const ak = aliasesOf(m.clients).flatMap(x => persons(x)); if (ak.length) sd.ours = [...sd.ours, ...ak]; }
     A.forEach(a => { if (sd.ours.some(o => samePerson(a, o))) why.push({ sev: 'red', t: `You acted FOR ${cap1(a)} in this matter; the new matter is against them.` }); });
     F.forEach(c => { if (sd.other.some(o => samePerson(c, o))) why.push({ sev: 'red', t: `Your new client ${cap1(c)} was on the OTHER side in this matter.` }); });
     A.forEach(a => { if (sd.other.some(o => samePerson(a, o))) why.push({ sev: 'info', t: `${cap1(a)} was on the other side here too.` }); });

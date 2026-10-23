@@ -49,7 +49,7 @@ function sheetCodes(filter) {
   const card = g => {
     const locked = g.code && ccLocked(g), ek = 'e_' + btoa(unescape(encodeURIComponent(g.key))).replace(/[^a-z0-9]/gi, '');
     return `<div class="card" style="padding:12px 14px;box-shadow:none;border:1px solid var(--line)">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><b>${esc(g.name)}</b>${g.code ? `<b style="font-family:var(--mono);color:var(--dc-ink)">${esc(g.code)}</b>` : ''}</div>
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><b>${esc(g.name)}${g.aka && g.aka.length ? `<small style="display:block;font-weight:500;color:var(--muted)">also ${esc(g.aka.join(', '))}</small>` : ''}</b>${g.code ? `<b style="font-family:var(--mono);color:var(--dc-ink)">${esc(g.code)}</b>` : ''}</div>
       <div class="hist" style="margin-top:6px">${g.ms.map(m => `<div><b style="font-size:11px">${esc(mref(m))}</b><span>${esc(m.title || '')}${m.caseNo ? ' · ' + esc(m.caseNo) : ''}<br><button class="linkbtn" data-cc="client" data-id="${m.id}">Change client</button></span></div>`).join('')}</div>
       ${g.code === 'MIXED' ? `<p class="hint" style="color:var(--red)">These matters have different codes: ${esc([...new Set(g.ms.map(m => m.clientCode).filter(Boolean))].join(', '))}. Set one below.</p>` : ''}
       ${(() => { const numbered = !g.code || g.code === 'MIXED' || ccPre(g.code);
@@ -59,7 +59,7 @@ function sheetCodes(filter) {
         return numbered ? `<div style="display:flex;gap:6px;align-items:center;margin-top:8px"><span class="ccpre" title="Number given by the app">${esc(pre)}</span><input class="in" id="${ek}" data-cc-in="${esc(g.key)}" value="${esc(ini)}" maxlength="6" style="flex:1;font-family:var(--mono);text-transform:uppercase" autocapitalize="characters" spellcheck="false" aria-label="Initials"><button class="act primary" data-cc="ok" data-k="${esc(g.key)}" data-in="${ek}" style="min-height:42px;padding:0 12px">${g.code && g.code !== 'MIXED' ? 'Save' : 'Approve'}</button></div>` : ''; })()}
       <div class="chips" style="margin-top:8px">${g.code && g.code !== 'MIXED' && !locked && ccPre(g.code) ? `<button class="chip" data-cc="fix" data-k="${esc(g.key)}">Fix this code</button>` : ''}${g.code && g.code !== 'MIXED' && !locked && !ccPre(g.code) ? `<button class="chip" data-cc="renum" data-k="${esc(g.key)}">Give it a numbered code</button>` : ''}
         ${!g.code ? (g.skip ? `<button class="chip" data-cc="unskip" data-k="${esc(g.key)}">Bring back</button>` : `<button class="chip" data-cc="skip" data-k="${esc(g.key)}">Skip for now</button>`) : ''}
-        <button class="chip" data-cc="merge" data-k="${esc(g.key)}">Same person as…</button></div></div>`;
+        <button class="chip" data-cc="merge" data-k="${esc(g.key)}">Same person as…</button><button class="chip" data-cc="aka" data-k="${esc(g.key)}">Also known as…</button></div></div>`;
   };
   const grOf = k => ccGroups().find(g => g.key === k);
   const approve = (g, ini) => {
@@ -83,6 +83,7 @@ function sheetCodes(filter) {
     if (a === 'fix') { if (!confirm('Fix ' + g.code + ' for ' + g.name + '? The initials cannot be changed after this.')) return; change(d => { d.meta = d.meta || {}; d.meta.codeFixed = Object.assign({}, d.meta.codeFixed, { [g.code]: todayIso() }); g.ms.forEach(m => logChange(m, 'Client code fixed: ' + g.code)); }); toast(g.code + ' fixed'); return draw(); }
     if (a === 'renum') { change(() => g.ms.forEach(m => { logChange(m, 'Client code ' + m.clientCode + ' removed, to get a numbered code'); m.clientCode = ''; touch(m); })); st.f = 'todo'; return draw(); }
     if (a === 'skip' || a === 'unskip') { change(d => { d.meta = d.meta || {}; const s = Object.assign({}, d.meta.codeSkip); if (a === 'skip') s[g.key] = true; else delete s[g.key]; d.meta.codeSkip = s; }); return draw(); }
+    if (a === 'aka') return sheetAliases(g.ms[0].clients, () => sheetCodes(st.f));
     if (a === 'client') { const m = find(b.dataset.id); return changeClient(m, () => sheetCodes(st.f)); }
     if (a === 'merge') { const others = ccGroups().filter(x => x.key !== g.key);
       openSheet(`<div class="s-head"><div><small>${esc(g.name)}</small><h1>Same person as…</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
