@@ -269,7 +269,7 @@ function logChange(m, text) {
   const now = new Date(), stamp = todayIso() + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
   m.changes = (m.changes || []).concat([{ at: stamp, t: text }]).slice(-60);
 }
-const FIELD_NAMES = { title: 'Title', clients: 'Client', forum: 'Category', court: "Hon'ble Court", type: 'Type', caseNo: 'Case no.', crimeNo: 'Crime no.', cnr: 'CNR', filingNo: 'Filing no.', ps: 'Police station', sections: 'Sections', side: 'Appearing for', nextDate: 'Next date', item: 'Item', purpose: 'Fixed for', status: 'Status', outcome: 'Result', feeAgreed: 'Fees agreed', feeReceived: 'Fees received', phone: 'Mobile', whatsapp: 'WhatsApp', altName: 'Alternate contact', altPhone: 'Alternate mobile', deadline: 'Deadline', notes: 'Notes' };
+const FIELD_NAMES = { clientCode: 'Client code', title: 'Title', clients: 'Client', forum: 'Category', court: "Hon'ble Court", type: 'Type', caseNo: 'Case no.', crimeNo: 'Crime no.', cnr: 'CNR', filingNo: 'Filing no.', ps: 'Police station', sections: 'Sections', side: 'Appearing for', nextDate: 'Next date', item: 'Item', purpose: 'Fixed for', status: 'Status', outcome: 'Result', feeAgreed: 'Fees agreed', feeReceived: 'Fees received', phone: 'Mobile', whatsapp: 'WhatsApp', altName: 'Alternate contact', altPhone: 'Alternate mobile', deadline: 'Deadline', notes: 'Notes' };
 function logDiff(m, before, after, how) {
   const bits = [];
   for (const k of Object.keys(FIELD_NAMES)) {
@@ -561,7 +561,7 @@ function sheetEdit(m) {
     <datalist id="courts">${[...new Set(live().map(x => x.court).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('')}</datalist>
     <div class="two"><div class="field"><label for="f_type">Type</label><select class="in" id="f_type" name="type"><option value=""></option>${opt(TYPES, m.type)}</select></div>${fld('caseNo', 'Case no.', m.caseNo, 'text', 'placeholder="e.g. 8027/2026"')}</div>
     ${fld('cnr', 'CNR no.', m.cnr, 'text', 'placeholder="16 characters, e.g. UPHC020344252026" style="text-transform:uppercase;font-family:var(--mono);letter-spacing:.03em" autocapitalize="characters" spellcheck="false"')}
-    <div class="two">${fld('filingNo', 'Filing no.', m.filingNo)}<span></span></div>
+    <div class="two">${fld('filingNo', 'Filing no.', m.filingNo)}${fld('clientCode', 'Client code (letters)', m.clientCode, 'text', 'list="ccodes" placeholder="e.g. OMAXE-RWA" style="text-transform:uppercase;font-family:var(--mono)" autocapitalize="characters" spellcheck="false"')}</div><datalist id="ccodes">${[...new Set(live().map(x => x.clientCode).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('')}</datalist>
     <div class="two">${fld('crimeNo', 'Crime / FIR no.', m.crimeNo)}${fld('ps', 'Police station', m.ps)}</div>
     ${fld('sections', 'Under section(s)', m.sections)}
     <div class="two"><div class="field"><label for="f_nature">Nature</label><select class="in" id="f_nature" name="nature">${opt(['Criminal', 'Civil', 'Other'], m.nature)}</select></div><div class="field"><label for="f_status">Status</label><select class="in" id="f_status" name="status">${opt(statusList(m), m.status)}</select></div></div>
@@ -585,6 +585,7 @@ function sheetEdit(m) {
     fd.year = parseInt(fd.year, 10) || y;
     if (!fd.title) fd.title = fd.clients;
     if (fd.cnr) fd.cnr = fd.cnr.toUpperCase().replace(/\s+/g, '');
+    fd.clientCode = codeClean(fd.clientCode || '');
     if (isNew) {
       const rec = touch({ id: uid(), n: nextNumber(fd.year), hearings: [], created: todayIso(), ...fd });
       rec.no = rec.year + '/' + rec.n;

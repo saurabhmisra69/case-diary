@@ -324,3 +324,6 @@ body{padding-left:24px} .nav{left:24px} .scrim{left:24px}
 .terms{display:flex;flex-direction:column;gap:6px}
 .term{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:start;font-size:13px;line-height:1.4}
 .term input[type=checkbox]{width:18px;height:18px;margin-top:2px}
+.voided{opacity:.72}
+.voided>b:first-child{text-decoration:line-through}
+.voidtag{color:#B00000;font-size:11px;letter-spacing:.06em;border:1px solid #B00000;border-radius:4px;padding:0 4px}
