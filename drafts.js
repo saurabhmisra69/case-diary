@@ -392,6 +392,7 @@ function sheetDraft(m, preset) {
         ${S2.format ? '' : `<button class="act blue" data-dr="annex">Attach annexure</button>`}
         <button class="act blue" data-dr="format">${S2.format ? 'Change format' : 'Use my own format'}</button></div>
         <button class="ghost" data-dr="tpl" style="width:100%;margin-top:8px">From my templates</button>
+        ${typeof sectionLinks === 'function' && sectionLinks(m).length ? `<p class="hint" style="margin:8px 0 4px">Bare Acts (your shelf):</p><div class="chips">${sectionLinks(m).map(x => `<button class="chip on" data-act="actsec" data-k="${x.k}" data-no="${esc(x.no)}">${esc(x.label)}</button>`).join('')}</div>` : ''}
         ${typeof sectionSearches === 'function' && (sectionSearches(m.sections).length || (TOPICS[m.type] || []).length) ? `<p class="hint" style="margin:8px 0 4px">Find authorities in Supreme Today (copied, then paste there):</p><div class="chips">${sectionSearches(m.sections).concat(TOPICS[m.type] || []).slice(0, 6).map(x => `<button class="chip" data-act="stsearch" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : ''}
         ${S2.annex.length ? `<div class="hist">${S2.annex.map((a, i) => `<div><b>Annexure ${i + 1}</b><span>${esc(a.title)} · ${a.images.length} page${a.images.length > 1 ? 's' : ''} <button class="linkbtn" data-dr="rmannex" data-i="${i}">Remove</button></span></div>`).join('')}</div>` : ''}
       </div>
