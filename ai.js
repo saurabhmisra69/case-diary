@@ -51,8 +51,8 @@ async function shrinkImage(file, max = 1600) {
 const toB64 = blob => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = bad; r.readAsDataURL(blob); });
 
 function orderPrompt(m) {
-  return `You are reading an Indian court order (it may be handwritten, in English or Hindi) for an advocate's diary.
-Matter in the diary: ${m.title || m.clients}; ${m.type || ''} ${m.caseNo || ''}; ${m.court || ''}. Today is ${todayIso()}.
+  return `You are reading an Indian court order (it may be handwritten, in English or Hindi) for an advocate's case records.
+Matter: ${m.title || m.clients}; ${m.type || ''} ${m.caseNo || ''}; ${m.court || ''}. Today is ${todayIso()}.
 Reply with ONLY a JSON object, no other text:
 {"sameMatter": true or false (does the order belong to this matter, judging by case number or parties),
  "orderDate": "YYYY-MM-DD" (date of this hearing),

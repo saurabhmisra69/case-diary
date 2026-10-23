@@ -1,5 +1,5 @@
 /* Case Diary — Step 4: sorting the old folders.
-   Reads decisions from OneDrive › Case Diary › Folder Sorting Sheet.xlsx and moves items
+   Reads decisions from OneDrive › SM Chambers data › Folder Sorting Sheet.xlsx and moves items
    25 at a time, only after the advocate taps Approve. Every move is logged to
    Folder Moves Log.xlsx. Nothing is ever deleted. */
 'use strict';
@@ -21,7 +21,7 @@ async function loadSort() {
     if (!window.XLSX) throw new Error('Excel reader still loading; try again');
     const sh = SHEETS[SO.sheet];
     const buf = await downloadPath(sh.file);
-    if (!buf) throw new Error(sh.file.split('/').pop() + ' not found in OneDrive › Case Diary');
+    if (!buf) throw new Error(sh.file.split('/').pop() + ' not found in OneDrive › SM Chambers data');
     const wb = XLSX.read(buf, { type: 'array' });
     const rows = XLSX.utils.sheet_to_json(wb.Sheets['Sorting sheet'], { defval: '' });
     SO.plan = rows.filter(r => String(r['Decision']).trim().toLowerCase() === 'agree' && r['Target folder (for the diary)'])
@@ -109,7 +109,7 @@ VIEWS.sort = function () {
       <div class="filters" style="padding:0">${Object.entries(SHEETS).map(([k, v]) => `<button class="chip ${SO.sheet === k ? 'on' : ''}" data-act="sortsheet" data-k="${k}" style="min-height:38px">${v.title}</button>`).join('')}</div>
       <div class="kv"><span>Planned steps</span><b>${SO.plan.length}</b><span>Done</span><b style="color:var(--dc-ink)">${done}</b><span>Remaining</span><b>${pend.length}</b>${problems.length ? `<span>Not moved</span><b style="color:var(--red)">${problems.length}</b>` : ''}</div>
       <div style="height:10px;border-radius:99px;background:var(--chip);overflow:hidden"><div style="height:100%;width:${SO.plan.length ? Math.round(done / SO.plan.length * 100) : 0}%;background:var(--dc)"></div></div>
-      <p class="hint" style="margin:0">From OneDrive › Case Diary › Folder Sorting Sheet.xlsx. Only rows marked <b>Agree</b> are moved. Nothing is deleted. Every move is written to Folder Moves Log.xlsx.</p>
+      <p class="hint" style="margin:0">From OneDrive › SM Chambers data › Folder Sorting Sheet.xlsx. Only rows marked <b>Agree</b> are moved. Nothing is deleted. Every move is written to Folder Moves Log.xlsx.</p>
       <button class="linkbtn" data-act="sortreload" style="align-self:flex-start">Read the sheet again</button>
       ${SO.results && SO.results.length ? `<div class="grp"><span class="lbl">Last batch</span><div class="hist">${SO.results.map(r => `<div><b style="color:${r.res === 'Moved' || r.res === 'Created' || r.res === 'Already in place' ? 'var(--dc-ink)' : 'var(--red)'};font-family:inherit">${esc(r.res)}</b><span>${esc(r.it.cur)}</span></div>`).join('')}</div></div>` : ''}
     </section>

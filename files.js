@@ -151,7 +151,7 @@ function viewMatter(m) {
   const due = feeDue(m);
   return `<header class="phead" style="background:${f.c}">
     <div class="top-row"><button class="backbtn" data-act="back" aria-label="Back">${I.back}</button><button id="syncbtn" class="sync" data-act="sync" style="background:rgba(255,255,255,.18)"></button></div>
-    <div><small style="font-weight:800;opacity:.85">${esc(mref(m))} · ${esc(m.court || f.label)} · ${esc(m.status)}${m.status === 'Decided' && m.outcome ? ' (' + esc(m.outcome) + ')' : ''}</small><h1 style="margin-top:4px">${esc(m.title || m.clients)}</h1>
+    <div><small style="font-weight:800;opacity:.85;font-family:var(--mono);letter-spacing:.02em">${esc(mref(m))}</small><h1 style="margin-top:4px">${esc(m.title || m.clients)}</h1>
     <p class="m-meta" style="color:rgba(255,255,255,.85);margin:6px 0 0">${esc(metaLine(m))}</p></div>
     <div class="next-strip">${m.nextDate ? `<span>Next date</span><b>${DOWL[parseIso(m.nextDate).getDay()].slice(0, 3)}, ${dmy(m.nextDate)}</b>${m.purpose ? `<span>for ${esc(m.purpose)}</span>` : ''}` : `<b>${m.status === 'Pending' ? 'No next date' : esc(m.status)}</b>`}</div>
   </header>
@@ -161,7 +161,7 @@ function viewMatter(m) {
     <div class="acts mp-acts" style="grid-template-columns:1fr 1fr;margin-top:-4px"><button class="act blue" data-act="cover" data-id="${m.id}" style="min-height:42px">Print file cover</button><button class="act blue" data-act="letters" data-id="${m.id}" style="min-height:42px">Letters &amp; notices${(m.letters || []).length ? ' (' + m.letters.length + ')' : ''}</button></div>
     ${pendingOutcome(m) ? `<section class="card ask-card"><b>What happened on ${dmy(m.nextDate)}?</b><div class="chips" style="margin-top:8px">${HAPPENED.map(h => `<button class="chip" data-act="outcome" data-id="${m.id}" data-v="${h}">${h}</button>`).join('')}</div></section>` : ''}
     ${typeof limitCard === 'function' ? limitCard(m) : ''}
-    ${dupsOf(m).length ? `<section class="card dup-card"><b><span class="dupstar">★</span> Entered more than once</b><p class="hint" style="margin:4px 0 8px">The same case also appears as:</p>${dupsOf(m).map(x => `<button class="linkbtn" data-act="open" data-id="${x.id}" style="display:block;text-align:left;margin:4px 0">${esc(mref(x))} · ${esc(x.title || x.clients)}${x.court ? ' · ' + esc(x.court) : ''}</button>`).join('')}<p class="hint" style="margin:8px 0 0">Keep one: open the other and use Edit › Remove from diary.</p></section>` : ''}
+    ${dupsOf(m).length ? `<section class="card dup-card"><b><span class="dupstar">★</span> Entered more than once</b><p class="hint" style="margin:4px 0 8px">The same case also appears as:</p>${dupsOf(m).map(x => `<button class="linkbtn" data-act="open" data-id="${x.id}" style="display:block;text-align:left;margin:4px 0">${esc(mref(x))} · ${esc(x.title || x.clients)}${x.court ? ' · ' + esc(x.court) : ''}</button>`).join('')}<p class="hint" style="margin:8px 0 0">Keep one: open the other and use Edit › Remove this matter.</p></section>` : ''}
     <section class="card" style="padding:12px 16px"><div class="stbox" style="margin:0"><div class="field" style="margin:0 0 10px"><label for="fo_${m.id}">Category</label><select class="in" id="fo_${m.id}" data-st="forum" data-id="${m.id}">${Object.entries(FORUMS).map(([k, x]) => `<option value="${k}" ${k === (m.forum || 'District') ? 'selected' : ''}>${x.label}</option>`).join('')}</select></div><div class="field" style="margin:0"><label for="st_${m.id}">Status</label><select class="in" id="st_${m.id}" data-st="status" data-id="${m.id}">${statusList(m).map(s => `<option ${s === (m.status || statusList(m)[0]) ? 'selected' : ''}>${s}</option>`).join('')}${statusList(m).includes(m.status) || !m.status ? '' : `<option selected>${esc(m.status)}</option>`}</select></div>
       ${typeof allotBox === 'function' ? allotBox(m) : ''}
       ${m.forum === 'Advisory' && isRetainer(m) ? retainerBox(m) : ''}${m.forum === 'Advisory' && !isRetainer(m) ? `<button class="act primary" data-act="tocase" data-id="${m.id}" style="width:100%;margin-top:10px;min-height:44px">Convert to case</button>` : ''}${m.prelit ? `<p class="hint" style="margin:8px 0 0">Pre-litigation: ${esc(m.prelit.status || '')}${m.prelit.till ? ' (till ' + dmy(m.prelit.till) + ')' : ''}</p>` : ''}
@@ -500,7 +500,7 @@ async function processInbox() {
               if (c.lastDate && (!m.lastDate || c.lastDate > m.lastDate)) m.lastDate = c.lastDate;
               if (c.fill) for (const [k, v] of Object.entries(c.fill)) if (!m[k]) m[k] = v;
               if (c.unhearing) m.hearings = (m.hearings || []).filter(h => !(h.date === c.unhearing.date && h.happened === c.unhearing.happened && /eCourts/.test(h.note || '')));
-              if (c.lastDate) logPast(m, c.lastDate, 'from ' + (c.from || 'diary update'));
+              if (c.lastDate) logPast(m, c.lastDate, 'from ' + (c.from || 'update'));
               if (c.set && 'nextDate' in c.set && c.set.nextDate !== m.nextDate) logListing(m, m.nextDate, c.set.nextDate, c.from || 'updated automatically');
               if (c.set) logDiff(m, { ...m }, c.set, c.from || 'automatic update');
               if (c.set) Object.assign(m, c.set);
@@ -535,7 +535,7 @@ async function processInbox() {
           }
           if (!done) { const d = await g(drivePath(DIARY_DIR + '/Inbox/Done')); done = d.ok ? await d.json() : await makeFolder((await getItem(drivePath(DIARY_DIR + '/Inbox'))).id, 'Done'); }
           await g('/me/drive/items/' + f.id + '?@microsoft.graph.conflictBehavior=rename', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parentReference: { id: done.id } }) });
-          toast('Diary updated from Claude');
+          toast('Updated from Claude');
         } catch (e) { console.warn('inbox', e); }
       }
     }

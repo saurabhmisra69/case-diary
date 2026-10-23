@@ -12,7 +12,7 @@ const HI = {
   'Calculate last date': 'अंतिम तिथि निकालें', 'Appeal, revision, review, s.34, NI Act and more': 'अपील, निगरानी, पुनर्विलोकन, धारा 34, एनआई एक्ट आदि',
   'Limitation running': 'परिसीमा चल रही है', 'Tasks due': 'देय कार्य', 'All tasks': 'सभी कार्य', 'Retainers': 'रिटेनर',
   'Protect your chambers data': 'अपने चैंबर का डेटा सुरक्षित करें', 'Set a 4-digit PIN so nobody else can open client files, fees and bank details on this phone.': '4 अंकों का PIN लगाएँ, ताकि इस फ़ोन पर कोई और मुवक्किलों की फ़ाइलें, फीस और बैंक विवरण न खोल सके।',
-  'Set PIN': 'PIN लगाएँ', 'Not now': 'अभी नहीं', 'Download backup': 'बैकअप डाउनलोड करें', 'Download the whole diary (Excel + data file) and keep it on a pen drive.': 'पूरी डायरी (Excel + डेटा फ़ाइल) डाउनलोड करके पेन ड्राइव में रखें।',
+  'Set PIN': 'PIN लगाएँ', 'Not now': 'अभी नहीं', 'Download backup': 'बैकअप डाउनलोड करें', 'Download all your records (Excel + data file) and keep them on a pen drive.': 'अपने सभी रिकॉर्ड (Excel + डेटा फ़ाइल) डाउनलोड करके पेन ड्राइव में रखें।',
   'Monthly backup not taken yet': 'मासिक बैकअप अभी नहीं लिया गया',
   // filters
   'Pending': 'लंबित', 'Fees due': 'फीस बाकी', 'High Court': 'उच्च न्यायालय', 'District': 'जिला', 'Tribunals': 'अधिकरण', 'Consumer': 'उपभोक्ता', 'Revenue': 'राजस्व',
@@ -38,7 +38,7 @@ const HI = {
   'Year (for numbering)': 'वर्ष (क्रमांक हेतु)', 'Forum': 'फ़ोरम', 'Client name(s)': 'मुवक्किल का नाम', 'Parties (title)': 'पक्षकार (शीर्षक)', 'Court': 'न्यायालय', 'CNR no.': 'CNR संख्या',
   'Client code (letters)': 'मुवक्किल कोड (पत्र)', 'Crime / FIR no.': 'अपराध / FIR संख्या', 'Under section(s)': 'धारा', 'Decided — result': 'निर्णीत — परिणाम', 'Item no.': 'क्रमांक',
   'Deadline for': 'किस हेतु अंतिम तिथि', 'WhatsApp no. (if different)': 'WhatsApp नंबर (यदि अलग हो)', 'Alternate contact – name': 'वैकल्पिक संपर्क – नाम', 'Alternate mobile': 'वैकल्पिक मोबाइल',
-  'Save changes': 'बदलाव सहेजें', 'Remove from diary': 'डायरी से हटाएँ', 'Add matter': 'मुकदमा जोड़ें', 'Add a matter': 'मुकदमा जोड़ें', 'New matter': 'नया मुकदमा',
+  'Save changes': 'बदलाव सहेजें', 'Remove this matter': 'यह मुकदमा हटाएँ', 'Add matter': 'मुकदमा जोड़ें', 'Add a matter': 'मुकदमा जोड़ें', 'New matter': 'नया मुकदमा',
   'Fees agreed (₹)': 'तय फीस (₹)', 'Fees received (₹)': 'प्राप्त फीस (₹)',
   // more menu
   'Practice dashboard': 'प्रैक्टिस डैशबोर्ड', 'matters, results, income': 'मुकदमे, परिणाम, आय', 'Signed in as': 'साइन इन', 'Saved in': 'सहेजा गया', 'Version': 'संस्करण', 'dues and payments': 'बकाया और भुगतान', 'Cause list in Word': 'Word में वाद सूची', 'on your letterhead': 'आपके लेटरहेड पर',
@@ -46,9 +46,9 @@ const HI = {
   'Juniors & tasks': 'जूनियर व कार्य', 'open tasks, your juniors': 'खुले कार्य, आपके जूनियर', 'Judgment library': 'निर्णय लाइब्रेरी', 'your own judgments, searchable': 'आपके अपने निर्णय, खोज योग्य',
   'My templates': 'मेरे टेम्पलेट', 'made from your past drafts': 'आपके पुराने ड्राफ्ट से बने', 'Conflict check': 'हित-विरोध जाँच', 'before taking a new matter': 'नया मुकदमा लेने से पहले',
   'Paper size': 'कागज़ का आकार', 'A4 or Legal for each kind of document': 'हर दस्तावेज़ के लिए A4 या Legal', 'Limitation calculator': 'परिसीमा गणक', 'last date to file': 'दाखिल करने की अंतिम तिथि',
-  'Apply diary update from Claude': 'Claude से आया डायरी अपडेट लगाएँ', 'pick the diary-update file you downloaded': 'डाउनलोड की गई डायरी-अपडेट फ़ाइल चुनें', 'Order reading': 'आदेश पढ़ना', 'add your API key': 'अपनी API key जोड़ें',
-  'Sort old folders': 'पुराने फ़ोल्डर व्यवस्थित करें', 'moves from the Folder Sorting Sheet': 'फ़ोल्डर सॉर्टिंग शीट से', 'Sync now': 'अभी सिंक करें', 'Open Case Diary folder in OneDrive': 'OneDrive में Case Diary फ़ोल्डर खोलें',
-  'diary file, Excel copy, backups': 'डायरी फ़ाइल, Excel प्रति, बैकअप', 'Open Excel copy': 'Excel प्रति खोलें', 'refreshed after every save': 'हर बार सहेजने पर ताज़ा', 'Install on this device': 'इस डिवाइस पर इंस्टॉल करें',
+  'Apply update from Claude': 'Claude से आया अपडेट लगाएँ', 'pick the update file you downloaded': 'डाउनलोड की गई अपडेट फ़ाइल चुनें', 'Order reading': 'आदेश पढ़ना', 'add your API key': 'अपनी API key जोड़ें',
+  'Sort old folders': 'पुराने फ़ोल्डर व्यवस्थित करें', 'moves from the Folder Sorting Sheet': 'फ़ोल्डर सॉर्टिंग शीट से', 'Sync now': 'अभी सिंक करें', 'Open SM Chambers data in OneDrive': 'OneDrive में SM Chambers डेटा खोलें',
+  'data file, Excel copy, backups': 'डेटा फ़ाइल, Excel प्रति, बैकअप', 'Open Excel copy': 'Excel प्रति खोलें', 'refreshed after every save': 'हर बार सहेजने पर ताज़ा', 'Install on this device': 'इस डिवाइस पर इंस्टॉल करें',
   'home-screen app': 'होम-स्क्रीन ऐप', 'Sign out': 'साइन आउट', 'Language': 'भाषा',
   // fees tab
   'Received this month': 'इस माह प्राप्त', 'All matters with fees': 'फीस वाले सभी मुकदमे', 'By matter': 'मुकदमेवार', 'Recent payments': 'हाल के भुगतान', '+ Payment': '+ भुगतान',

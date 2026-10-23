@@ -49,7 +49,7 @@ async function caRegister(fy) {
   add('Cancelled', V.sort((a, b) => String(a.no).localeCompare(String(b.no))).map(v => ({ 'Document': v.kind, 'No.': v.no, 'Dated': dmy(v.date), 'Marked': v.state, 'On': dmy(v.on), 'Reason': v.reason || '', 'Replaced by': v.by || '', 'Matter Ref.': mref(v.m) })), [10, 30, 11, 11, 11, 30, 22, 24]);
   const buf = XL.write(wb, { bookType: 'xlsx', type: 'array' }), name = 'Fees register FY ' + fy + '.xlsx';
   dlBlob(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), name);
-  try { await g(drivePath(DIARY_DIR + '/CA Register/' + name) + ':/content', { method: 'PUT', headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }, body: buf }); toast('Saved to Downloads and OneDrive › Case Diary › CA Register', 5000); }
+  try { await g(drivePath(DIARY_DIR + '/CA Register/' + name) + ':/content', { method: 'PUT', headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }, body: buf }); toast('Saved to Downloads and OneDrive › SM Chambers data › CA Register', 5000); }
   catch (e) { toast('Saved to Downloads', 4000); }
 }
 function sheetCA(fy) {
@@ -59,7 +59,7 @@ function sheetCA(fy) {
     <div class="field"><label for="ca_fy">FINANCIAL YEAR</label><select class="in" id="ca_fy">${fys.map(f => `<option ${f === fy ? 'selected' : ''}>${f}</option>`).join('')}</select></div>
     <div class="kv"><span>Gross fees</span><b>${rupees(tot.gross)}</b><span>Received</span><b>${rupees(tot.net)}</b><span>TDS</span><b>${rupees(tot.tds)}${tot.f16aMissing ? ` <small style="color:var(--red)">(${tot.f16aMissing} TDS certificate${tot.f16aMissing > 1 ? 's' : ''} awaited)</small>` : ''}</b><span>Bills raised</span><b>${rupees(tot.billed)}</b><span>Expenses from fees</span><b>${rupees(tot.expMine)}</b><span>Counts</span><b>${B.length} bills · ${R.length} receipts · ${P.length} payments</b></div>
     <button class="save" data-ca="xl" style="margin-top:14px">Download Excel for ${esc(fy)}</button>
-    <p class="hint">Sheets: Summary, Fees received, Bills, Receipts, TDS by client, Expenses, Cancelled. A copy is also kept in OneDrive › Case Diary › CA Register.</p>`);
+    <p class="hint">Sheets: Summary, Fees received, Bills, Receipts, TDS by client, Expenses, Cancelled. A copy is also kept in OneDrive › SM Chambers data › CA Register.</p>`);
   $('#ca_fy').onchange = e => sheetCA(e.target.value);
   $('#sheet-root').onclick = e => { if (e.target.closest('[data-ca="xl"]')) caRegister(fy).catch(er => toast('Could not make the register: ' + er.message)); };
 }

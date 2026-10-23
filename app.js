@@ -256,7 +256,7 @@ async function flushCalendar() {
         start: { dateTime: m.nextDate + 'T00:00:00', timeZone: 'India Standard Time' },
         end: { dateTime: addDays(m.nextDate, 1) + 'T00:00:00', timeZone: 'India Standard Time' },
         isReminderOn: true, reminderMinutesBeforeStart: 300,
-        categories: ['Case Diary'],
+        categories: ['SM Chambers'],
       };
       let r = m.eventId ? await g('/me/events/' + m.eventId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ev) }) : null;
       if (!r || r.status === 404) r = await g('/me/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ev) });
@@ -367,7 +367,7 @@ function renderSignIn() {
     <h1>SM Chambers</h1><p style="margin:-4px 0 10px;font-weight:700">Saurabh Misra &amp; Associates – Chambers</p>
     <p>Your matters, dates and fees, kept in your own OneDrive and the same on phone and computer.</p>
     <button class="btn-big" data-act="signin">Sign in with Microsoft</button>
-    <p style="font-size:12px">Use the Microsoft account that holds your case folders. The diary file is saved in OneDrive › Case Diary.</p>
+    <p style="font-size:12px">Use the Microsoft account that holds your case folders. Your records are saved in your own OneDrive (SM Chambers data).</p>
   </section>`;
 }
 function syncLabel() {
@@ -524,7 +524,7 @@ function viewMore() {
   const n = live().length;
   return `<header class="phead"><div class="top-row"><h1>More</h1><button id="syncbtn" class="sync" data-act="sync"></button></div></header>
   <main><div class="menu">
-    <div class="card"><b style="display:block;font-size:17px">Saurabh Misra &amp; Associates – Chambers</b><small style="color:var(--muted)">SM Chambers</small><div class="kv" style="margin-top:10px"><span>Signed in as</span><b>${esc(S.account?.username || '')}</b><span>Matters</span><b>${n}</b><span>Saved in</span><b>OneDrive › Case Diary</b><span>Version</span><b>${APP_VERSION}</b></div></div>
+    <div class="card"><b style="display:block;font-size:17px">Saurabh Misra &amp; Associates – Chambers</b><small style="color:var(--muted)">SM Chambers</small><div class="kv" style="margin-top:10px"><span>Signed in as</span><b>${esc(S.account?.username || '')}</b><span>Matters</span><b>${n}</b><span>Saved in</span><b>OneDrive › SM Chambers data</b><span>Version</span><b>${APP_VERSION}</b></div></div>
     ${typeof langSwitch === 'function' ? langSwitch() : ''}
     <button data-act="dashboard">Practice dashboard <small>matters, results, income</small></button>
     <button data-act="tab" data-tab="fees">Fees <small>dues and payments</small></button>
@@ -539,11 +539,11 @@ function viewMore() {
     <button data-act="conflict">Conflict check <small>before taking a new matter</small></button>
     <button data-act="paper">Paper size <small>A4 or Legal for each kind of document</small></button>
     <button data-act="tab" data-tab="limit">Limitation calculator <small>last date to file</small></button>
-    <label class="menu-file"><input type="file" accept=".json,application/json" data-act="updfile" hidden><b>Apply diary update from Claude</b><small>pick the diary-update file you downloaded</small></label>
+    <label class="menu-file"><input type="file" accept=".json,application/json" data-act="updfile" hidden><b>Apply update from Claude</b><small>pick the update file you downloaded</small></label>
     <button data-act="aikey">Order reading <small>${aiKey() ? 'key saved on this device' : 'add your API key'}</small></button>
     <button data-act="tab" data-tab="sort">Sort old folders <small>moves from the Folder Sorting Sheet</small></button>
     <button data-act="sync">Sync now <small>${esc(syncLabel()[1])}</small></button>
-    <button data-act="openfolder">Open Case Diary folder in OneDrive <small>diary file, Excel copy, backups</small></button>
+    <button data-act="openfolder">Open SM Chambers data in OneDrive <small>data file, Excel copy, backups</small></button>
     <button data-act="openexcel">Open Excel copy <small>refreshed after every save</small></button>
     <button data-act="install">Install on this device <small>home-screen app</small></button>
     <button data-act="signout" style="color:var(--red)">Sign out</button>
@@ -600,7 +600,7 @@ function sheetEdit(m) {
     <div class="two">${fld('altName', 'Alternate contact – name', m.altName, 'text', 'placeholder="e.g. son, pairokar"')}${fld('altPhone', 'Alternate mobile', m.altPhone, 'tel', 'placeholder="10-digit mobile"')}</div>
     <div class="field"><label for="f_notes">Notes</label><textarea class="in" id="f_notes" name="notes">${esc(m.notes || '')}</textarea></div>
     <button class="save" type="submit">${isNew ? 'Add matter' : 'Save changes'}</button>
-    ${isNew ? '' : `<button class="ghost" type="button" data-act="del" data-id="${m.id}" style="color:var(--red)">Remove from diary</button>`}
+    ${isNew ? '' : `<button class="ghost" type="button" data-act="del" data-id="${m.id}" style="color:var(--red)">Remove this matter</button>`}
   </form>`);
   $('#mform').onsubmit = async e => {
     e.preventDefault();
@@ -765,7 +765,7 @@ document.addEventListener('click', e => {
   if (a === 'record') return sheetRecord(find(id));
   if (a === 'wa') return sendWa(find(id));
   if (a === 'deadlinedone') { const m = find(id); change(() => { m.deadlineDone = true; touch(m); }); return; }
-  if (a === 'del') { const m = find(id); if (confirm('Remove ' + mref(m) + ' from the diary? The OneDrive case folder is not touched.')) { change(() => { m.deleted = true; m.calPending = !!m.eventId; m.nextDate = ''; touch(m); }); closeSheet(); if (S.tab === 'matter') { S.tab = S.prevTab || 'home'; render(); } toast('Removed from diary'); } return; }
+  if (a === 'del') { const m = find(id); if (confirm('Remove ' + mref(m) + '? It is removed from SM Chambers; the OneDrive case folder is not touched.')) { change(() => { m.deleted = true; m.calPending = !!m.eventId; m.nextDate = ''; touch(m); }); closeSheet(); if (S.tab === 'matter') { S.tab = S.prevTab || 'home'; render(); } toast('Matter removed'); } return; }
   if (a === 'openfolder') return openDriveItem(DIARY_DIR);
   if (a === 'openexcel') return openDriveItem(EXCEL_FILE);
   if (a === 'install') {

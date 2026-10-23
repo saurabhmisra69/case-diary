@@ -220,7 +220,7 @@ function sheetCauseList(day) {
       <div class="field"><label for="cl_day">DATE</label><input class="in" id="cl_day" type="date" value="${C.day}"></div>
       <div class="picked" style="background:var(--hc-soft);color:var(--hc)"><b>${DOWL[parseIso(C.day).getDay()]}, ${dmy(C.day)}</b><span>${ms.length} matter${ms.length === 1 ? '' : 's'} in ${groupByCourt(ms).length} court${groupByCourt(ms).length === 1 ? '' : 's'}</span></div>
       ${ms.length ? `<div class="hist">${groupByCourt(ms).map(([c, xs]) => `<div><b style="font-family:inherit;font-size:12px">${esc(c)}</b><span>${xs.map(m => (m.item ? 'Item ' + esc(m.item) + ' · ' : '') + esc(m.title)).join('<br>')}</span></div>`).join('')}</div>` : '<p class="empty">No matter is listed on this date.</p>'}
-      ${C.done ? `<div class="two"><button class="act primary" data-cl="open">Open in Word</button><button class="act blue" data-cl="dl">Download</button></div><p class="hint">Saved in OneDrive › Case Diary › Cause Lists › ${esc(C.done.name)}</p>` : `${paperSwitch('causelist')}<button class="save" data-cl="make" ${ms.length && !C.busy ? '' : 'disabled'}>${C.busy ? 'Preparing…' : 'Make Word file'}</button>`}`);
+      ${C.done ? `<div class="two"><button class="act primary" data-cl="open">Open in Word</button><button class="act blue" data-cl="dl">Download</button></div><p class="hint">Saved in OneDrive › SM Chambers data › Cause Lists › ${esc(C.done.name)}</p>` : `${paperSwitch('causelist')}<button class="save" data-cl="make" ${ms.length && !C.busy ? '' : 'disabled'}>${C.busy ? 'Preparing…' : 'Make Word file'}</button>`}`);
   };
   draw();
   const root = $('#sheet-root');

@@ -16,7 +16,7 @@ const HOUSE_STYLE = [
 ];
 function brief(m, opt) {
   const L = [], pt = parties(m);
-  L.push('MATTER (from my diary, SM Chambers)');
+  L.push('MATTER (from my records, SM Chambers)');
   [['Matter ref.', typeof matterRef === 'function' ? matterRef(m) : m.no], ['Parties', m.title], ['First party', pt.first], ['Second party', pt.second], ['My client(s)', m.clients], ['Appearing for', m.side],
     ["Hon'ble Court", m.court], ['Category', (FORUMS[m.forum] || {}).label], ['Case', [m.type, m.caseNo].filter(Boolean).join(' ')], ['CNR', m.cnr], ['Crime / FIR no.', m.crimeNo], ['Police station', m.ps], ['Sections', m.sections],
     ['Status', m.status + (m.outcome ? ' (' + m.outcome + ')' : '')], ['Next date', m.nextDate ? dmy(m.nextDate) + (m.purpose ? ' for ' + m.purpose : '') : ''], ['Notes', m.notes]].forEach(([k, v]) => { if (v) L.push(k + ': ' + v); });

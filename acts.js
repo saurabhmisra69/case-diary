@@ -1,5 +1,5 @@
 /* SM Chambers — Bare Acts shelf. Official PDFs from India Code (indiacode.nic.in) kept in
-   OneDrive › Case Diary › Bare Acts; each Act is read once, split into sections, and kept for offline use.
+   OneDrive › SM Chambers data › Bare Acts; each Act is read once, split into sections, and kept for offline use.
    Search by section number or any word; open a section from any matter. */
 'use strict';
 
@@ -79,7 +79,7 @@ async function scanActs(show) {
 
 /* ---------- screens ---------- */
 async function sheetActs() {
-  openSheet(`<div class="s-head"><div><small>Official text from India Code</small><h1>Bare Acts</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div><p class="hint" id="ac_msg">Checking OneDrive › Case Diary › Bare Acts…</p>`);
+  openSheet(`<div class="s-head"><div><small>Official text from India Code</small><h1>Bare Acts</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div><p class="hint" id="ac_msg">Checking OneDrive › SM Chambers data › Bare Acts…</p>`);
   try { const n = await scanActs(t => { const el = $('#ac_msg'); if (el) el.textContent = t; }); if (n) toast(n + ' Act' + (n > 1 ? 's' : '') + ' added to the shelf'); } catch (e) {}
   const sh = shelf(), have = ACTS.filter(a => sh[a.k]).length;
   openSheet(`<div class="s-head"><div><small>${have} of ${ACTS.length} on your shelf</small><h1>Bare Acts</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>

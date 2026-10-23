@@ -41,7 +41,7 @@ function sheetCodes(filter) {
     const G = ccGroups(), todo = G.filter(g => !g.code && !g.skip), done = G.filter(g => g.code), skipped = G.filter(g => g.skip && !g.code);
     const list = st.f === 'todo' ? todo : st.f === 'done' ? done : skipped;
     openSheet(`<div class="s-head"><div><small>${G.length} clients · ${done.length} with codes</small><h1>Client codes</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
-      <p class="hint" style="margin-top:0">Code = client number (given by the app) + initials (yours to edit until the first letter goes out, or until you tap <b>Fix</b>), e.g. <b>C004-RDP</b>. Built from <b>who your client is</b> in each matter — change it where the diary is wrong. Nothing is saved until you approve.</p>
+      <p class="hint" style="margin-top:0">Code = client number (given by the app) + initials (yours to edit until the first letter goes out, or until you tap <b>Fix</b>), e.g. <b>C004-RDP</b>. Built from <b>who your client is</b> in each matter — change it where it is wrong. Nothing is saved until you approve.</p>
       <div class="chips"><button class="chip ${st.f === 'todo' ? 'on' : ''}" data-cc="f" data-v="todo">To approve (${todo.length})</button><button class="chip ${st.f === 'done' ? 'on' : ''}" data-cc="f" data-v="done">Approved (${done.length})</button><button class="chip ${st.f === 'skip' ? 'on' : ''}" data-cc="f" data-v="skip">Skipped (${skipped.length})</button></div>
       ${st.f === 'todo' && todo.length ? `<button class="save" data-cc="all" style="margin:10px 0">Approve all ${todo.length} as shown</button>` : ''}
       <div class="grp" style="gap:10px;margin-top:8px">${list.map(g => card(g)).join('') || '<p class="empty">Nothing here.</p>'}</div>`);

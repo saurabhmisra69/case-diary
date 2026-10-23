@@ -1,5 +1,5 @@
 /* SM Chambers — practice tools: limitation alerts on decided matters, tasks for juniors,
-   own judgment library (OneDrive › Case Diary › Judgments), and own templates made from past drafts. */
+   own judgment library (OneDrive › SM Chambers data › Judgments), and own templates made from past drafts. */
 'use strict';
 
 /* ================= Limitation alerts ================= */
@@ -211,7 +211,7 @@ function snippet(x) {
 }
 async function sheetLibrary(forMatter) {
   const m = forMatter ? find(forMatter) : null;
-  openSheet(`<div class="s-head"><div><small>OneDrive › Case Diary › Judgments</small><h1>Judgment library</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div><p class="hint" id="lb_msg">Opening…</p>`);
+  openSheet(`<div class="s-head"><div><small>OneDrive › SM Chambers data › Judgments</small><h1>Judgment library</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div><p class="hint" id="lb_msg">Opening…</p>`);
   try { await libTextIndex(); const n = await libScan(t => { const el = $('#lb_msg'); if (el) el.textContent = t; }); if (n) toast(n + ' new judgment' + (n > 1 ? 's' : '') + ' added to the library', 3500); }
   catch (e) { toast('Could not read the Judgments folder: ' + e.message); }
   const tags = [...new Set(library().flatMap(x => (x.tags || '').toLowerCase().split(/\s*,\s*/).filter(Boolean)))].sort();
@@ -222,7 +222,7 @@ async function sheetLibrary(forMatter) {
       ${tags.length ? `<div class="chips" style="margin-bottom:8px"><button class="chip ${LIB.tag ? '' : 'on'}" data-lb="tag" data-v="">All</button>${tags.map(t => `<button class="chip ${LIB.tag === t ? 'on' : ''}" data-lb="tag" data-v="${esc(t)}">${esc(t)}</button>`).join('')}</div>` : ''}
       <div class="two" style="margin-bottom:10px"><label class="act blue">+ Add judgment<input type="file" accept=".pdf,.docx" data-lb="up" hidden multiple></label><button class="act blue" data-act="stsearch" data-v="${esc(LIB.q || '')}">Search Supreme Today</button></div>
       <div class="hist">${L.map(x => `<div><b style="font-size:11px">${esc(x.court || '')}${x.date ? '<br>' + dmy(x.date) : ''}</b><span><b style="font-family:inherit">${esc(x.title)}</b>${x.citation ? '<br><span style="font-family:var(--mono);font-size:12px">' + esc(x.citation) + '</span>' : ''}${x.sections ? '<br><small>' + esc(x.sections) + '</small>' : ''}${x.tags ? '<br><small style="color:var(--hc)">#' + esc(x.tags.split(/\s*,\s*/).join(' #')) + '</small>' : ''}${snippet(x) ? '<br><small style="color:var(--muted)">' + esc(snippet(x)) + '</small>' : ''}
-        <br><button class="linkbtn" data-lb="open" data-x="${x.id}">Open</button> · <button class="linkbtn" data-lb="edit" data-x="${x.id}">Edit / tag</button> · <button class="linkbtn" data-lb="cite" data-x="${x.id}">Copy citation</button> · <button class="linkbtn" data-act="stsearch" data-v="${esc((x.citation || '').split(';')[0].trim() || x.title)}">Supreme Today</button>${m ? ` · <button class="linkbtn" data-lb="use" data-x="${x.id}">${(m.authorities || []).includes(x.id) ? '✓ In this matter' : 'Use in this matter'}</button>` : ''}</span></div>`).join('') || `<p class="empty">${library().length ? 'Nothing matches.' : 'Put judgment PDFs in OneDrive › Case Diary › Judgments, or add them here. Each one is read once and becomes searchable.'}</p>`}</div>`);
+        <br><button class="linkbtn" data-lb="open" data-x="${x.id}">Open</button> · <button class="linkbtn" data-lb="edit" data-x="${x.id}">Edit / tag</button> · <button class="linkbtn" data-lb="cite" data-x="${x.id}">Copy citation</button> · <button class="linkbtn" data-act="stsearch" data-v="${esc((x.citation || '').split(';')[0].trim() || x.title)}">Supreme Today</button>${m ? ` · <button class="linkbtn" data-lb="use" data-x="${x.id}">${(m.authorities || []).includes(x.id) ? '✓ In this matter' : 'Use in this matter'}</button>` : ''}</span></div>`).join('') || `<p class="empty">${library().length ? 'Nothing matches.' : 'Put judgment PDFs in OneDrive › SM Chambers data › Judgments, or add them here. Each one is read once and becomes searchable.'}</p>`}</div>`);
     const q = $('#lb_q'); q.oninput = () => { LIB.q = q.value; clearTimeout(draw.t); draw.t = setTimeout(() => { const pos = q.selectionStart; draw(); const q2 = $('#lb_q'); q2.focus(); q2.setSelectionRange(pos, pos); }, 250); };
   };
   draw();
@@ -307,10 +307,10 @@ async function makeTemplate(m, doc, title) {
   return { name, hits, blob };
 }
 function sheetTemplates() {
-  openSheet(`<div class="s-head"><div><small>OneDrive › Case Diary › Templates</small><h1>My templates</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div><p class="hint" id="tp_msg">Reading…</p>`);
+  openSheet(`<div class="s-head"><div><small>OneDrive › SM Chambers data › Templates</small><h1>My templates</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div><p class="hint" id="tp_msg">Reading…</p>`);
   listTemplates().then(T => {
     const ms = live().sort((a, b) => (b.u || 0) - (a.u || 0));
-    openSheet(`<div class="s-head"><div><small>OneDrive › Case Diary › Templates</small><h1>My templates</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    openSheet(`<div class="s-head"><div><small>OneDrive › SM Chambers data › Templates</small><h1>My templates</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
       <div class="hist">${T.map(it => `<div><b>DOCX</b><span><b style="font-family:inherit">${esc(it.name.replace(/\.docx$/i, ''))}</b><br><button class="linkbtn" data-tp="open" data-i="${it.id}">Open</button></span></div>`).join('') || '<p class="empty">No template yet.</p>'}</div>
       <div class="grp" style="margin-top:14px"><span class="lbl">Make a template from a past draft</span>
         <p class="hint" style="margin:0 0 8px">Pick the matter the old draft was made for, then the draft. Its case no., parties, client, crime no., P.S., sections and dates become blanks that fill themselves next time (Draft › Use my own format).</p>
@@ -337,7 +337,7 @@ function sheetTemplates() {
 async function pickTemplate() {
   const T = await listTemplates(); if (!T.length) { toast('No template yet: More › My templates'); return null; }
   return new Promise(res => {
-    openSheet(`<div class="s-head"><div><small>OneDrive › Case Diary › Templates</small><h1>Pick a template</h1></div><button class="x" data-pt="x" aria-label="Close">${I.x}</button></div><div class="flist">${T.map(it => `<button class="frow" data-pt="p" data-i="${it.id}"><span class="ficon" style="background:var(--hc-soft)">DOC</span><span class="fname">${esc(it.name.replace(/\.docx$/i, ''))}<small>template</small></span></button>`).join('')}</div>`);
+    openSheet(`<div class="s-head"><div><small>OneDrive › SM Chambers data › Templates</small><h1>Pick a template</h1></div><button class="x" data-pt="x" aria-label="Close">${I.x}</button></div><div class="flist">${T.map(it => `<button class="frow" data-pt="p" data-i="${it.id}"><span class="ficon" style="background:var(--hc-soft)">DOC</span><span class="fname">${esc(it.name.replace(/\.docx$/i, ''))}<small>template</small></span></button>`).join('')}</div>`);
     $('#sheet-root').onclick = async e => { const b = e.target.closest('[data-pt]'); if (!b) return; $('#sheet-root').onclick = null; if (b.dataset.pt === 'x') return res(null);
       const it = T.find(x => x.id === b.dataset.i), r = await g('/me/drive/items/' + it.id + '/content'); res(r.ok ? { name: it.name, blob: await r.blob() } : null); };
   });

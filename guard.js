@@ -29,7 +29,7 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('[data-pin]'); if (!b || !LOCK.on) return;
   const k = b.dataset.pin;
   if (k === 'forgot') {
-    if (!confirm('Forgot PIN: the diary on this phone will be cleared and you will sign in with Microsoft again. Your data is safe in OneDrive and comes back after sign-in. Continue?')) return;
+    if (!confirm('Forgot PIN: the records on this phone will be cleared and you will sign in with Microsoft again. Your data is safe in OneDrive and comes back after sign-in. Continue?')) return;
     LSX.del(PIN_KEY); try { await signOut(); } catch (er) { location.reload(); } return;
   }
   if (k === '⌫') LOCK.entry = LOCK.entry.slice(0, -1); else if (LOCK.entry.length < 4) LOCK.entry += k;
@@ -95,9 +95,9 @@ function fullWorkbook(ms) {
 async function offlineBackup() {
   if (!window.XLSX) return toast('Excel library still loading, try again in a moment');
   const JSZip = await loadJSZip(), z = new JSZip(), day = todayIso();
-  z.file('diary ' + day + '.json', JSON.stringify(S.data, null, 1));
+  z.file('SM Chambers data ' + day + '.json', JSON.stringify(S.data, null, 1));
   z.file('SM Chambers register ' + day + '.xlsx', XLSX.write(fullWorkbook(live().sort(byNo)), { bookType: 'xlsx', type: 'array' }));
-  z.file('README.txt', 'SM Chambers — Saurabh Misra & Associates – Chambers\r\nBackup taken ' + dmy(day) + '.\r\n\r\nThe .xlsx file opens in Excel: matters, hearings, payments, bills, receipts, letters and expenses.\r\nThe .json file is the complete diary; it can be put back by Claude if ever needed.\r\nKeep this file on a pen drive or another safe place.\r\n');
+  z.file('README.txt', 'SM Chambers — Saurabh Misra & Associates – Chambers\r\nBackup taken ' + dmy(day) + '.\r\n\r\nThe .xlsx file opens in Excel: matters, hearings, payments, bills, receipts, letters and expenses.\r\nThe .json file is the complete record; it can be put back by Claude if ever needed.\r\nKeep this file on a pen drive or another safe place.\r\n');
   const blob = await z.generateAsync({ type: 'blob' }), name = 'SM Chambers backup ' + day + '.zip';
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
   const now = new Date().toISOString(); LSX.set(OFF_KEY, now); change(d => { d.meta = d.meta || {}; d.meta.offlineBackup = now; });
@@ -142,7 +142,7 @@ function conflictHits(forNames, againstNames, skipId) {
 }
 const cap1 = s => s.replace(/\b\w/g, c => c.toUpperCase());
 function conflictHtml(hits) {
-  if (!hits.length) return '<p class="hint" style="color:var(--dc-ink)">No conflict found in your diary.</p>';
+  if (!hits.length) return '<p class="hint" style="color:var(--dc-ink)">No conflict found in your matters.</p>';
   return `<div class="hist">${hits.map(({ m, why }) => `<div><b style="font-family:var(--mono);font-size:12px">${esc(mref(m))}</b><span><b style="font-family:inherit">${esc(m.title || m.clients)}</b>${m.deleted ? ' <small>(removed)</small>' : ''}<br>${why.map(w => `<span class="cf-${w.sev}">${esc(w.t)}</span>`).join('<br>')}<br><button class="linkbtn" data-act="open" data-id="${m.id}">Open</button></span></div>`).join('')}</div>`;
 }
 /* called by the new-matter form before saving; resolves true to go on */
@@ -175,7 +175,7 @@ function sheetConflict() {
 function guardCards() {
   const cards = [];
   if (!hasPin() && !(S.data?.meta?.noLockNag)) cards.push(`<section class="card ask-card"><b>Protect your chambers data</b><p class="hint" style="margin:4px 0 8px">Set a 4-digit PIN so nobody else can open client files, fees and bank details on this phone.</p><div class="two"><button class="act primary" data-act="lock">Set PIN</button><button class="ghost" data-act="nolocknag">Not now</button></div></section>`);
-  if (backupDue() && live().length) cards.push(`<section class="card ask-card"><b>Monthly backup ${lastOffline() ? 'due (last ' + dmy(lastOffline().slice(0, 10)) + ')' : 'not taken yet'}</b><p class="hint" style="margin:4px 0 8px">Download the whole diary (Excel + data file) and keep it on a pen drive.</p><button class="act primary" data-act="offbackup" style="width:100%">Download backup</button></section>`);
+  if (backupDue() && live().length) cards.push(`<section class="card ask-card"><b>Monthly backup ${lastOffline() ? 'due (last ' + dmy(lastOffline().slice(0, 10)) + ')' : 'not taken yet'}</b><p class="hint" style="margin:4px 0 8px">Download all your records (Excel + data file) and keep them on a pen drive.</p><button class="act primary" data-act="offbackup" style="width:100%">Download backup</button></section>`);
   return cards.join('');
 }
 document.addEventListener('click', e => {

@@ -202,7 +202,7 @@ function readMenu() {
     <div class="v-acts" style="margin-top:8px">
       <button class="v-act" data-v="rfree">Quick read on this phone<small>Free · typed orders (High Court website PDFs, typed orders)</small></button>
       <button class="v-act alt" data-v="rapp">Send to the Claude app<small>Free with your Claude plan · reads anything, even handwriting</small></button>
-      ${m ? `<button class="v-act alt" data-v="rpc">Claude reads it on my PC<small>Free · diary updated when your computer is on</small></button>` : ''}
+      ${m ? `<button class="v-act alt" data-v="rpc">Claude reads it on my PC<small>Free · matter updated when your computer is on</small></button>` : ''}
       ${aiKey() ? `<button class="v-act alt" data-v="read">Instant full read<small>Paid, about ₹1–3 · handwriting too</small></button>` : ''}
     </div>`);
 }
