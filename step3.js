@@ -105,34 +105,91 @@ VIEWS.fees = function () {
     ${pays.length ? `<section class="card"><div class="h2"><h2>Recent payments</h2></div><div class="hist" style="margin-top:8px">${pays.slice(0, 25).map(({ m, p }) => `<div><b>${dmy(p.date)}</b><span><b style="font-family:inherit">${rupees(p.amount)}</b> · ${esc(p.mode || '')} · ${esc(m.title)}${p.note ? '<br><span style="color:var(--muted)">' + esc(p.note) + '</span>' : ''}</span></div>`).join('')}</div></section>` : ''}
   </main>`;
 };
-function sheetPay(m) {
-  const due = feeDue(m);
-  openSheet(`<div class="s-head"><div><small style="color:var(--saffron-ink)">${esc(m.no)} · record fee payment</small><h1>${esc(m.title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
-    <div class="kv"><span>Agreed</span><b>${rupees(m.feeAgreed)}</b><span>Received</span><b>${rupees(m.feeReceived)}</b><span>Pending</span><b>${rupees(due)}</b></div>
-    <form id="payform" class="grp" style="gap:14px">
-      <div class="two"><div class="field"><label for="p_amt">AMOUNT (₹)</label><input class="in" id="p_amt" name="amount" inputmode="numeric" required value="${due || ''}"></div><div class="field"><label for="p_date">DATE</label><input class="in" id="p_date" name="date" type="date" required value="${todayIso()}"></div></div>
-      <div class="field"><label>MODE</label><div class="chips">${['Cash', 'UPI', 'Bank transfer', 'Cheque'].map((x, i) => `<label class="chip radio"><input type="radio" name="mode" value="${x}" ${i === 1 ? 'checked' : ''}>${x}</label>`).join('')}</div></div>
-      ${!num(m.feeAgreed) ? `<div class="field"><label for="p_agreed">FEES AGREED FOR THIS MATTER (₹, optional)</label><input class="in" id="p_agreed" name="agreed" inputmode="numeric"></div>` : ''}
-      <div class="field"><label for="p_note">NOTE</label><input class="in" id="p_note" name="note" placeholder="e.g. for filing of writ"></div>
-      ${waOf(m) ? '<div class="toggles"><label><span>Send acknowledgement on WhatsApp</span><input type="checkbox" name="wa" checked></label></div>' : ''}
-      <button class="save" type="submit">Save payment</button>
-    </form>`);
-  $('#payform').onsubmit = e => {
+function sheetPay(m) { sheetFees(m, 'pay'); }
+
+/* ---------- fees on a matter: agreed in parts, received in parts; every entry can be edited or removed ---------- */
+const PAY_MODES = ['Cash', 'UPI', 'Bank transfer', 'Cheque'];
+function feesTidy(m) {   // old matters: turn the two totals into entries once
+  if (!m.agreedParts) m.agreedParts = num(m.feeAgreed) ? [{ id: uid(), date: m.created || '', amount: num(m.feeAgreed), for: 'Fees agreed' }] : [];
+  m.payments = (m.payments || []).filter(p => !p.deleted);
+  const paid = m.payments.reduce((s, p) => s + num(p.amount), 0);
+  if (num(m.feeReceived) > paid) m.payments.unshift({ id: uid(), date: '', amount: num(m.feeReceived) - paid, mode: '', note: 'Received earlier (details not entered)' });
+}
+function feesTotal(m) {
+  m.feeAgreed = String((m.agreedParts || []).reduce((s, p) => s + num(p.amount), 0));
+  m.feeReceived = String((m.payments || []).reduce((s, p) => s + num(p.amount), 0));
+}
+function sheetFees(m, focus) {
+  if (!m.agreedParts || num(m.feeReceived) !== (m.payments || []).reduce((s, p) => s + num(p.amount), 0)) change(() => { feesTidy(m); feesTotal(m); touch(m); });
+  const st = { edit: null, kind: focus === 'agreed' ? 'agreed' : 'pay', mode: 'UPI' };
+  const draw = () => {
+    const due = feeDue(m), ed = st.edit;
+    const ag = m.agreedParts || [], pays = (m.payments || []).slice().sort((x, y) => (y.date || '').localeCompare(x.date || ''));
+    const formAgreed = st.kind === 'agreed', v = ed || {};
+    openSheet(`<div class="s-head"><div><small style="color:var(--saffron-ink)">${esc(m.no)} · fees</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+      <div class="kv"><span>Agreed</span><b>${rupees(m.feeAgreed)}</b><span>Received</span><b>${rupees(m.feeReceived)}</b><span>Balance</span><b style="color:${due ? 'var(--red)' : 'var(--dc-ink)'}">${rupees(due)}</b></div>
+      <div class="grp" style="margin-top:12px"><span class="lbl">Fees agreed</span>
+        ${ag.length ? `<div class="hist">${ag.map(p => `<div><b>${p.date ? dmy(p.date) : '—'}</b><span><b style="font-family:inherit">${rupees(p.amount)}</b>${p.for ? ' · ' + esc(p.for) : ''} <button class="linkbtn" data-fe="edita" data-id="${p.id}">Edit</button> <button class="linkbtn" data-fe="dela" data-id="${p.id}" style="color:var(--red)">Remove</button></span></div>`).join('')}</div>` : '<p class="hint" style="margin:0">Nothing agreed yet.</p>'}
+        ${formAgreed ? '' : '<button class="ghost" data-fe="newa" style="width:100%;margin-top:8px">+ Add to fees agreed</button>'}</div>
+      <div class="grp"><span class="lbl">Fees received</span>
+        ${pays.length ? `<div class="hist">${pays.map(p => `<div><b>${p.date ? dmy(p.date) : '—'}</b><span><b style="font-family:inherit">${rupees(p.amount)}</b>${p.mode ? ' · ' + esc(p.mode) : ''}${p.note ? '<br><span style="color:var(--muted)">' + esc(p.note) + '</span>' : ''} <button class="linkbtn" data-fe="editp" data-id="${p.id}">Edit</button> <button class="linkbtn" data-fe="delp" data-id="${p.id}" style="color:var(--red)">Remove</button></span></div>`).join('')}</div>` : '<p class="hint" style="margin:0">No payment recorded yet.</p>'}
+        ${formAgreed ? '<button class="ghost" data-fe="newp" style="width:100%;margin-top:8px">+ Add payment received</button>' : ''}</div>
+      <form id="feeform" class="grp fee-form" style="gap:12px">
+        <span class="lbl">${ed ? 'Edit ' : 'Add '}${formAgreed ? 'fees agreed' : 'payment received'}</span>
+        <div class="two"><div class="field"><label for="fe_amt">AMOUNT (₹)</label><input class="in" id="fe_amt" name="amount" inputmode="numeric" required value="${esc(v.amount ?? (formAgreed ? '' : (due || '')))}"></div>
+          <div class="field"><label for="fe_date">DATE</label><input class="in" id="fe_date" name="date" type="date" value="${esc(v.date ?? todayIso())}"></div></div>
+        ${formAgreed ? `<div class="field"><label for="fe_for">FOR</label><input class="in" id="fe_for" name="for" list="fe_fors" value="${esc(v.for || '')}" placeholder="e.g. Filing and hearing, Bail, per appearance"><datalist id="fe_fors">${['Filing and hearing', 'Drafting', 'Appearance', 'Bail', 'Final arguments', 'Additional work', 'Opinion'].map(x => `<option>${x}</option>`).join('')}</datalist></div>`
+        : `<div class="field"><label>MODE</label><div class="chips">${PAY_MODES.map(x => `<button type="button" class="chip ${(st.mode) === x ? 'on' : ''}" data-fe="mode" data-v="${x}">${x}</button>`).join('')}</div></div>
+           <div class="field"><label for="fe_note">NOTE</label><input class="in" id="fe_note" name="note" value="${esc(v.note || '')}" placeholder="e.g. UTR / cheque no., part payment for filing"></div>
+           ${!ed && waOf(m) ? '<div class="toggles"><label><span>Send receipt on WhatsApp</span><input type="checkbox" name="wa" checked></label></div>' : ''}`}
+        <button class="save" type="submit">${ed ? 'Save changes' : formAgreed ? 'Add to fees agreed' : 'Save payment'}</button>
+        ${ed ? '<button type="button" class="ghost" data-fe="cancel">Cancel editing</button>' : ''}
+      </form>`);
+    $('#feeform').onsubmit = submit;
+  };
+  const keep = () => { const v = {}; ['fe_amt', 'fe_date', 'fe_for', 'fe_note'].forEach(id => { const el = $('#' + id); if (el) v[id] = el.value; }); return v; };
+  const restore = v => Object.entries(v).forEach(([id, val]) => { const el = $('#' + id); if (el) el.value = val; });
+  function submit(e) {
     e.preventDefault();
-    const fd = Object.fromEntries(new FormData(e.target).entries());
-    const amt = num(fd.amount); if (!amt) return toast('Enter the amount');
+    const fd = Object.fromEntries(new FormData(e.target).entries()), amt = num(fd.amount);
+    if (!amt) return toast('Enter the amount');
+    const ed = st.edit;
     change(() => {
-      m.payments = m.payments || [];
-      m.payments.push({ id: uid(), date: fd.date, amount: amt, mode: fd.mode || '', note: (fd.note || '').trim() });
-      m.feeReceived = String(num(m.feeReceived) + amt);
-      if (fd.agreed && num(fd.agreed)) m.feeAgreed = String(num(fd.agreed));
-      touch(m);
+      if (st.kind === 'agreed') {
+        if (ed) { const was = rupees(ed.amount); Object.assign(ed, { amount: amt, date: fd.date || '', for: (fd.for || '').trim() }); logChange(m, 'Fees agreed entry edited: ' + was + ' → ' + rupees(amt)); }
+        else { m.agreedParts.push({ id: uid(), date: fd.date || todayIso(), amount: amt, for: (fd.for || '').trim() }); logChange(m, 'Fees agreed + ' + rupees(amt) + (fd.for ? ' (' + fd.for.trim() + ')' : '')); }
+      } else {
+        if (ed) { const was = rupees(ed.amount) + ' ' + (ed.date ? dmy(ed.date) : ''); Object.assign(ed, { amount: amt, date: fd.date || '', mode: st.mode, note: (fd.note || '').trim() }); logChange(m, 'Payment edited: ' + was + ' → ' + rupees(amt) + ' ' + (fd.date ? dmy(fd.date) : '')); }
+        else { m.payments.push({ id: uid(), date: fd.date || todayIso(), amount: amt, mode: st.mode, note: (fd.note || '').trim() }); logChange(m, 'Payment received ' + rupees(amt) + (st.mode ? ' by ' + st.mode : '')); }
+      }
+      feesTotal(m); touch(m);
     });
-    closeSheet(); toast('Payment of ' + rupees(amt) + ' recorded');
-    if (fd.wa && waOf(m)) {
+    toast(ed ? 'Saved' : st.kind === 'agreed' ? 'Added to fees agreed' : 'Payment of ' + rupees(amt) + ' recorded');
+    if (!ed && st.kind === 'pay' && fd.wa && waOf(m)) {
       const bal = feeDue(m);
-      const txt = `Namaste.\nReceived with thanks ${rupees(amt)} on ${dmy(fd.date)}${fd.mode ? ' by ' + fd.mode : ''} towards professional fees in your matter: ${m.title}${m.caseNo ? ' (' + m.caseNo + ')' : ''}.${num(m.feeAgreed) ? '\nBalance: ' + (bal ? rupees(bal) : 'Nil') + '.' : ''}\n\nSaurabh Misra, Advocate`;
+      const txt = `Namaste.\nReceived with thanks ${rupees(amt)} on ${dmy(fd.date || todayIso())}${st.mode ? ' by ' + st.mode : ''} towards professional fees in your matter: ${m.title}${m.caseNo ? ' (' + m.caseNo + ')' : ''}.${num(m.feeAgreed) ? `\nTotal received: ${rupees(m.feeReceived)} of ${rupees(m.feeAgreed)}.${bal ? ' Balance: ' + rupees(bal) + '.' : ' Fees fully paid.'}` : ''}\n\nSaurabh Misra, Advocate`;
       window.open('https://wa.me/' + waOf(m) + '?text=' + encodeURIComponent(txt), '_blank');
+    }
+    st.edit = null; draw();
+  }
+  draw();
+  $('#sheet-root').onclick = e => {
+    const b = e.target.closest('[data-fe]'); if (!b) return;
+    const a = b.dataset.fe, id = b.dataset.id;
+    if (a === 'mode') { const v = keep(); st.mode = b.dataset.v; draw(); restore(v); return; }
+    if (a === 'newa' || a === 'newp') { st.kind = a === 'newa' ? 'agreed' : 'pay'; st.edit = null; draw(); setTimeout(() => $('#fe_amt')?.focus(), 60); return; }
+    if (a === 'cancel') { st.edit = null; draw(); return; }
+    if (a === 'edita' || a === 'editp') {
+      st.kind = a === 'edita' ? 'agreed' : 'pay';
+      st.edit = (st.kind === 'agreed' ? m.agreedParts : m.payments).find(p => p.id === id) || null;
+      if (st.edit && st.kind === 'pay') st.mode = st.edit.mode || 'UPI';
+      draw(); setTimeout(() => $('#feeform')?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 60); return;
+    }
+    if (a === 'dela' || a === 'delp') {
+      const list = a === 'dela' ? m.agreedParts : m.payments, p = list.find(x => x.id === id); if (!p) return;
+      if (!confirm('Remove ' + rupees(p.amount) + (p.date ? ' of ' + dmy(p.date) : '') + '?')) return;
+      change(() => { list.splice(list.indexOf(p), 1); logChange(m, (a === 'dela' ? 'Fees agreed entry' : 'Payment') + ' removed: ' + rupees(p.amount)); feesTotal(m); touch(m); });
+      st.edit = null; draw(); toast('Removed');
     }
   };
 }
@@ -300,6 +357,7 @@ document.addEventListener('click', e => {
   else if (a === 'caltoday') { S.calMonth = todayIso().slice(0, 7); S.calDay = todayIso(); render(); }
   else if (a === 'client') sheetClient(el.dataset.k);
   else if (a === 'pay') sheetPay(find(el.dataset.id));
+  else if (a === 'fees') sheetFees(find(el.dataset.id));
   else if (a === 'causelist') sheetCauseList(el.dataset.day && el.dataset.day !== todayIso() ? el.dataset.day : undefined);
   else if (a === 'limsave') {
     const res = limCalc(S.lim), m = find(S.lim.mid); if (!res || !m) return;

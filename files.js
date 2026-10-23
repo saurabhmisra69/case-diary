@@ -172,7 +172,7 @@ function viewMatter(m) {
       ${m.deadline ? `<div class="mini ${m.deadlineDone ? '' : 'red'}"><span>${m.deadlineDone ? 'Deadline done' : 'Deadline'}</span><b>${esc(m.deadlineFor || 'Due')} · ${dmy(m.deadline)}</b>${m.deadlineDone ? '' : `<button data-act="deadlinedone" data-id="${m.id}">Mark done</button>`}</div>` : ''}
       ${m.feeAgreed || m.feeReceived ? `<div class="mini ${due ? 'saff' : 'green'}"><span>Fees</span><b>${rupees(m.feeReceived)} of ${rupees(m.feeAgreed)} received</b>${due ? `<span>${rupees(due)} pending</span>` : '<span>Paid</span>'}</div>` : ''}
       ${expensesBlock(m)}
-      <div class="two" style="margin-top:12px"><button class="ghost" data-act="pay" data-id="${m.id}">Record fee payment</button><button class="ghost" data-act="addexp" data-id="${m.id}">Add expense</button></div>
+      <div class="two" style="margin-top:12px"><button class="ghost" data-act="fees" data-id="${m.id}">Fees &amp; payments</button><button class="ghost" data-act="addexp" data-id="${m.id}">Add expense</button></div>
     </section>
     ${(m.readings || []).length ? `<section class="card mp-hist"><div class="h2" style="margin-bottom:6px"><h2>Papers read by Claude</h2><span class="sub">${m.readings.length}</span></div>
       <div class="hist">${m.readings.map(x => `<div><b>${dmy(x.date)}</b><span><b style="font-family:inherit">${esc(x.paper || '')}</b><br>${esc(x.summary || '')}${x.nextDate ? '<br>Next date ' + dmy(x.nextDate) : ''}${(x.todo || []).length ? '<br><span style="color:var(--saffron-ink)">To do: ' + x.todo.map(esc).join('; ') + '</span>' : ''}${(x.watch || []).length ? '<br><span style="color:#8E2A2A">Watch: ' + x.watch.map(esc).join('; ') + '</span>' : ''}</span></div>`).join('')}</div></section>` : ''}

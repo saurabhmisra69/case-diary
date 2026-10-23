@@ -567,7 +567,7 @@ function sheetEdit(m) {
     <div class="two">${fld('nextDate', 'Next date', m.nextDate, 'date')}${fld('item', 'Item no.', m.item)}</div>
     ${fld('purpose', 'Fixed for', m.purpose, 'text', 'list="ff"')}<datalist id="ff">${FIXED_FOR.map(x => `<option value="${x}">`).join('')}</datalist>
     <div class="two">${fld('deadline', 'Deadline', m.deadline, 'date')}${fld('deadlineFor', 'Deadline for', m.deadlineFor, 'text', 'placeholder="e.g. Reply, Appeal"')}</div>
-    <div class="two">${fld('feeAgreed', 'Fees agreed (₹)', m.feeAgreed, 'text', 'inputmode="numeric"')}${fld('feeReceived', 'Fees received (₹)', m.feeReceived, 'text', 'inputmode="numeric"')}</div>
+    ${isNew ? `<div class="two">${fld('feeAgreed', 'Fees agreed (₹)', m.feeAgreed, 'text', 'inputmode="numeric"')}${fld('feeReceived', 'Fees received (₹)', m.feeReceived, 'text', 'inputmode="numeric"')}</div>` : `<p class="hint" style="margin:0 0 12px">Fees: ${rupees(m.feeReceived)} received of ${rupees(m.feeAgreed)} agreed. Add, edit or remove amounts under <b>Fees</b> on the matter page.</p>`}
     <div class="two">${fld('phone', 'Client mobile', m.phone, 'tel', 'placeholder="10-digit mobile"')}${fld('whatsapp', 'WhatsApp no. (if different)', m.whatsapp, 'tel', 'placeholder="blank = same as mobile"')}</div>
     <div class="two">${fld('altName', 'Alternate contact – name', m.altName, 'text', 'placeholder="e.g. son, pairokar"')}${fld('altPhone', 'Alternate mobile', m.altPhone, 'tel', 'placeholder="10-digit mobile"')}</div>
     <div class="field"><label for="f_notes">Notes</label><textarea class="in" id="f_notes" name="notes">${esc(m.notes || '')}</textarea></div>
