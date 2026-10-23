@@ -17,7 +17,9 @@ const ccNum = code => { const m = String(code || '').match(CC_RX); return m ? +m
 function ccNext() { return Math.max(+(S.data?.meta || {})['seq:C'] || 0, ...live().map(m => ccNum(m.clientCode)), 0) + 1; }
 const ccFmt = (n, ini) => 'C' + String(n).padStart(3, '0') + '-' + ini;
 const ccSkip = () => S.data?.meta?.codeSkip || {};
-function ccLocked(gr) { return gr.ms.some(m => (m.letters || []).length); }
+const iniClean = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+const ccPre = code => (String(code || '').match(/^C\d{3,4}-/) || [''])[0];
+function ccLocked(gr) { const c = gr.code; return !!c && c !== 'MIXED' && (gr.ms.some(m => (m.letters || []).some(l => String(l.no).includes('/' + c + '/'))) || !!(S.data?.meta?.codeFixed || {})[c]); }
 function ccGroups() {
   const gs = clientGroups().filter(g => g.key !== '(no client name)');
   const age = g => Math.min(...g.ms.map(m => (m.year || 9999) * 100000 + (m.n || 0)));
@@ -39,7 +41,7 @@ function sheetCodes(filter) {
     const G = ccGroups(), todo = G.filter(g => !g.code && !g.skip), done = G.filter(g => g.code), skipped = G.filter(g => g.skip && !g.code);
     const list = st.f === 'todo' ? todo : st.f === 'done' ? done : skipped;
     openSheet(`<div class="s-head"><div><small>${G.length} clients · ${done.length} with codes</small><h1>Client codes</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
-      <p class="hint" style="margin-top:0">Code = client number + initials, e.g. <b>C004-RDP</b>. Built from <b>who your client is</b> in each matter — change it where the diary is wrong. Nothing is saved until you approve.</p>
+      <p class="hint" style="margin-top:0">Code = client number (given by the app) + initials (yours to edit until the first letter goes out, or until you tap <b>Fix</b>), e.g. <b>C004-RDP</b>. Built from <b>who your client is</b> in each matter — change it where the diary is wrong. Nothing is saved until you approve.</p>
       <div class="chips"><button class="chip ${st.f === 'todo' ? 'on' : ''}" data-cc="f" data-v="todo">To approve (${todo.length})</button><button class="chip ${st.f === 'done' ? 'on' : ''}" data-cc="f" data-v="done">Approved (${done.length})</button><button class="chip ${st.f === 'skip' ? 'on' : ''}" data-cc="f" data-v="skip">Skipped (${skipped.length})</button></div>
       ${st.f === 'todo' && todo.length ? `<button class="save" data-cc="all" style="margin:10px 0">Approve all ${todo.length} as shown</button>` : ''}
       <div class="grp" style="gap:10px;margin-top:8px">${list.map(g => card(g)).join('') || '<p class="empty">Nothing here.</p>'}</div>`);
@@ -50,14 +52,20 @@ function sheetCodes(filter) {
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><b>${esc(g.name)}</b>${g.code ? `<b style="font-family:var(--mono);color:var(--dc-ink)">${esc(g.code)}</b>` : ''}</div>
       <div class="hist" style="margin-top:6px">${g.ms.map(m => `<div><b style="font-size:11px">${esc(m.no)}</b><span>${esc(m.title || '')}${m.caseNo ? ' · ' + esc(m.caseNo) : ''}<br><button class="linkbtn" data-cc="client" data-id="${m.id}">Change client</button></span></div>`).join('')}</div>
       ${g.code === 'MIXED' ? `<p class="hint" style="color:var(--red)">These matters have different codes: ${esc([...new Set(g.ms.map(m => m.clientCode).filter(Boolean))].join(', '))}. Set one below.</p>` : ''}
-      ${!g.code || g.code === 'MIXED' || st.edit[g.key] ? `<div style="display:flex;gap:8px;align-items:center;margin-top:8px"><input class="in" id="${ek}" data-cc-in="${esc(g.key)}" value="${esc(g.code && g.code !== 'MIXED' ? g.code : g.sug)}" style="flex:1;font-family:var(--mono);text-transform:uppercase" autocapitalize="characters" spellcheck="false"><button class="act primary" data-cc="ok" data-k="${esc(g.key)}" data-in="${ek}" style="min-height:42px;padding:0 14px">Approve</button></div>` : ''}
-      <div class="chips" style="margin-top:8px">${g.code && g.code !== 'MIXED' && !st.edit[g.key] ? (locked ? '<small class="hint" style="margin:0">Fixed — letters already issued with this code</small>' : `<button class="chip" data-cc="edit" data-k="${esc(g.key)}">Edit code</button>`) : ''}
+      ${(() => { const numbered = !g.code || g.code === 'MIXED' || ccPre(g.code);
+        if (g.code && g.code !== 'MIXED' && locked) return `<p class="hint" style="margin:8px 0 0;color:var(--dc-ink)">✓ Fixed${(S.data?.meta?.codeFixed || {})[g.code] ? '' : ' — a letter has gone out with this code'}</p>`;
+        if (g.code && g.code !== 'MIXED' && !ccPre(g.code)) return `<p class="hint" style="margin:8px 0 0">Older style code (no number).</p>`;
+        const pre = g.code && g.code !== 'MIXED' ? ccPre(g.code) : ccPre(g.sug), ini = (g.code && g.code !== 'MIXED' ? g.code : g.sug).replace(/^C\d{3,4}-/, '');
+        return numbered ? `<div style="display:flex;gap:6px;align-items:center;margin-top:8px"><span class="ccpre" title="Number given by the app">${esc(pre)}</span><input class="in" id="${ek}" data-cc-in="${esc(g.key)}" value="${esc(ini)}" maxlength="6" style="flex:1;font-family:var(--mono);text-transform:uppercase" autocapitalize="characters" spellcheck="false" aria-label="Initials"><button class="act primary" data-cc="ok" data-k="${esc(g.key)}" data-in="${ek}" style="min-height:42px;padding:0 12px">${g.code && g.code !== 'MIXED' ? 'Save' : 'Approve'}</button></div>` : ''; })()}
+      <div class="chips" style="margin-top:8px">${g.code && g.code !== 'MIXED' && !locked && ccPre(g.code) ? `<button class="chip" data-cc="fix" data-k="${esc(g.key)}">Fix this code</button>` : ''}${g.code && g.code !== 'MIXED' && !locked && !ccPre(g.code) ? `<button class="chip" data-cc="renum" data-k="${esc(g.key)}">Give it a numbered code</button>` : ''}
         ${!g.code ? (g.skip ? `<button class="chip" data-cc="unskip" data-k="${esc(g.key)}">Bring back</button>` : `<button class="chip" data-cc="skip" data-k="${esc(g.key)}">Skip for now</button>`) : ''}
         <button class="chip" data-cc="merge" data-k="${esc(g.key)}">Same person as…</button></div></div>`;
   };
   const grOf = k => ccGroups().find(g => g.key === k);
-  const approve = (g, code) => {
-    code = codeClean(code); if (!code) return toast('Enter a code');
+  const approve = (g, ini) => {
+    ini = iniClean(ini); if (!ini) return toast('Enter the initials');
+    const keep = g.code && g.code !== 'MIXED' && ccPre(g.code);   // an approved client keeps its number
+    const code = (keep || ccFmt(ccNext(), '')) + ini;
     const clash = live().find(m => m.clientCode === code && clientKey(m.clients) !== g.key); if (clash) return toast(code + ' is already used for ' + clientName(clash.clients));
     change(d => { d.meta = d.meta || {}; d.meta['seq:C'] = Math.max(+d.meta['seq:C'] || 0, ccNum(code));
       g.ms.forEach(m => { if (m.clientCode !== code) { logChange(m, 'Client code: ' + (m.clientCode || '—') + ' → ' + code); m.clientCode = code; touch(m); } }); });
@@ -69,10 +77,11 @@ function sheetCodes(filter) {
     const b = e.target.closest('[data-cc]'); if (!b) return;
     const a = b.dataset.cc, g = b.dataset.k ? grOf(b.dataset.k) : null;
     if (a === 'f') { st.f = b.dataset.v; return draw(); }
-    if (a === 'ok') { if (approve(g, $('#' + b.dataset.in).value)) { delete st.edit[g.key]; toast(g.name + ': ' + codeClean($('#' + b.dataset.in).value)); draw(); } return; }
+    if (a === 'ok') { if (approve(g, $('#' + b.dataset.in).value)) { toast(g.name + ': ' + (grOf(g.key) || {}).code); draw(); } return; }
     if (a === 'all') { const T = ccGroups().filter(x => !x.code && !x.skip); if (!confirm('Approve ' + T.length + ' codes as shown?')) return;
-      T.forEach(x => { const el = root.querySelector(`[data-cc-in="${CSS.escape(x.key)}"]`); approve(x, el ? el.value : x.sug); }); toast(T.length + ' clients coded'); return draw(); }
-    if (a === 'edit') { st.edit[g.key] = true; return draw(); }
+      T.forEach(x => { const el = root.querySelector(`[data-cc-in="${CSS.escape(x.key)}"]`); approve(x, el ? el.value : x.sug.replace(/^C\d{3,4}-/, '')); }); toast(T.length + ' clients coded'); return draw(); }
+    if (a === 'fix') { if (!confirm('Fix ' + g.code + ' for ' + g.name + '? The initials cannot be changed after this.')) return; change(d => { d.meta = d.meta || {}; d.meta.codeFixed = Object.assign({}, d.meta.codeFixed, { [g.code]: todayIso() }); g.ms.forEach(m => logChange(m, 'Client code fixed: ' + g.code)); }); toast(g.code + ' fixed'); return draw(); }
+    if (a === 'renum') { change(() => g.ms.forEach(m => { logChange(m, 'Client code ' + m.clientCode + ' removed, to get a numbered code'); m.clientCode = ''; touch(m); })); st.f = 'todo'; return draw(); }
     if (a === 'skip' || a === 'unskip') { change(d => { d.meta = d.meta || {}; const s = Object.assign({}, d.meta.codeSkip); if (a === 'skip') s[g.key] = true; else delete s[g.key]; d.meta.codeSkip = s; }); return draw(); }
     if (a === 'client') { const m = find(b.dataset.id); return changeClient(m, () => sheetCodes(st.f)); }
     if (a === 'merge') { const others = ccGroups().filter(x => x.key !== g.key);

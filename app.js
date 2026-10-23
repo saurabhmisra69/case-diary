@@ -580,7 +580,7 @@ function sheetEdit(m) {
     <datalist id="courts">${[...new Set(live().map(x => x.court).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('')}</datalist>
     <div class="two"><div class="field"><label for="f_type">Type</label><select class="in" id="f_type" name="type"><option value=""></option>${opt(TYPES, m.type)}</select></div>${fld('caseNo', 'Case no.', m.caseNo, 'text', 'placeholder="e.g. 8027/2026"')}</div>
     ${fld('cnr', 'CNR no.', m.cnr, 'text', 'placeholder="16 characters, e.g. UPHC020344252026" style="text-transform:uppercase;font-family:var(--mono);letter-spacing:.03em" autocapitalize="characters" spellcheck="false"')}
-    <div class="two">${fld('filingNo', 'Filing no.', m.filingNo)}${fld('clientCode', 'Client code (letters)', m.clientCode, 'text', 'list="ccodes" placeholder="e.g. OMAXE-RWA" style="text-transform:uppercase;font-family:var(--mono)" autocapitalize="characters" spellcheck="false"')}</div><datalist id="ccodes">${[...new Set(live().map(x => x.clientCode).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+    <div class="two">${fld('filingNo', 'Filing no.', m.filingNo)}<div class="field"><label>Client code</label><div class="in" style="display:flex;align-items:center;justify-content:space-between;font-family:var(--mono)">${esc(m.clientCode || '—')}<button type="button" class="linkbtn" data-act="${isNew ? 'codes' : 'setcode'}" data-id="${m.id || ''}">${m.clientCode ? 'Change' : 'Set'}</button></div></div></div>
     <div class="two">${fld('crimeNo', 'Crime / FIR no.', m.crimeNo)}${fld('ps', 'Police station', m.ps)}</div>
     ${fld('sections', 'Under section(s)', m.sections)}
     <div class="two"><div class="field"><label for="f_nature">Nature</label><select class="in" id="f_nature" name="nature">${opt(['Criminal', 'Civil', 'Other'], m.nature)}</select></div><div class="field"><label for="f_status">Status</label><select class="in" id="f_status" name="status">${opt(statusList(m), m.status)}</select></div></div>
@@ -605,7 +605,7 @@ function sheetEdit(m) {
     fd.year = parseInt(fd.year, 10) || y;
     if (!fd.title) fd.title = fd.clients;
     if (fd.cnr) fd.cnr = fd.cnr.toUpperCase().replace(/\s+/g, '');
-    fd.clientCode = codeClean(fd.clientCode || '');
+    delete fd.clientCode;   // set in Client codes
     if (isNew && typeof conflictGate === 'function' && !(await conflictGate(fd))) return;
     if (isNew) {
       const rec = touch({ id: uid(), n: nextNumber(fd.year), hearings: [], created: todayIso(), ...fd });
