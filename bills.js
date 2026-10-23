@@ -56,6 +56,52 @@ async function chooseSignature() {
   });
 }
 
+/* ---------- the matter's fees folder (the sub-folder whose name starts with 5) ---------- */
+const FEE_DIR_NAME = {};
+async function feeFolder(m, create) {
+  if (!m.folderId) return null;
+  const kids = await listChildren(m.folderId);
+  let dir = kids.find(k => k.folder && /^5(\s|[._-])/.test(k.name)) || kids.find(k => k.folder && /fee|bill/i.test(k.name));
+  if (!dir && create) dir = await makeFolder(m.folderId, '5 Fees');
+  if (dir) FEE_DIR_NAME[m.id] = dir.name;
+  return dir || null;
+}
+async function fileText(it) {
+  const r = await g('/me/drive/items/' + it.id + '/content'); if (!r.ok) return '';
+  const buf = await (await r.blob()).arrayBuffer();
+  if (/\.pdf$/i.test(it.name)) {
+    const lib = await loadPdfLib(), pdf = await lib.getDocument({ data: buf }).promise; let t = '';
+    for (let n = 1; n <= Math.min(pdf.numPages, 4); n++) t += (await (await pdf.getPage(n)).getTextContent()).items.map(i => i.str).join(' ') + ' ';
+    pdf.destroy(); return t;
+  }
+  if (/\.docx$/i.test(it.name)) { const z = await (await loadJSZip()).loadAsync(buf); const x = await z.file('word/document.xml')?.async('string'); return (x || '').replace(/<w:tab\/>/g, ' ').replace(/<\/w:p>/g, '\n').replace(/<[^>]+>/g, ''); }
+  return '';
+}
+function billFromText(t, name) {
+  const s = t.replace(/\s+/g, ' ');
+  const no = (s.match(/Bill\s*No\.?\s*[:\-]?\s*([A-Z0-9][A-Z0-9\/\-.]{2,})/i) || [])[1] || (name.match(/Bill\s+([A-Z0-9-]+)/i) || [])[1] || '';
+  const dm = s.match(/(?:Bill\s*Date|Date)\s*[:\-]?\s*(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})/i);
+  const date = dm ? (dm[3].length === 2 ? '20' + dm[3] : dm[3]) + '-' + dm[2].padStart(2, '0') + '-' + dm[1].padStart(2, '0') : '';
+  const am = s.match(/Total\s*(?:amount)?\s*(?:payable)?\s*(?:Rs\.?|₹|INR)?\s*([\d,]+)/i) || s.match(/(?:Rs\.?|₹)\s*([\d,]{3,})\s*\/?-?/i);
+  return { no: no.replace(/[.,;]+$/, ''), date, total: am ? +am[1].replace(/,/g, '') : 0 };
+}
+/* bills kept in the fees folder that the diary does not know yet are read and added (once) */
+async function syncFolderBills(m) {
+  const dir = await feeFolder(m, false); if (!dir) return 0;
+  const files = (await listChildren(dir.id)).filter(it => it.file && /bill|demand|invoice/i.test(it.name) && !/receipt/i.test(it.name) && /\.(pdf|docx)$/i.test(it.name));
+  const known = new Set((m.bills || []).map(b => b.fileId).filter(Boolean)), knownNo = new Set((m.bills || []).map(b => b.no));
+  let added = 0;
+  for (const it of files) {
+    if (known.has(it.id)) continue;
+    let info = { no: '', date: '', total: 0 };
+    try { info = billFromText(await fileText(it), it.name); } catch (e) {}
+    if (info.no && knownNo.has(info.no)) { change(() => { const b = m.bills.find(x => x.no === info.no); if (b && !b.fileId) b.fileId = it.id; touch(m); }); continue; }
+    change(() => { m.bills = m.bills || []; m.bills.push({ id: uid(), no: info.no || it.name.replace(/\.[^.]+$/, ''), date: info.date || (it.lastModifiedDateTime || '').slice(0, 10), to: m.clients || '', items: [{ d: 'As per bill ' + it.name, amt: info.total }], total: info.total, fileId: it.id, fileName: it.name, fromFolder: true }); touch(m); });
+    added++;
+  }
+  return added;
+}
+
 /* ---------- Word documents ---------- */
 function letterhead(D) {
   const C = D.AlignmentType.CENTER, F = 'Times New Roman';
@@ -86,8 +132,7 @@ async function saveDoc(m, D, children, name) {
   const blob = await D.Packer.toBlob(doc);
   let itemId = '';
   if (m.folderId) {
-    try { let dir; try { dir = await getItem('/me/drive/items/' + m.folderId + ':/' + encodeURIComponent('5 Bills & Receipts')); } catch (e) { dir = await makeFolder(m.folderId, '5 Bills & Receipts'); }
-      itemId = (await uploadFile(dir.id, new File([blob], name), name)).id; } catch (e) {}
+    try { const dir = await feeFolder(m, true); itemId = (await uploadFile(dir.id, new File([blob], name), name)).id; } catch (e) {}
   }
   return { blob, name, itemId };
 }
@@ -128,7 +173,7 @@ async function makeReceiptDoc(m, rc, p, b, withSig) {
 /* ---------- after a document is made: open / PDF / share / download ---------- */
 function docReady(m, r, title) {
   openSheet(`<div class="s-head"><div><small>${esc(m.no)}</small><h1>${esc(title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
-    <p class="hint">${esc(r.name)}${r.itemId ? ' · saved in the case folder › 5 Bills & Receipts' : ''}</p>
+    <p class="hint">${esc(r.name)}${r.itemId ? ' · saved in the case folder › ' + (FEE_DIR_NAME[m.id] || '5 Fees') : ''}</p>
     <div class="three"><button class="act primary" data-dk="open">Open in Word</button><button class="act blue" data-dk="pdf">PDF</button><button class="act blue" data-dk="share">Share</button></div>
     <button class="ghost" data-dk="dl" style="width:100%;margin-top:8px">Download</button>
     <button class="linkbtn" data-dk="back" style="margin-top:10px">‹ Back to Fees & payments</button>`);
@@ -197,18 +242,25 @@ function sheetBill(m, bill) {
 }
 
 /* ---------- receipt sheet ---------- */
-function sheetReceipt(m, payId) {
+async function sheetReceipt(m, payId) {
+  if (m.folderId && !sheetReceipt.busy) {
+    sheetReceipt.busy = true;
+    openSheet(`<div class="s-head"><div><small>${esc(m.no)} · receipt</small><h1>Reading bills in the fees folder…</h1></div></div>`);
+    try { const n = await syncFolderBills(m); if (n) toast(n + ' bill' + (n > 1 ? 's' : '') + ' found in the fees folder', 3000); } catch (e) {}
+    sheetReceipt.busy = false;
+  }
   const pays = (m.payments || []).slice().sort((x, y) => (y.date || '').localeCompare(x.date || ''));
   if (!pays.length) { toast('Record the payment first, then make its receipt'); return sheetFees(m, 'pay'); }
-  const bills = (m.bills || []).slice().sort((x, y) => (y.date || '').localeCompare(x.date || ''));
+  const pp0 = (m.payments || []).find(x => x.id === (payId || pays[0].id));
+  const bills = (m.bills || []).filter(x => billPaid(m, x) < num(x.total) || !num(x.total) || (pp0 && pp0.billId === x.id)).sort((x, y) => (y.date || '').localeCompare(x.date || ''));
   const st = { pay: payId || pays[0].id, bill: '', sig: true };
   const pp = pays.find(x => x.id === st.pay); st.bill = pp && pp.billId ? pp.billId : (bills.find(b => billPaid(m, b) < num(b.total)) || bills[0] || {}).id || '';
   const d0 = todayIso();
   openSheet(`<div class="s-head"><div><small style="color:var(--saffron-ink)">${esc(m.no)} · receipt</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <form id="rcform" class="grp" style="gap:12px">
       <div class="field"><label for="r_pay">PAYMENT</label><select class="in" id="r_pay">${pays.map(p => `<option value="${p.id}" ${p.id === st.pay ? 'selected' : ''}>${rupees(p.amount)} · ${p.date ? dmy(p.date) : 'no date'}${p.mode ? ' · ' + esc(p.mode) : ''}${p.receiptNo ? ' · receipt ' + esc(p.receiptNo) : ''}</option>`).join('')}</select></div>
-      <div class="field"><label for="r_bill">AGAINST BILL</label><select class="in" id="r_bill"><option value="">— No bill —</option>${bills.map(b => { const paid = billPaid(m, b); return `<option value="${b.id}" ${b.id === st.bill ? 'selected' : ''}>${esc(b.no)} · ${dmy(b.date)} · ${rupees(b.total)} · ${paid >= num(b.total) ? 'paid' : paid ? 'part-paid ' + rupees(paid) : 'unpaid'}</option>`; }).join('')}</select>
-        ${bills.length ? '' : `<p class="hint" style="margin:6px 0 0">No bills yet on this matter. <button type="button" class="linkbtn" data-rx="bill">Make a bill</button></p>`}</div>
+      <div class="field"><label for="r_bill">AGAINST BILL</label><select class="in" id="r_bill"><option value="">— No bill —</option>${bills.map(b => { const paid = billPaid(m, b); return `<option value="${b.id}" ${b.id === st.bill ? 'selected' : ''}>${esc(b.no)} · ${b.date ? dmy(b.date) : ''} · ${num(b.total) ? rupees(b.total) : 'amount ?'} · ${paid ? 'part-paid ' + rupees(paid) : 'unpaid'}${b.fromFolder ? ' · ' + esc(FEE_DIR_NAME[m.id] || 'fees folder') : ''}</option>`; }).join('')}</select>
+        <p class="hint" style="margin:6px 0 0">${bills.length ? 'Unpaid bills of this matter, including those kept in its fees folder (' + esc(FEE_DIR_NAME[m.id] || '5 …') + ').' : 'No unpaid bill on this matter or in its fees folder.'} <button type="button" class="linkbtn" data-rx="bill">Make a bill</button></p></div>
       <div class="two"><div class="field"><label for="r_no">RECEIPT NO.</label><input class="in" id="r_no" value="${esc(pp && pp.receiptNo ? pp.receiptNo : numNo('RCPT', d0, nextSeq('RCPT', d0)))}"></div><div class="field"><label for="r_date">DATE</label><input class="in" type="date" id="r_date" value="${esc(d0)}"></div></div>
       <div class="field"><label for="r_from">RECEIVED FROM</label><input class="in" id="r_from" value="${esc(m.clients || '')}"></div>
       <div class="toggles"><label><span>Add my signature</span><input type="checkbox" id="r_sig" checked></label></div>
