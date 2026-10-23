@@ -96,7 +96,7 @@ const followsScheme = name => /\(\d{4}-\d{3}\)$/.test(name || '') || /^\d{4}-\d{
 /* "0 Matter details.txt" inside each matter folder: the full title and particulars, kept up to date. */
 function detailsText(m) {
   const L = [['Full title', m.title], ['Diary no.', m.no], ['Client(s)', m.clients], ['Court', m.court], ['Type', m.type], ['Case no.', m.caseNo], ['Crime / FIR no.', m.crimeNo], ['Police station', m.ps], ['Sections', m.sections], ['Appearing for', m.side], ['Status', m.status], ['Next date', m.nextDate ? dmy(m.nextDate) + (m.purpose ? ', ' + m.purpose : '') : ''], ['Notes', m.notes]];
-  return L.filter(x => x[1]).map(x => x[0] + ': ' + x[1]).join('\r\n') + '\r\n\r\n(Kept up to date by Case Diary.)\r\n';
+  return L.filter(x => x[1]).map(x => x[0] + ': ' + x[1]).join('\r\n') + '\r\n\r\n(Kept up to date by SM Chambers.)\r\n';
 }
 let detailsBusy = false;
 async function syncDetails() {

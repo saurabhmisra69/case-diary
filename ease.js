@@ -26,7 +26,7 @@ function pickMatter(title, onPick) {
     .sort((a, b) => ((b.status === 'Pending') - (a.status === 'Pending')) || (a.nextDate || '9999').localeCompare(b.nextDate || '9999'))
     .slice(0, 40);
   const rows = () => list().map(m => { const f = forumOf(m); return `<button class="frow" data-pm="${m.id}"><span class="ficon" style="background:${f.soft};color:${f.ink};font-size:11px;font-weight:700">${esc(m.no)}</span><span class="fname">${esc(m.title || m.clients)}<small>${esc([m.court, m.caseNo, m.nextDate ? 'next ' + dmy(m.nextDate) : ''].filter(Boolean).join(' · '))}</small></span></button>`; }).join('') || '<p class="empty">No matter found.</p>';
-  openSheet(`<div class="s-head"><div><small>Case Diary</small><h1>${esc(title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+  openSheet(`<div class="s-head"><div><small>SM Chambers</small><h1>${esc(title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <label class="search" style="border:1px solid var(--line)">${I.search}<input type="search" id="pm_q" placeholder="Name, case no., court" autocomplete="off"></label>
     <div class="flist" id="pm_list" style="max-height:55vh;overflow:auto">${rows()}</div>`);
   const root = $('#sheet-root');

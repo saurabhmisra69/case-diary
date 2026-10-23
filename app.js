@@ -354,7 +354,7 @@ function render() {
 function renderSignIn() {
   $('#app').innerHTML = `<section class="signin">
     <div class="logo-big" style="background:#F7F5F0"><svg viewBox="0 0 512 512" width="100%" height="100%" aria-hidden="true"><rect x="132" y="96" width="248" height="320" rx="14" fill="#1B2A4A"/><rect x="132" y="96" width="34" height="320" rx="10" fill="#7A2E2E"/><rect x="196" y="150" width="152" height="6" fill="#B08D57"/><rect x="196" y="352" width="152" height="6" fill="#B08D57"/><g fill="none" stroke="#D9BD8A" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"><path d="M272 200v112M244 312h56M222 220h100"/><path d="M222 220l-20 46h40zM322 220l-20 46h40z"/></g></svg></div>
-    <h1>Case Diary</h1>
+    <h1>SM Chambers</h1><p style="margin:-4px 0 10px;font-weight:700">Saurabh Misra &amp; Associates – Chambers</p>
     <p>Your matters, dates and fees, kept in your own OneDrive and the same on phone and computer.</p>
     <button class="btn-big" data-act="signin">Sign in with Microsoft</button>
     <p style="font-size:12px">Use the Microsoft account that holds your case folders. The diary file is saved in OneDrive › Case Diary.</p>
@@ -511,7 +511,7 @@ function viewMore() {
   const n = live().length;
   return `<header class="phead"><div class="top-row"><h1>More</h1><button id="syncbtn" class="sync" data-act="sync"></button></div></header>
   <main><div class="menu">
-    <div class="card"><div class="kv"><span>Signed in as</span><b>${esc(S.account?.username || '')}</b><span>Matters</span><b>${n}</b><span>Saved in</span><b>OneDrive › Case Diary</b><span>Version</span><b>${APP_VERSION}</b></div></div>
+    <div class="card"><b style="display:block;font-size:17px">Saurabh Misra &amp; Associates – Chambers</b><small style="color:var(--muted)">SM Chambers</small><div class="kv" style="margin-top:10px"><span>Signed in as</span><b>${esc(S.account?.username || '')}</b><span>Matters</span><b>${n}</b><span>Saved in</span><b>OneDrive › Case Diary</b><span>Version</span><b>${APP_VERSION}</b></div></div>
     <button data-act="tab" data-tab="fees">Fees <small>dues and payments</small></button>
     <button data-act="causelist" data-day="${S.day}">Cause list in Word <small>on your letterhead</small></button>
     <button data-act="paper">Paper size <small>A4 or Legal for each kind of document</small></button>

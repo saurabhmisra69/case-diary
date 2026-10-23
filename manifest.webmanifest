@@ -1,7 +1,7 @@
 {
-  "name": "Case Diary",
-  "short_name": "Case Diary",
-  "description": "Advocate's case diary linked to OneDrive",
+  "name": "Saurabh Misra & Associates – Chambers",
+  "short_name": "SM Chambers",
+  "description": "Chambers software of Saurabh Misra & Associates — cases, drafts, letters, bills and receipts, linked to OneDrive",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
