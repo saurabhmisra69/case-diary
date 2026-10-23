@@ -520,6 +520,8 @@ function viewMore() {
   return `<header class="phead"><div class="top-row"><h1>More</h1><button id="syncbtn" class="sync" data-act="sync"></button></div></header>
   <main><div class="menu">
     <div class="card"><b style="display:block;font-size:17px">Saurabh Misra &amp; Associates – Chambers</b><small style="color:var(--muted)">SM Chambers</small><div class="kv" style="margin-top:10px"><span>Signed in as</span><b>${esc(S.account?.username || '')}</b><span>Matters</span><b>${n}</b><span>Saved in</span><b>OneDrive › Case Diary</b><span>Version</span><b>${APP_VERSION}</b></div></div>
+    ${typeof langSwitch === 'function' ? langSwitch() : ''}
+    <button data-act="dashboard">Practice dashboard <small>matters, results, income</small></button>
     <button data-act="tab" data-tab="fees">Fees <small>dues and payments</small></button>
     <button data-act="causelist" data-day="${S.day}">Cause list in Word <small>on your letterhead</small></button>
     <button data-act="lock">App lock <small>${typeof hasPin === 'function' && hasPin() ? 'PIN set · locks after 5 min' : 'set a PIN'}</small></button>
