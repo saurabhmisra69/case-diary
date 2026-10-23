@@ -234,10 +234,11 @@ async function makeDraft(m, key, lang, f) {
   (f._annex || []).forEach((ax, i) => {
     annex.push(new D.Paragraph({ pageBreakBefore: true, alignment: C, spacing: { after: 120 }, children: [new D.TextRun({ text: (hi ? 'संलग्नक संख्या ' : 'ANNEXURE NO. ') + (i + 1), bold: true, underline: {}, size: SZ, font: FONT })] }));
     if (ax.title) annex.push(...P(ax.title, { align: C, after: 200 }));
-    ax.images.forEach((im, k) => annex.push(new D.Paragraph({ alignment: C, pageBreakBefore: k > 0, children: [new D.ImageRun({ data: im.data, transformation: { width: im.w, height: im.h } })] })));
+    const HM = paperOf('draft') === 'A4' ? 840 : 1000;   // tallest picture that fits the page
+    ax.images.forEach((im, k) => { const sc = Math.min(1, HM / im.h); annex.push(new D.Paragraph({ alignment: C, pageBreakBefore: k > 0, children: [new D.ImageRun({ data: im.data, transformation: { width: Math.round(im.w * sc), height: Math.round(im.h * sc) } })] })); });
   });
   const doc = new D.Document({ creator: 'Saurabh Misra', styles: { default: { document: { run: { font: FONT, size: SZ } } } },
-    sections: [{ properties: { page: { size: { width: 12240, height: 20160 }, margin: { top: 1440, bottom: 1440, left: 2160, right: 1440 } } }, children: [...head, ...body, ...sig, ...aff, ...annex] }] });
+    sections: [{ properties: { page: pageFor(paperOf('draft'), 'Legal', { top: 1440, bottom: 1440, left: 2160, right: 1440 }) }, children: [...head, ...body, ...sig, ...aff, ...annex] }] });
   const blob = await D.Packer.toBlob(doc);
   const name = cleanName(today + ' ' + (hi ? T.hi : T.en)) + '.docx';
   let url = '';
@@ -374,6 +375,7 @@ function applyOrderToFields(key, o, f) {
 }
 
 function sheetDraft(m, preset) {
+  delete PAPER_NOW.draft;
   const S2 = Object.assign({ key: 'adjournment', lang: 'en', f: {}, busy: '', done: null, annex: [], format: null }, preset || {});
   S2.f = Object.assign({ depName: m.clients || '' }, m.deponent || {}, S2.f);
   const T0 = () => TEMPLATES[S2.key];
@@ -403,7 +405,7 @@ function sheetDraft(m, preset) {
         <div class="three"><button class="act wa" data-dr="sendwa">${I.wa}WhatsApp link</button><button class="act blue" data-dr="sendmail">Email link</button><button class="act blue" data-dr="sendfile">Send file</button></div>
         <p class="hint">Link: opens WhatsApp or email with a ready-to-print PDF and Word link; you choose your junior there. Send file: attaches the files themselves.</p><p class="hint">${esc(S2.done.name)}${S2.done.pdfName ? ' · ' + esc(S2.done.pdfName) : ''}</p>
         <button class="linkbtn" data-dr="again">Make another</button>`
-      : `<button class="save" data-dr="make">Make Word file</button>`}`);
+      : `${S2.format ? '' : paperSwitch('draft')}<button class="save" data-dr="make">Make Word file</button>`}`);
   };
   draw();
   const root = $('#sheet-root');
@@ -530,13 +532,14 @@ async function makeCover(m) {
   const W1 = 2700, W2 = 6660;
   const kv = list => new D.Table({ width: { size: W1 + W2, type: D.WidthType.DXA }, columnWidths: [W1, W2], borders,
     rows: list.map(([k, v]) => new D.TableRow({ children: [cell(k, { w: W1, bold: true, shade: 'EEF1F6' }), cell(v, { w: W2, size: 22 })] })) });
-  const dateRows = Math.max(14, 38 - rows.length - contacts.length - (String(m.title || "").length > 70 ? 1 : 0));
+  const paper = paperOf('cover');
+  const dateRows = Math.max(paper === 'A4' ? 8 : 14, (paper === 'A4' ? 30 : 38) - rows.length - contacts.length - (String(m.title || "").length > 70 ? 1 : 0));
   const DW = [1500, 5460, 1400, 1000];
   const dates = new D.Table({ width: { size: 9360, type: D.WidthType.DXA }, columnWidths: DW, borders,
     rows: [new D.TableRow({ tableHeader: true, children: ['Date', 'Proceedings', 'Next date', 'Item'].map((h, i) => cell(h, { w: DW[i], bold: true, shade: 'EEF1F6', align: C })) }),
       ...Array.from({ length: dateRows }, () => new D.TableRow({ height: { value: 400, rule: D.HeightRule.ATLEAST }, children: DW.map(w => cell('', { w })) }))] });
   const doc = new D.Document({ creator: 'Saurabh Misra', styles: { default: { document: { run: { font: FONT, size: 22 } } } },
-    sections: [{ properties: { page: { size: { width: 12240, height: 20160 }, margin: { top: 720, bottom: 720, left: 1440, right: 1440 } } }, children: [
+    sections: [{ properties: { page: pageFor(paper, 'Legal', { top: 720, bottom: 720, left: 1440, right: 1440 }) }, children: [
       para(run('SAURABH MISRA & ASSOCIATES', { bold: true, size: 32 }), { align: C, after: 0 }),
       para(run('CHAMBERS OF SAURABH MISRA, ADVOCATE', { size: 18, bold: true }), { align: C, after: 0 }),
       para(run(ADV.addr, { size: 18 }), { align: C, after: 0 }),
@@ -549,16 +552,22 @@ async function makeCover(m) {
       para(run('Printed ' + dmy(todayIso()) + ' from Case Diary', { size: 14, color: '7F7F7F' }), { align: D.AlignmentType.RIGHT, before: 80 }),
     ] }] });
   const blob = await D.Packer.toBlob(doc);
-  const name = cleanName('File cover ' + m.no.replace('/', '-') + ' ' + (m.title || m.clients || '').slice(0, 60)) + '.docx';
+  const name = cleanName('File cover ' + m.no.replace('/', '-') + ' ' + (m.title || m.clients || '').slice(0, 60) + ' (' + paper + ')') + '.docx';
   let itemId = '', parentId = '';
   if (m.folderId) { try { const it = await uploadFile(m.folderId, new File([blob], name), name); itemId = it.id; parentId = m.folderId; } catch (e) {} }
-  return { blob, name, itemId, parentId };
+  return { blob, name, itemId, parentId, paper };
 }
-async function sheetCover(m) {
-  openSheet(`<div class="s-head"><div><small>${esc(m.no)} · file cover</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div><p class="hint">Making the A4 cover…</p>`);
+function sheetCover(m) {
+  delete PAPER_NOW.cover;
+  openSheet(`<div class="s-head"><div><small>${esc(m.no)} · file cover</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    <p class="hint">Chamber header, case details, contacts and a ruled table for dates, on one page.</p>${paperSwitch('cover')}<button class="save" data-cv="make">Make file cover</button>`);
+  $('#sheet-root').onclick = e => { if (e.target.closest('[data-cv="make"]')) coverMake(m); };
+}
+async function coverMake(m) {
+  openSheet(`<div class="s-head"><div><small>${esc(m.no)} · file cover</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div><p class="hint">Making the ${esc(paperOf('cover'))} cover…</p>`);
   let r; try { r = await makeCover(m); } catch (e) { closeSheet(); toast(e.message); return; }
   openSheet(`<div class="s-head"><div><small>${esc(m.no)} · file cover</small><h1>Ready to print</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
-    <p class="hint">${esc(r.name)}${r.itemId ? ' · saved in the case folder' : ''}. Legal-size page (8.5 × 14 in): chamber header, case details, contacts and a ruled table for dates.</p>
+    <p class="hint">${esc(r.name)}${r.itemId ? ' · saved in the case folder' : ''}. ${r.paper === 'A4' ? 'A4 page (8.27 × 11.69 in)' : 'Legal-size page (8.5 × 14 in)'}: chamber header, case details, contacts and a ruled table for dates.</p>
     <div class="three"><button class="act primary" data-cv="open">Open in Word</button><button class="act blue" data-cv="pdf">PDF to print</button><button class="act blue" data-cv="share">Share</button></div>
     <button class="ghost" data-cv="dl" style="width:100%;margin-top:8px">Download</button>`);
   $('#sheet-root').onclick = async e => {

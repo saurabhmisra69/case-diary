@@ -327,3 +327,9 @@ body{padding-left:24px} .nav{left:24px} .scrim{left:24px}
 .voided{opacity:.72}
 .voided>b:first-child{text-decoration:line-through}
 .voidtag{color:#B00000;font-size:11px;letter-spacing:.06em;border:1px solid #B00000;border-radius:4px;padding:0 4px}
+.paperpick{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 12px}
+.seg{display:inline-flex;border:1.5px solid var(--hc,#1B2A4A);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:7px 16px;font:inherit;font-weight:700;color:var(--hc,#1B2A4A);min-height:36px;cursor:pointer}
+.seg button.on{background:var(--hc,#1B2A4A);color:#fff}
+.pp-note{font-size:12px;color:var(--muted)}
+.two>.seg{justify-self:end;width:max-content}

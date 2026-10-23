@@ -143,9 +143,9 @@ function tbl(D, rows, widths, opts = {}) {
 }
 const PB = (D, t, o = {}) => new D.Paragraph({ alignment: o.align || D.AlignmentType.JUSTIFIED, spacing: { before: o.before || 0, after: o.after ?? 120, line: 300 }, children: [new D.TextRun({ text: t, size: o.size || 22, bold: o.bold, font: 'Times New Roman' })] });
 function caseRefOf(m) { return [m.title, [m.caseNo, m.type].filter(Boolean).join(', '), m.court].filter(Boolean).join('\n'); }
-async function saveDoc(m, D, children, name) {
+async function saveDoc(m, D, children, name, paper) {
   const doc = new D.Document({ creator: 'Saurabh Misra', styles: { default: { document: { run: { font: 'Times New Roman', size: 22 } } } },
-    sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1080, bottom: 1080, left: 1440, right: 1440 } } }, children }] });
+    sections: [{ properties: { page: pageFor(paper || 'A4', 'A4', { top: 1080, bottom: 1080, left: 1440, right: 1440 }) }, children }] });
   const blob = await D.Packer.toBlob(doc);
   let itemId = '';
   if (m.folderId) {
@@ -172,7 +172,7 @@ async function makeBillDoc(m, b, withSig) {
     tbl(D, [['Account Name', BANK.name], ['Bank', BANK.bank], ['Branch', BANK.branch], ['Account No.', BANK.acct], ['IFS Code', BANK.ifsc], ['MICR Code', BANK.micr], ['UPI ID', BANK.upi]], [2600, 6426], { keyCol: true }),
     PB(D, 'A receipt shall be issued on payment.', { before: 120 }),
     ...(await sigBlock(D, withSig))];
-  return saveDoc(m, D, kids, cleanName('Bill ' + b.no.replace(/\//g, '-') + ' ' + dmy(b.date) + (b.state === 'Cancelled' ? ' CANCELLED' : '')) + '.docx');
+  return saveDoc(m, D, kids, cleanName('Bill ' + b.no.replace(/\//g, '-') + ' ' + dmy(b.date) + (b.state === 'Cancelled' ? ' CANCELLED' : '')) + '.docx', b.paper || paperOf('bill'));
 }
 async function makeReceiptDoc(m, rc, p, b, withSig) {
   const D = window.docx; if (!D) throw new Error('Word library still loading, try again');
@@ -188,7 +188,7 @@ async function makeReceiptDoc(m, rc, p, b, withSig) {
     tbl(D, [['Matter Ref.', matterRef(m)], ['Matter', caseRefOf(m)], ...(b ? [['Bill No.', b.no + ' dated ' + dmy(b.date)]] : []), ...(rc.replaces ? [['In place of', 'Cancelled Receipt No. ' + rc.replaces]] : []), ['Amount received', rw(p.amount) + (p.mode ? ' by ' + p.mode : '')]], [2600, 6426], { keyCol: true }),
     PB(D, '', { after: 120 }), tbl(D, summary, [3600, 5426], { keyCol: true }),
     ...(await sigBlock(D, withSig))];
-  return saveDoc(m, D, kids, cleanName('Receipt ' + rc.no.replace(/\//g, '-') + ' ' + dmy(rc.date) + (rc.state === 'Cancelled' ? ' CANCELLED' : '')) + '.docx');
+  return saveDoc(m, D, kids, cleanName('Receipt ' + rc.no.replace(/\//g, '-') + ' ' + dmy(rc.date) + (rc.state === 'Cancelled' ? ' CANCELLED' : '')) + '.docx', rc.paper || paperOf('receipt'));
 }
 
 /* ---------- after a document is made: open / PDF / share / download ---------- */
@@ -221,6 +221,7 @@ function docReady(m, r, title, back) {
 /* ---------- bill sheet ---------- */
 function sheetBill(m, bill, replaces) {
   if (!m.clientCode) return askCode(m, () => sheetBill(m, bill, replaces));
+  if (bill && bill.paper) PAPER_NOW.bill = bill.paper; else delete PAPER_NOW.bill;
   const isNew = !bill, d0 = todayIso(), src = bill || replaces;
   const st = { items: src ? src.items.map(x => ({ ...x })) : [{ d: 'Professional fee for ' + (m.type ? m.type + ' ' : '') + (m.caseNo || 'the above matter'), amt: feeDue(m) || '' }], sig: true,
     terms: src && src.terms ? src.terms.slice() : defaultTerms(), extra: src ? src.extraTerms || '' : (S.data?.meta?.billTermsExtra || ''), dueDays: (src && src.dueDays) || (S.data?.meta?.billDueDays) || 7 };
@@ -240,6 +241,7 @@ function sheetBill(m, bill, replaces) {
         <div class="field"><label for="b_extra">YOUR OWN TERMS (ONE PER LINE)</label><textarea class="in" id="b_extra" rows="2">${esc(st.extra)}</textarea></div>
         <button type="button" class="linkbtn" data-bx="deft">Save these terms as my default for new bills</button>
         <div class="field"><label for="b_note">NOTE (OPTIONAL)</label><input class="in" id="b_note" name="note" value="${esc(bill ? bill.note || '' : replaces ? 'Issued in place of cancelled Bill No. ' + replaces.no + ' dated ' + dmy(replaces.date) + '.' : '')}" placeholder="e.g. First of four quarterly instalments"></div>
+        ${paperSwitch('bill')}
         <div class="toggles"><label><span>Add my signature</span><input type="checkbox" id="b_sig" ${st.sig ? 'checked' : ''}></label></div>
         <button class="save" type="submit">${isNew ? 'Make bill' : 'Save and remake bill'}</button>
       </form>`);
@@ -255,7 +257,7 @@ function sheetBill(m, bill, replaces) {
     if (st.sig && !(localStorage.getItem(SIG_KEY) || S.data?.meta?.sigItem)) { const ok = await chooseSignature(); if (!ok) { st.sig = false; } }
     const rec = bill || { id: uid() };
     if (isNew && replaces) rec.replaces = replaces.no;
-    Object.assign(rec, { no: v.b_no.trim(), date: v.b_date || todayIso(), to: v.b_to.trim(), note: v.b_note.trim(), items: items.map(x => ({ d: x.d.trim(), amt: num(x.amt) })), total, terms: st.terms.slice(), extraTerms: st.extra.trim(), dueDays: st.dueDays });
+    Object.assign(rec, { paper: paperOf('bill'), no: v.b_no.trim(), date: v.b_date || todayIso(), to: v.b_to.trim(), note: v.b_note.trim(), items: items.map(x => ({ d: x.d.trim(), amt: num(x.amt) })), total, terms: st.terms.slice(), extraTerms: st.extra.trim(), dueDays: st.dueDays });
     change(() => { freezeRef(m); m.bills = m.bills || []; if (isNew) m.bills.push(rec); if (isNew && replaces) replaces.by = rec.no; logChange(m, (isNew ? 'Bill made: ' : 'Bill remade: ') + rec.no + ' · ' + rupees(total)); touch(m); });
     const n = +(rec.no.split('/').pop()) || 0; if (isNew && n) bumpSeq('BILL', rec.date, n);
     openSheet(`<div class="s-head"><div><small>${esc(m.no)}</small><h1>Making bill…</h1></div></div>`);
@@ -275,6 +277,7 @@ function sheetBill(m, bill, replaces) {
 /* ---------- receipt sheet ---------- */
 async function sheetReceipt(m, payId, replaces) {
   if (!m.clientCode) return askCode(m, () => sheetReceipt(m, payId, replaces));
+  delete PAPER_NOW.receipt;
   if (m.folderId && !sheetReceipt.busy) {
     sheetReceipt.busy = true;
     openSheet(`<div class="s-head"><div><small>${esc(m.no)} · receipt</small><h1>Reading bills in the fees folder…</h1></div></div>`);
@@ -295,6 +298,7 @@ async function sheetReceipt(m, payId, replaces) {
         <p class="hint" style="margin:6px 0 0">${bills.length ? 'Unpaid bills of this matter, including those kept in its fees folder (' + esc(FEE_DIR_NAME[m.id] || '5 …') + ').' : 'No unpaid bill on this matter or in its fees folder.'} <button type="button" class="linkbtn" data-rx="bill">Make a bill</button></p></div>
       <div class="two"><div class="field"><label for="r_no">RECEIPT NO.</label><input class="in" id="r_no" value="${esc(pp && pp.receiptNo ? pp.receiptNo : numNo('RCPT', d0, nextSeq('RCPT', d0)))}"></div><div class="field"><label for="r_date">DATE</label><input class="in" type="date" id="r_date" value="${esc(d0)}"></div></div>
       <div class="field"><label for="r_from">RECEIVED FROM</label><input class="in" id="r_from" value="${esc(replaces ? replaces.from || m.clients || '' : m.clients || '')}"></div>
+      ${paperSwitch('receipt')}
       <div class="toggles"><label><span>Add my signature</span><input type="checkbox" id="r_sig" checked></label></div>
       <button class="save" type="submit">Make receipt</button>
       <button type="button" class="linkbtn" data-rx="sig">Change signature image</button>
@@ -303,7 +307,7 @@ async function sheetReceipt(m, payId, replaces) {
   $('#rcform').onsubmit = async e => {
     e.preventDefault();
     const pay = (m.payments || []).find(x => x.id === $('#r_pay').value), billId = $('#r_bill').value, bill = (m.bills || []).find(x => x.id === billId) || null;
-    const rc = { id: uid(), no: $('#r_no').value.trim(), date: $('#r_date').value || todayIso(), from: $('#r_from').value.trim(), payId: pay.id, billId, amount: num(pay.amount), mode: pay.mode || '', ...(replaces ? { replaces: replaces.no } : {}) };
+    const rc = { id: uid(), no: $('#r_no').value.trim(), date: $('#r_date').value || todayIso(), from: $('#r_from').value.trim(), payId: pay.id, billId, paper: paperOf('receipt'), amount: num(pay.amount), mode: pay.mode || '', ...(replaces ? { replaces: replaces.no } : {}) };
     if ((m.receipts || []).some(x => x.no === rc.no && x.state !== 'Cancelled' && x.payId !== pay.id) || live().some(x => x.id !== m.id && (x.receipts || []).some(y => y.no === rc.no))) return toast('Receipt no. ' + rc.no + ' is already used');
     let sig = $('#r_sig').checked;
     if (sig && !(localStorage.getItem(SIG_KEY) || S.data?.meta?.sigItem)) { const ok = await chooseSignature(); if (!ok) sig = false; }

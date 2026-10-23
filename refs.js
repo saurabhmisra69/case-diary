@@ -40,6 +40,7 @@ function askCode(m, then) {
 const L_STATE = { 'Withdrawn': 'Withdrawn', 'Superseded': 'Superseded' };
 function sheetLetters(m, form) {
   if (!m.clientCode) return askCode(m, () => sheetLetters(m, form));
+  if (form) delete PAPER_NOW.letter;
   const ls = (m.letters || []).slice().sort((x, y) => (y.date || '').localeCompare(x.date || '') || String(y.no).localeCompare(String(x.no)));
   const d0 = todayIso(), y0 = d0.slice(0, 4), n0 = nextLetterNo(m.clientCode, y0);
   openSheet(`<div class="s-head"><div><small style="color:var(--saffron-ink)">${esc(matterRef(m))}</small><h1>Letters &amp; notices</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
@@ -50,6 +51,7 @@ function sheetLetters(m, form) {
       <div class="field"><label for="lt_to">TO (NAME AND ADDRESS)</label><textarea class="in" id="lt_to" rows="3">${esc(m.clients || '')}</textarea></div>
       <div class="field"><label for="lt_sub">SUBJECT</label><input class="in" id="lt_sub" required placeholder="e.g. Opinion on renewal of maintenance contract"></div>
       <div class="field"><label for="lt_body">TEXT (OPTIONAL — FOR A LETTER ON YOUR LETTERHEAD)</label><textarea class="in" id="lt_body" rows="6" placeholder="Leave blank to only take the number and note it in the register"></textarea></div>
+      ${paperSwitch('letter')}
       <div class="toggles"><label><span>Add my signature</span><input type="checkbox" id="lt_sig" checked></label></div>
       <button class="save" type="submit">Take number${' '}<span style="font-family:var(--mono)">${esc(String(n0).padStart(2, '0'))}</span></button>
       <button type="button" class="linkbtn" data-lt="back">Cancel</button></form>` : ''}
@@ -68,7 +70,7 @@ function sheetLetters(m, form) {
   if (form) $('#lt_form').onsubmit = async e => {
     e.preventDefault();
     const date = $('#lt_date').value || todayIso(), yr = date.slice(0, 4), n = nextLetterNo(m.clientCode, yr);
-    const rec = { id: uid(), no: matterRef(m) + '/' + yr + '/' + String(n).padStart(2, '0'), date, kind: $('#lt_kind').value, to: $('#lt_to').value.trim(), subject: $('#lt_sub').value.trim(), body: $('#lt_body').value.trim() };
+    const rec = { id: uid(), no: matterRef(m) + '/' + yr + '/' + String(n).padStart(2, '0'), date, kind: $('#lt_kind').value, to: $('#lt_to').value.trim(), subject: $('#lt_sub').value.trim(), body: $('#lt_body').value.trim(), paper: paperOf('letter') };
     let sig = $('#lt_sig').checked;
     change(() => { freezeRef(m); m.letters = m.letters || []; m.letters.push(rec); logChange(m, rec.kind + ' ' + rec.no + ': ' + rec.subject); touch(m); });
     bumpLetterNo(m.clientCode, yr, n);
@@ -97,7 +99,7 @@ async function makeLetterDoc(m, l, withSig, voided) {
     ...String(l.body || '').split(/\n/).map(x => PB(D, x, { after: 120 })),
     ...(await sigBlock(D, withSig))];
   const doc = new D.Document({ creator: 'Saurabh Misra', styles: { default: { document: { run: { font: 'Times New Roman', size: 22 } } } },
-    sections: [{ properties: { page: { size: { width: 12240, height: 20160 }, margin: { top: 1080, bottom: 1080, left: 1440, right: 1440 } } }, children: kids }] });
+    sections: [{ properties: { page: pageFor(l.paper || paperOf('letter'), 'Legal', { top: 1080, bottom: 1080, left: 1440, right: 1440 }) }, children: kids }] });
   const blob = await D.Packer.toBlob(doc), name = cleanName((l.kind || 'Letter') + ' ' + l.no.replace(/\//g, '-') + ' ' + dmy(l.date) + (voided ? ' ' + l.state.toUpperCase() : '')) + '.docx';
   let itemId = '', where = '';
   try { const dir = await letterFolder(m); if (dir) { itemId = (await uploadFile(dir.id, new File([blob], name), name)).id; where = dir.name; } } catch (e) {}

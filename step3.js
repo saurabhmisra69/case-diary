@@ -202,14 +202,14 @@ function sheetFees(m, focus) {
 function nextWorkingDay() { let d = addDays(todayIso(), 1); while (parseIso(d).getDay() === 0) d = addDays(d, 1); return d; }
 function sheetCauseList(day) {
   if (!day) day = new Date().getHours() >= 14 ? nextWorkingDay() : todayIso();
-  const C = { day, busy: false, done: null };
+  const C = { day, busy: false, done: null }; delete PAPER_NOW.causelist;
   const draw = () => {
     const ms = onDay(C.day);
     openSheet(`<div class="s-head"><div><small style="color:var(--hc)">Word document on your letterhead</small><h1>Cause list</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
       <div class="field"><label for="cl_day">DATE</label><input class="in" id="cl_day" type="date" value="${C.day}"></div>
       <div class="picked" style="background:var(--hc-soft);color:var(--hc)"><b>${DOWL[parseIso(C.day).getDay()]}, ${dmy(C.day)}</b><span>${ms.length} matter${ms.length === 1 ? '' : 's'} in ${groupByCourt(ms).length} court${groupByCourt(ms).length === 1 ? '' : 's'}</span></div>
       ${ms.length ? `<div class="hist">${groupByCourt(ms).map(([c, xs]) => `<div><b style="font-family:inherit;font-size:12px">${esc(c)}</b><span>${xs.map(m => (m.item ? 'Item ' + esc(m.item) + ' · ' : '') + esc(m.title)).join('<br>')}</span></div>`).join('')}</div>` : '<p class="empty">No matter is listed on this date.</p>'}
-      ${C.done ? `<div class="two"><button class="act primary" data-cl="open">Open in Word</button><button class="act blue" data-cl="dl">Download</button></div><p class="hint">Saved in OneDrive › Case Diary › Cause Lists › ${esc(C.done.name)}</p>` : `<button class="save" data-cl="make" ${ms.length && !C.busy ? '' : 'disabled'}>${C.busy ? 'Preparing…' : 'Make Word file'}</button>`}`);
+      ${C.done ? `<div class="two"><button class="act primary" data-cl="open">Open in Word</button><button class="act blue" data-cl="dl">Download</button></div><p class="hint">Saved in OneDrive › Case Diary › Cause Lists › ${esc(C.done.name)}</p>` : `${paperSwitch('causelist')}<button class="save" data-cl="make" ${ms.length && !C.busy ? '' : 'disabled'}>${C.busy ? 'Preparing…' : 'Make Word file'}</button>`}`);
   };
   draw();
   const root = $('#sheet-root');
@@ -260,7 +260,7 @@ async function makeCauseList(day) {
     creator: 'Saurabh Misra', title: 'Cause List ' + dmy(day),
     styles: { default: { document: { run: { font: FONT, size: 22 } } } },
     sections: [{
-      properties: { titlePage: true, page: { size: { width: 12240, height: 20160 }, margin: { top: 1080, bottom: 1440, left: 1440, right: 1440, header: 500, footer: 500 } } },
+      properties: { titlePage: true, page: pageFor(paperOf('causelist'), 'Legal', { top: 1080, bottom: 1440, left: 1440, right: 1440, header: 500, footer: 500 }) },
       headers: {
         first: new D.Header({ children: [new D.Paragraph({ children: [] })] }),
         default: new D.Header({ children: [new D.Paragraph({ alignment: CENTER, border: { bottom: { style: D.BorderStyle.SINGLE, size: 6, color: '000000', space: 4 } }, children: [new D.TextRun({ text: 'SAURABH MISRA, ADVOCATE', bold: true, size: 20, font: FONT }), new D.TextRun({ text: '\tCause List ' + dmy(day), size: 16, font: FONT, color: '7F7F7F' })], tabStops: [{ type: D.TabStopType.RIGHT, position: 9360 }] })] }),

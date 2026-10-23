@@ -514,6 +514,7 @@ function viewMore() {
     <div class="card"><div class="kv"><span>Signed in as</span><b>${esc(S.account?.username || '')}</b><span>Matters</span><b>${n}</b><span>Saved in</span><b>OneDrive › Case Diary</b><span>Version</span><b>${APP_VERSION}</b></div></div>
     <button data-act="tab" data-tab="fees">Fees <small>dues and payments</small></button>
     <button data-act="causelist" data-day="${S.day}">Cause list in Word <small>on your letterhead</small></button>
+    <button data-act="paper">Paper size <small>A4 or Legal for each kind of document</small></button>
     <button data-act="tab" data-tab="limit">Limitation calculator <small>last date to file</small></button>
     <label class="menu-file"><input type="file" accept=".json,application/json" data-act="updfile" hidden><b>Apply diary update from Claude</b><small>pick the diary-update file you downloaded</small></label>
     <button data-act="aikey">Order reading <small>${aiKey() ? 'key saved on this device' : 'add your API key'}</small></button>
