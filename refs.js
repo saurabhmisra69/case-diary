@@ -7,6 +7,7 @@
 
 const codeClean = s => String(s || '').toUpperCase().replace(/[\/\\]+/g, '-').replace(/[^A-Z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 16);
 function suggestCode(m) {
+  if (typeof suggestCodeNew === 'function') return suggestCodeNew(m);
   const same = live().find(x => x.id !== m.id && x.clientCode && (x.clients || '').trim().toLowerCase() === (m.clients || '').trim().toLowerCase());
   if (same) return same.clientCode;
   const w = String(m.clients || m.title || '').replace(/\b(smt|shri|sri|mr|mrs|ms|dr|m\/s|the|and|anr|ors|others|&)\b\.?/gi, ' ').trim().split(/\s+/).filter(x => x.length > 1);

@@ -63,6 +63,7 @@ const HI = {
   'Draft with Claude': 'Claude से ड्राफ्ट', 'Research': 'शोध', 'Share with client — WhatsApp · Email · SMS': 'मुवक्किल को भेजें — WhatsApp · Email · SMS', 'Share…': 'भेजें…', 'Matter update': 'मुकदमे की जानकारी', 'Document': 'दस्तावेज़', 'Fee reminder': 'फीस अनुस्मारक', 'Contact card': 'संपर्क कार्ड', 'Email': 'ईमेल',
   'Bare Acts': 'बेयर एक्ट', 'official text, searchable, offline': 'आधिकारिक पाठ, खोज योग्य, ऑफ़लाइन',
   'Allotted to': 'आवंटित', 'Self': 'स्वयं', '+ Add another junior…': '+ अन्य जूनियर जोड़ें…',
+  'Client codes': 'मुवक्किल कोड',
   'Sun': 'रवि', 'Mon': 'सोम', 'Tue': 'मंगल', 'Wed': 'बुध', 'Thu': 'गुरु', 'Fri': 'शुक्र', 'Sat': 'शनि',
 };
 const HI_PH = { 'Case no., FIR, party, client': 'वाद संख्या, FIR, पक्षकार, मुवक्किल', 'Search matters': 'मुकदमे खोजें', 'Search clients': 'मुवक्किल खोजें', 'Or type, e.g. Cross of PW2': 'या लिखें, जैसे PW2 की जिरह' };

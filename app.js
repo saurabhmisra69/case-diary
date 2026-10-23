@@ -527,6 +527,7 @@ function viewMore() {
     <button data-act="lock">App lock <small>${typeof hasPin === 'function' && hasPin() ? 'PIN set · locks after 5 min' : 'set a PIN'}</small></button>
     <button data-act="offbackup">Download full backup <small>${typeof lastOffline === 'function' && lastOffline() ? 'last ' + dmy(lastOffline().slice(0, 10)) : 'Excel + data file, for a pen drive'}</small></button>
     <button data-act="jtasks">Juniors &amp; tasks <small>open tasks, your juniors</small></button>
+    <button data-act="codes">Client codes <small>client number + initials, e.g. C004-RDP</small></button>
     <button data-act="acts">Bare Acts <small>official text, searchable, offline</small></button>
     <button data-act="library">Judgment library <small>your own judgments, searchable</small></button>
     <button data-act="templates">My templates <small>made from your past drafts</small></button>
