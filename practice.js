@@ -77,6 +77,23 @@ function limitsToday() {
 /* ================= Juniors and tasks ================= */
 const juniors = () => (S.data?.meta?.juniors || []).filter(j => !j.deleted);
 const jName = id => (juniors().find(j => j.id === id) || {}).name || '';
+/* who handles the matter: Self (default) or a junior */
+const allotName = m => (m.allot && m.allot !== 'self' && jName(m.allot)) || 'Self';
+function allotBox(m) {
+  const J = juniors(), cur = m.allot && J.some(j => j.id === m.allot) ? m.allot : 'self';
+  return `<div class="field" style="margin:10px 0 0"><label for="al_${m.id}">Allotted to</label><select class="in" id="al_${m.id}" data-st="allot" data-id="${m.id}"><option value="self" ${cur === 'self' ? 'selected' : ''}>Self</option>${J.map(j => `<option value="${j.id}" ${cur === j.id ? 'selected' : ''}>${esc(j.name)}</option>`).join('')}<option value="__new">+ Add another junior…</option></select></div>`;
+}
+function sheetNewJunior(m) {
+  openSheet(`<div class="s-head"><div><small>${esc(m.no)}</small><h1>Add a junior</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    <form id="nj_form" class="grp" style="gap:12px"><div class="field"><label for="nj_n">NAME</label><input class="in" id="nj_n" required placeholder="e.g. Rahul Verma"></div>
+    <div class="field"><label for="nj_p">MOBILE / WHATSAPP (OPTIONAL)</label><input class="in" id="nj_p" inputmode="tel" placeholder="10 digits"></div>
+    <button class="save" type="submit">Add and allot this matter</button></form>`);
+  $('#nj_form').onsubmit = e => { e.preventDefault(); let n = $('#nj_n').value.trim().replace(/\s+/g, ' '); if (!n) return; if (!/adv/i.test(n)) n += ', Advocate';
+    const j = { id: uid(), name: n, phone: $('#nj_p').value.trim(), u: Date.now() };
+    change(d => { d.meta = d.meta || {}; d.meta.juniors = [...(d.meta.juniors || []), j]; });
+    change(() => { m.allot = j.id; logChange(m, 'Allotted to: ' + n); touch(m); });
+    closeSheet(); toast('Allotted to ' + n); render(); };
+}
 function juniorNamesFromExpenses() { const s = new Set(); for (const m of live()) (m.expenses || []).forEach(x => { if (/junior/i.test(x.type || '') && (x.to || '').trim()) s.add(x.to.trim()); }); return [...s]; }
 const openTasks = m => (m.tasks || []).filter(t => !t.done && !t.deleted);
 function taskCard(m) {
@@ -99,7 +116,7 @@ function sheetTask(m) {
     <form id="tk_form" class="grp" style="gap:12px">
       <div class="field"><label for="tk_text">TASK</label><input class="in" id="tk_text" required list="tk_list" placeholder="e.g. File inspection application, Court 7"><datalist id="tk_list">${['File inspection application', 'Obtain certified copy of order', 'Mention the matter', 'File vakalatnama', 'Collect documents from client', 'Get affidavit sworn', 'Take next date', 'Check listing / cause list', 'File written statement', 'Deposit court fee'].map(x => `<option value="${x}">`).join('')}</datalist></div>
       <div class="two"><div class="field"><label for="tk_due">BY</label><input class="in" type="date" id="tk_due" value="${m.nextDate && m.nextDate > todayIso() ? addDays(m.nextDate, -1) : addDays(todayIso(), 1)}"></div>
-      <div class="field"><label for="tk_who">GIVE TO</label><select class="in" id="tk_who"><option value="">Me</option>${J.map(j => `<option value="${j.id}">${esc(j.name)}</option>`).join('')}${fromExp.map(n => `<option value="new:${esc(n)}">${esc(n)} (from expenses)</option>`).join('')}<option value="new:">+ New junior…</option></select></div></div>
+      <div class="field"><label for="tk_who">GIVE TO</label><select class="in" id="tk_who"><option value="">Me</option>${J.map(j => `<option value="${j.id}" ${m.allot === j.id ? 'selected' : ''}>${esc(j.name)}</option>`).join('')}${fromExp.map(n => `<option value="new:${esc(n)}">${esc(n)} (from expenses)</option>`).join('')}<option value="new:">+ New junior…</option></select></div></div>
       <div class="two" id="tk_newj" style="display:none"><div class="field"><label for="tk_jn">JUNIOR'S NAME</label><input class="in" id="tk_jn"></div><div class="field"><label for="tk_jp">WHATSAPP NO.</label><input class="in" id="tk_jp" inputmode="tel" placeholder="10 digits"></div></div>
       <div class="toggles"><label><span>Send on WhatsApp now</span><input type="checkbox" id="tk_wa" checked></label></div>
       <button class="save" type="submit">Save task</button></form>`);
@@ -123,7 +140,7 @@ function sheetJuniorsTasks() {
   const by = {}; rows.forEach(r => { const k = r.t.who || ''; (by[k] = by[k] || []).push(r); });
   openSheet(`<div class="s-head"><div><small>${rows.length} open task${rows.length === 1 ? '' : 's'}</small><h1>Juniors &amp; tasks</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     ${Object.keys(by).length ? Object.entries(by).map(([k, xs]) => `<div class="grp"><span class="lbl">${esc(jName(k) || (k ? 'Junior' : 'Me'))} · ${xs.length}</span><div class="hist">${xs.map(({ m, t }) => `<div><b style="${t.due && t.due < todayIso() ? 'color:var(--red)' : ''}">${t.due ? dmy(t.due) : '—'}</b><span><b style="font-family:inherit">${esc(t.text)}</b><br><small>${esc(m.title)}</small><br><button class="linkbtn" data-act="taskdone" data-id="${m.id}" data-t="${t.id}">Done</button> · <button class="linkbtn" data-act="open" data-id="${m.id}">Open matter</button></span></div>`).join('')}</div></div>`).join('') : '<p class="empty">No open task. Give one from any matter page (Tasks › Give a task).</p>'}
-    <div class="grp" style="margin-top:14px"><span class="lbl">Your juniors</span>${J.length ? `<div class="hist">${J.map(j => `<div><b>${esc(j.name)}</b><span>${esc(j.phone || 'no number')} · <button class="linkbtn" data-jt="edit" data-j="${j.id}">Edit</button> · <button class="linkbtn" data-jt="del" data-j="${j.id}" style="color:var(--red)">Remove</button></span></div>`).join('')}</div>` : '<p class="hint" style="margin:0">None yet.</p>'}
+    <div class="grp" style="margin-top:14px"><span class="lbl">Your juniors</span>${J.length ? `<div class="hist">${J.map(j => `<div><b>${esc(j.name)}</b><span>${live().filter(x => x.allot === j.id && isOpen(x)).length} open matter(s) allotted · ${esc(j.phone || 'no number')} · <button class="linkbtn" data-jt="edit" data-j="${j.id}">Edit</button> · <button class="linkbtn" data-jt="del" data-j="${j.id}" style="color:var(--red)">Remove</button></span></div>`).join('')}</div>` : '<p class="hint" style="margin:0">None yet.</p>'}
       <form id="jt_form" class="two" style="margin-top:10px;align-items:end"><div class="field" style="margin:0"><label for="jt_n">NAME</label><input class="in" id="jt_n" list="jt_l"><datalist id="jt_l">${juniorNamesFromExpenses().map(n => `<option value="${esc(n)}">`).join('')}</datalist></div><div class="field" style="margin:0"><label for="jt_p">WHATSAPP</label><input class="in" id="jt_p" inputmode="tel"></div><button class="save" type="submit" style="grid-column:1/-1;margin-top:8px">Add / update junior</button><input type="hidden" id="jt_id"></form></div>`);
   $('#jt_form').onsubmit = e => { e.preventDefault(); const name = $('#jt_n').value.trim(); if (!name) return; const id = $('#jt_id').value;
     change(d => { d.meta = d.meta || {}; const L = d.meta.juniors = d.meta.juniors || []; const j = id ? L.find(x => x.id === id) : null; if (j) Object.assign(j, { name, phone: $('#jt_p').value.trim(), u: Date.now() }); else L.push({ id: uid(), name, phone: $('#jt_p').value.trim(), u: Date.now() }); });

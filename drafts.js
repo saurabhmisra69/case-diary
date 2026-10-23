@@ -533,7 +533,7 @@ async function makeCover(m) {
     ['Diary no.', m.no], ["Hon'ble Court", m.court || fo],
     ['Case', caseLine], ['CNR', m.cnr], ['Filing no.', m.filingNo],
     ['Crime / FIR', [m.crimeNo, m.sections ? 'u/s ' + m.sections : '', m.ps ? 'P.S. ' + m.ps : ''].filter(Boolean).join(', ')],
-    ['Parties', pt.first + (pt.second ? '\nv.\n' + pt.second : '')], ['Appearing for', m.side], ['Client(s)', m.clients],
+    ['Parties', pt.first + (pt.second ? '\nv.\n' + pt.second : '')], ['Appearing for', m.side], ['Allotted to', typeof allotName === 'function' && allotName(m) !== 'Self' ? allotName(m) : ''], ['Client(s)', m.clients],
     ['Nature / Category', [m.nature, fo].filter(Boolean).join(' · ')],
   ].filter(r => r[1]);
   const contacts = [['Client mobile', m.phone], ['WhatsApp', m.whatsapp || (m.phone ? 'same as mobile' : '')], ['Alternate' + (m.altName ? ' (' + m.altName + ')' : ''), m.altPhone]].filter(r => r[1]);

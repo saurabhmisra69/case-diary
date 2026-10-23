@@ -163,13 +163,14 @@ function viewMatter(m) {
     ${typeof limitCard === 'function' ? limitCard(m) : ''}
     ${dupsOf(m).length ? `<section class="card dup-card"><b><span class="dupstar">★</span> Entered more than once</b><p class="hint" style="margin:4px 0 8px">The same case also appears as:</p>${dupsOf(m).map(x => `<button class="linkbtn" data-act="open" data-id="${x.id}" style="display:block;text-align:left;margin:4px 0">${esc(x.no)} · ${esc(x.title || x.clients)}${x.court ? ' · ' + esc(x.court) : ''}</button>`).join('')}<p class="hint" style="margin:8px 0 0">Keep one: open the other and use Edit › Remove from diary.</p></section>` : ''}
     <section class="card" style="padding:12px 16px"><div class="stbox" style="margin:0"><div class="field" style="margin:0 0 10px"><label for="fo_${m.id}">Category</label><select class="in" id="fo_${m.id}" data-st="forum" data-id="${m.id}">${Object.entries(FORUMS).map(([k, x]) => `<option value="${k}" ${k === (m.forum || 'District') ? 'selected' : ''}>${x.label}</option>`).join('')}</select></div><div class="field" style="margin:0"><label for="st_${m.id}">Status</label><select class="in" id="st_${m.id}" data-st="status" data-id="${m.id}">${statusList(m).map(s => `<option ${s === (m.status || statusList(m)[0]) ? 'selected' : ''}>${s}</option>`).join('')}${statusList(m).includes(m.status) || !m.status ? '' : `<option selected>${esc(m.status)}</option>`}</select></div>
+      ${typeof allotBox === 'function' ? allotBox(m) : ''}
       ${m.forum === 'Advisory' && isRetainer(m) ? retainerBox(m) : ''}${m.forum === 'Advisory' && !isRetainer(m) ? `<button class="act primary" data-act="tocase" data-id="${m.id}" style="width:100%;margin-top:10px;min-height:44px">Convert to case</button>` : ''}${m.prelit ? `<p class="hint" style="margin:8px 0 0">Pre-litigation: ${esc(m.prelit.status || '')}${m.prelit.till ? ' (till ' + dmy(m.prelit.till) + ')' : ''}</p>` : ''}
       ${m.status === 'Decided' ? `<div class="field" style="margin:10px 0 0"><label for="oc_${m.id}">Result</label><select class="in ${m.outcome ? '' : 'needs'}" id="oc_${m.id}" data-st="outcome" data-id="${m.id}"><option value="">Choose…</option>${OUTCOMES.map(s => `<option ${s === m.outcome ? 'selected' : ''}>${s}</option>`).join('')}</select></div>` : ''}</div></section>
     <section class="card mp-files" id="files">${filesInner(m)}</section>
     </div><div class="mp-col">
     <section class="card mp-details"><div class="h2" style="margin-bottom:12px"><h2>Details</h2></div>
 
-      <div class="kv"><span>Matter ref.</span><b style="font-family:var(--mono);font-size:13px">${esc(matterRef(m))}${m.clientCode ? '' : ` <button class="linkbtn" data-act="setcode" data-id="${m.id}">Set client code</button>`}</b>${row('Client(s)', m.clients)}${row('Type', m.type)}${row('Case no.', m.caseNo)}${m.cnr ? `<span>CNR</span><b style="font-family:var(--mono);letter-spacing:.02em">${esc(m.cnr)} <button class="linkbtn" data-act="copycnr" data-v="${esc(m.cnr)}">Copy</button></b>` : ''}${row('Filing no.', m.filingNo)}${row('Crime / FIR', m.crimeNo)}${row('Police station', m.ps)}${row('Sections', m.sections)}${row('Nature', m.nature)}${row('Appearing for', m.side)}${row('Last date', dmy(m.lastDate))}${row('Item', m.item)}${m.phone ? `<span>Client mobile</span><b><a href="tel:${esc(m.phone)}">${esc(m.phone)}</a></b>` : ''}${m.whatsapp || m.phone ? `<span>WhatsApp</span><b>${waOf(m) ? `<a href="https://wa.me/${waOf(m)}" target="_blank" rel="noopener">${esc(m.whatsapp || m.phone)}</a>` : esc(m.whatsapp)}</b>` : ''}${m.email ? `<span>Email</span><b><a href="mailto:${esc(m.email)}">${esc(m.email)}</a></b>` : ''}${m.altPhone || m.altName ? `<span>Alternate${m.altName ? ' (' + esc(m.altName) + ')' : ''}</span><b>${m.altPhone ? `<a href="tel:${esc(m.altPhone)}">${esc(m.altPhone)}</a>` : '—'}</b>` : ''}${row('Notes', m.notes)}</div>
+      <div class="kv"><span>Allotted to</span><b>${esc(typeof allotName === 'function' ? allotName(m) : 'Self')}</b><span>Matter ref.</span><b style="font-family:var(--mono);font-size:13px">${esc(matterRef(m))}${m.clientCode ? '' : ` <button class="linkbtn" data-act="setcode" data-id="${m.id}">Set client code</button>`}</b>${row('Client(s)', m.clients)}${row('Type', m.type)}${row('Case no.', m.caseNo)}${m.cnr ? `<span>CNR</span><b style="font-family:var(--mono);letter-spacing:.02em">${esc(m.cnr)} <button class="linkbtn" data-act="copycnr" data-v="${esc(m.cnr)}">Copy</button></b>` : ''}${row('Filing no.', m.filingNo)}${row('Crime / FIR', m.crimeNo)}${row('Police station', m.ps)}${row('Sections', m.sections)}${row('Nature', m.nature)}${row('Appearing for', m.side)}${row('Last date', dmy(m.lastDate))}${row('Item', m.item)}${m.phone ? `<span>Client mobile</span><b><a href="tel:${esc(m.phone)}">${esc(m.phone)}</a></b>` : ''}${m.whatsapp || m.phone ? `<span>WhatsApp</span><b>${waOf(m) ? `<a href="https://wa.me/${waOf(m)}" target="_blank" rel="noopener">${esc(m.whatsapp || m.phone)}</a>` : esc(m.whatsapp)}</b>` : ''}${m.email ? `<span>Email</span><b><a href="mailto:${esc(m.email)}">${esc(m.email)}</a></b>` : ''}${m.altPhone || m.altName ? `<span>Alternate${m.altName ? ' (' + esc(m.altName) + ')' : ''}</span><b>${m.altPhone ? `<a href="tel:${esc(m.altPhone)}">${esc(m.altPhone)}</a>` : '—'}</b>` : ''}${row('Notes', m.notes)}</div>
       ${m.deadline ? `<div class="mini ${m.deadlineDone ? '' : 'red'}"><span>${m.deadlineDone ? 'Deadline done' : 'Deadline'}</span><b>${esc(m.deadlineFor || 'Due')} · ${dmy(m.deadline)}</b>${m.deadlineDone ? '' : `<button data-act="deadlinedone" data-id="${m.id}">Mark done</button>`}</div>` : ''}
       ${m.feeAgreed || m.feeReceived ? `<div class="mini ${due ? 'saff' : 'green'}"><span>Fees</span><b>${rupees(m.feeReceived)} of ${rupees(m.feeAgreed)} received</b>${due ? `<span>${rupees(due)} pending</span>` : '<span>Paid</span>'}</div>` : ''}
       ${expensesBlock(m)}
@@ -560,6 +561,10 @@ document.addEventListener('change', e => {
     });
     change(() => logChange(m, 'Status: ' + (was || '—') + ' → ' + v));
     toast('Status: ' + v + (v === 'Decided' ? '. Now choose the result.' : ''), 3000);
+  } else if (el.dataset.st === 'allot') {
+    if (el.value === '__new') { render(); return sheetNewJunior(m); }
+    const was = allotName(m); change(() => { m.allot = el.value; logChange(m, 'Allotted to: ' + was + ' → ' + allotName(m)); touch(m); });
+    toast('Allotted to ' + allotName(m));
   } else if (el.dataset.st === 'forum') {
     const v = el.value;
     if (v === 'Advisory' && m.forum !== 'Advisory' && m.caseNo && !confirm('This matter has a case number. Move it to Advisory / Pre-litigation anyway?')) { render(); return; }
@@ -626,6 +631,11 @@ function runOneTimeFixes() {
       d.fixes = [...(d.fixes || []), '2026-10-22-history-backfill'];
     });
     if (n) toast('Hearing history filled in for ' + n + ' matter' + (n > 1 ? 's' : ''), 4000);
+  }
+  if (!done.includes('2026-10-24-juniors')) {
+    change(d => { d.meta = d.meta || {}; const L = d.meta.juniors = d.meta.juniors || [];
+      ['Jai Prakash Awasthi, Advocate', 'Izhar Ahmad, Advocate'].forEach(n => { const key = n.replace(/,?\s*advocate$/i, '').toLowerCase(); if (!L.some(j => !j.deleted && j.name.replace(/,?\s*advocate$/i, '').toLowerCase() === key)) L.push({ id: uid(), name: n, phone: '', u: Date.now() }); });
+      d.fixes = [...(d.fixes || []), '2026-10-24-juniors']; });
   }
   for (const fx of ONE_TIME_FIXES) {
     if (done.includes(fx.id)) continue;
