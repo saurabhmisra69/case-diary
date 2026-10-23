@@ -9,6 +9,7 @@ const SIG_KEY = 'cd.sigItem';
 const BILL_TERMS = [
   ['exp', 'Out-of-pocket expenses (court fee, stamps, affidavit, oath commissioner / notary, typing, photocopy, certified copies) are not included in this bill and shall be charged separately at actuals.'],
   ['work', 'Drafting, case preparation and filing shall be taken up only after receipt of full payment of the agreed fee.'],
+  ['date', 'Date / appearance fee for each hearing shall be charged separately.'],
   ['scope', 'This fee is for the work / stage mentioned above only. Appeal, revision, review, execution, contempt, or any fresh application or proceeding shall be charged separately.'],
   ['out', 'Appearance outside Lucknow, with travel and stay, shall be charged separately.'],
   ['only', 'Payment shall be made only in favour of Saurabh Misra. No payment to any junior, clerk or other person is valid unless a receipt is issued by the undersigned.'],
@@ -20,7 +21,7 @@ const BILL_TERMS = [
   ['gst', 'GST, where applicable, is payable by the client under reverse charge.'],
   ['jur', 'Subject to Lucknow jurisdiction.'],
 ];
-const defaultTerms = () => (S.data?.meta?.billTerms) || ['exp', 'work'];
+const defaultTerms = () => (S.data?.meta?.billTerms) || ['exp', 'work', 'date'];
 function fyOf(iso) { const d = parseIso(iso || todayIso()), y = d.getFullYear(), s = d.getMonth() >= 3 ? y : y - 1; return s + '-' + String((s + 1) % 100).padStart(2, '0'); }
 function nextSeq(kind, iso) {
   const k = 'seq:' + kind + ':' + fyOf(iso);
