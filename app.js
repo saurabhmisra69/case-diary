@@ -97,7 +97,7 @@ const emptyData = () => ({ v: 1, matters: [], updated: 0 });
 const live = () => (S.data?.matters || []).filter(m => !m.deleted);
 /* the matter reference shown everywhere (the diary no. stays only as the internal key):
    SM/2026-013/C004-RDP in full, SM/2026-013 without a client code, 2026-013 in the small boxes */
-const mrefBase = m => m ? (m.ref || ('SM/' + m.year + '-' + String(m.n).padStart(3, '0'))) : '';
+const mrefBase = m => m ? (m.ref || ('SM/' + (+m.year ? m.year : 'OLD') + '-' + String(m.n).padStart(3, '0'))) : '';   // matters without a year: SM/OLD-016
 const mref = m => m ? mrefBase(m) + (m.clientCode ? '/' + m.clientCode : '') : '';
 const mrefBox = m => mrefBase(m).replace(/^SM\//, '');
 

@@ -13,7 +13,7 @@ function suggestCode(m) {
   const w = String(m.clients || m.title || '').replace(/\b(smt|shri|sri|mr|mrs|ms|dr|m\/s|the|and|anr|ors|others|&)\b\.?/gi, ' ').trim().split(/\s+/).filter(x => x.length > 1);
   return codeClean(w.slice(-1)[0] || w[0] || 'CLIENT');
 }
-const refBase = m => m.ref || ('SM/' + m.year + '-' + String(m.n).padStart(3, '0'));
+const refBase = m => typeof mrefBase === 'function' ? mrefBase(m) : (m.ref || ('SM/' + (+m.year ? m.year : 'OLD') + '-' + String(m.n).padStart(3, '0')));
 const matterRef = m => refBase(m) + (m.clientCode ? '/' + m.clientCode : '');
 function freezeRef(m) { if (!m.ref) m.ref = refBase(m); }   // once a document carries it, it never changes
 const allCodes = () => [...new Set(live().map(x => x.clientCode).filter(Boolean))].sort();

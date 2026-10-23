@@ -88,7 +88,7 @@ function proposedFolderName(m) {
   const who = oppositeParty(m) || keyWord(m.clients) || 'Matter';
   const type = TYPE_SHORT[m.type] || m.type || '';
   const no = m.caseNo ? cleanName(m.caseNo).replace(/\s+/g, ' ') : '';
-  const diaryNo = '(' + m.year + '-' + String(m.n).padStart(3, '0') + ')';
+  const diaryNo = '(' + (+m.year ? m.year : 'OLD') + '-' + String(m.n).padStart(3, '0') + ')';
   return cleanName([who + (type ? ' ' + type : ''), no].filter(Boolean).join(' – ') + ' ' + diaryNo);
 }
 const followsScheme = name => /\(\d{4}-\d{3}\)$/.test(name || '') || /^\d{4}-\d{3} /.test(name || '');
@@ -446,7 +446,7 @@ setInterval(resolveLinks, 20000);
 setTimeout(resolveLinks, 5000);
 
 /* ---------- Automatic linking by diary number: a folder ending "(2024-001)" belongs to matter 2024/1 ---------- */
-const tagOf = m => '(' + m.year + '-' + String(m.n).padStart(3, '0') + ')';
+const tagOf = m => '(' + (+m.year ? m.year : 'OLD') + '-' + String(m.n).padStart(3, '0') + ')';
 const autoTried = new Set();
 async function moveDetailsFile(fromId, toId) {
   try {
