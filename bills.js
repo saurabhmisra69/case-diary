@@ -43,6 +43,7 @@ function inWords(n) {
   if (cr) parts.push(three(cr) + ' Crore'); if (lk) parts.push(two(lk) + ' Lakh'); if (th) parts.push(two(th) + ' Thousand'); if (n) parts.push(three(n));
   return parts.join(' ');
 }
+const rw = n => rupees(n) + '/- (Rupees ' + inWords(n) + ' only)';
 const billPaid = (m, b) => (m.payments || []).filter(p => p.billId === b.id).reduce((s, p) => s + num(p.amount), 0);
 
 /* ---------- signature ---------- */
@@ -154,14 +155,14 @@ async function saveDoc(m, D, children, name) {
 }
 async function makeBillDoc(m, b, withSig) {
   const D = window.docx; if (!D) throw new Error('Word library still loading, try again');
-  const rows = [['S. No.', 'Particulars', 'Amount (₹)'], ...b.items.map((it, i) => [String(i + 1) + '.', it.d, num(it.amt).toLocaleString('en-IN') + '/-']), ['', 'Total amount payable', num(b.total).toLocaleString('en-IN') + '/-']];
+  const rows = [['S. No.', 'Particulars', 'Amount (₹)'], ...b.items.map((it, i) => [String(i + 1) + '.', it.d, num(it.amt).toLocaleString('en-IN') + '/-']), ['', 'Total amount payable\n(Rupees ' + inWords(b.total) + ' only)', num(b.total).toLocaleString('en-IN') + '/-']];
   const kids = [...letterhead(D),
     new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 9026 }], spacing: { after: 200 }, children: [new D.TextRun({ text: 'Bill No.: ' + b.no, bold: true, size: 22, font: 'Times New Roman' }), new D.TextRun({ text: '\tDate: ' + dmy(b.date), bold: true, size: 22, font: 'Times New Roman' })] }),
     PB(D, 'BILL / PAYMENT DEMAND NOTE', { align: D.AlignmentType.CENTER, bold: true, size: 26, after: 200 }),
     PB(D, 'To,', { after: 0 }), ...String(b.to || m.clients || '').split('\n').map(l => PB(D, l, { after: 0, bold: true })), PB(D, '', { after: 120 }),
     tbl(D, [['Matter', caseRefOf(m)]], [2200, 6826], { keyCol: true }), PB(D, '', { after: 120 }),
     tbl(D, rows, [900, 6126, 2000], { head: true, right: [2], boldLast: true }),
-    PB(D, '(Rupees ' + inWords(b.total) + ' only)', { before: 80, bold: true }),
+    PB(D, 'Amount payable: ₹' + num(b.total).toLocaleString('en-IN') + '/- (Rupees ' + inWords(b.total) + ' only)', { before: 80, bold: true }),
     ...(b.note ? [PB(D, b.note)] : []),
     ...(() => { const ts = [...(b.terms || []).map(k => (BILL_TERMS.find(x => x[0] === k) || [])[1]).filter(Boolean).map(t => t.replace('within 7 days', 'within ' + (b.dueDays || 7) + ' days')), ...String(b.extraTerms || '').split('\n').map(s => s.trim()).filter(Boolean)];
       return ts.length ? [PB(D, 'Terms:', { bold: true, size: 18, before: 120, after: 40 }), ...ts.map((t, i) => PB(D, (i + 1) + '. ' + t, { size: 18, after: 30 }))] : []; })(),
@@ -176,14 +177,14 @@ async function makeReceiptDoc(m, rc, p, b, withSig) {
   const D = window.docx; if (!D) throw new Error('Word library still loading, try again');
   const paidOnBill = b ? billPaid(m, b) : 0;
   const words = `Received with thanks from ${rc.from || m.clients || '__________'} a sum of ₹${num(p.amount).toLocaleString('en-IN')}/- (Rupees ${inWords(p.amount)} only) by ${p.mode || '__________'}${p.note ? ' (' + p.note + ')' : ''} on ${dmy(p.date || rc.date)} towards professional fees${b ? ' against Bill No. ' + b.no + ' dated ' + dmy(b.date) : ''} in the matter mentioned below.`;
-  const summary = b ? [['Bill amount', rupees(b.total)], ['Received against this bill (including this payment)', rupees(paidOnBill)], ['Balance on this bill', rupees(Math.max(0, num(b.total) - paidOnBill))]]
-    : [['Total fees agreed', rupees(m.feeAgreed)], ['Total received', rupees(m.feeReceived)], ['Balance', rupees(feeDue(m))]];
+  const summary = b ? [['Bill amount', rw(b.total)], ['Received against this bill (including this payment)', rw(paidOnBill)], ['Balance on this bill', rw(Math.max(0, num(b.total) - paidOnBill))]]
+    : [['Total fees agreed', rw(m.feeAgreed)], ['Total received', rw(m.feeReceived)], ['Balance', rw(feeDue(m))]];
   const kids = [...letterhead(D),
     new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 9026 }], spacing: { after: 200 }, children: [new D.TextRun({ text: 'Receipt No.: ' + rc.no, bold: true, size: 22, font: 'Times New Roman' }), new D.TextRun({ text: '\tDate: ' + dmy(rc.date), bold: true, size: 22, font: 'Times New Roman' })] }),
     PB(D, 'RECEIPT', { align: D.AlignmentType.CENTER, bold: true, size: 28, after: 240 }),
     PB(D, words, { after: 200 }),
-    tbl(D, [['Matter', caseRefOf(m)], ...(b ? [['Bill', b.no + ' dated ' + dmy(b.date)]] : []), ['Amount received', rupees(p.amount) + ' (' + (p.mode || '') + ')']], [2600, 6426], { keyCol: true }),
-    PB(D, '', { after: 120 }), tbl(D, summary, [5200, 3826], { keyCol: true, right: [1] }),
+    tbl(D, [['Matter', caseRefOf(m)], ...(b ? [['Bill', b.no + ' dated ' + dmy(b.date)]] : []), ['Amount received', rw(p.amount) + (p.mode ? ' by ' + p.mode : '')]], [2600, 6426], { keyCol: true }),
+    PB(D, '', { after: 120 }), tbl(D, summary, [3600, 5426], { keyCol: true }),
     ...(await sigBlock(D, withSig))];
   return saveDoc(m, D, kids, cleanName('Receipt ' + rc.no.replace(/\//g, '-') + ' ' + dmy(rc.date)) + '.docx');
 }
