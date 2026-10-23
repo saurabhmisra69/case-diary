@@ -333,3 +333,18 @@ body{padding-left:24px} .nav{left:24px} .scrim{left:24px}
 .seg button.on{background:var(--hc,#1B2A4A);color:#fff}
 .pp-note{font-size:12px;color:var(--muted)}
 .two>.seg{justify-self:end;width:max-content}
+html.locked #app,html.locked #sheet-root{visibility:hidden}
+#lock{position:fixed;inset:0;z-index:9999;background:#1B2A4A;color:#fff;display:flex;align-items:center;justify-content:center;padding:24px}
+.lock-in{width:100%;max-width:320px;text-align:center}
+.lock-title b{display:block;font-size:24px;font-family:Georgia,serif}.lock-title small{opacity:.75;font-size:12px}
+.lock-msg{margin:28px 0 14px;font-weight:700}
+.lock-dots{display:flex;gap:16px;justify-content:center;margin-bottom:28px}
+.lock-dots i{width:14px;height:14px;border-radius:50%;border:2px solid #D9BD8A}.lock-dots i.on{background:#D9BD8A}
+.lock-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.lock-pad button{height:64px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#fff;font-size:26px;font-weight:600;cursor:pointer;width:64px;justify-self:center}
+.lock-pad button:active{background:rgba(255,255,255,.3)}.lock-pad button:disabled{opacity:.35}
+.lock-forgot{margin-top:24px;background:none;border:0;color:#D9BD8A;font:inherit;text-decoration:underline;cursor:pointer}
+.pinin{font-family:var(--mono);letter-spacing:.4em;font-size:20px}
+.cf-over{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
+.cf-card{background:var(--card,#fff);width:100%;max-width:560px;max-height:85vh;overflow:auto;border-radius:18px 18px 0 0;padding:20px 18px 24px}
+.cf-red{color:var(--red);font-weight:700}.cf-info{color:var(--saffron-ink,#8a5a00)}.cf-ok{color:var(--dc-ink)}

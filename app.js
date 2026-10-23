@@ -408,6 +408,7 @@ function viewHome() {
     <div class="week">${week}</div>
   </header>
   <main class="home-main">
+    ${typeof guardCards === 'function' ? guardCards() : ''}
     ${briefHtml(list, deadlines, fees)}
     ${(() => { const rr = live().flatMap(m => retainerDue(m).map(x => ({ m, ...x }))); return rr.length ? `<section class="list"><div class="h2"><h2>Retainers</h2></div>${rr.map(x => `<button class="card row" data-act="open" data-id="${x.m.id}"><div class="item sm" style="background:var(--adv)"><small>${x.kind === 'bill' ? 'BILL' : 'TERM'}</small><b>${dmy(x.date).slice(0, 5)}</b></div><span class="m-col"><span class="m-title">${esc(x.m.title || x.m.clients)}</span><span class="m-meta">${esc(x.text)}</span></span></button>`).join('')}</section>` : ''; })()}
     <section class="list a-list">
@@ -514,6 +515,9 @@ function viewMore() {
     <div class="card"><b style="display:block;font-size:17px">Saurabh Misra &amp; Associates – Chambers</b><small style="color:var(--muted)">SM Chambers</small><div class="kv" style="margin-top:10px"><span>Signed in as</span><b>${esc(S.account?.username || '')}</b><span>Matters</span><b>${n}</b><span>Saved in</span><b>OneDrive › Case Diary</b><span>Version</span><b>${APP_VERSION}</b></div></div>
     <button data-act="tab" data-tab="fees">Fees <small>dues and payments</small></button>
     <button data-act="causelist" data-day="${S.day}">Cause list in Word <small>on your letterhead</small></button>
+    <button data-act="lock">App lock <small>${typeof hasPin === 'function' && hasPin() ? 'PIN set · locks after 5 min' : 'set a PIN'}</small></button>
+    <button data-act="offbackup">Download full backup <small>${typeof lastOffline === 'function' && lastOffline() ? 'last ' + dmy(lastOffline().slice(0, 10)) : 'Excel + data file, for a pen drive'}</small></button>
+    <button data-act="conflict">Conflict check <small>before taking a new matter</small></button>
     <button data-act="paper">Paper size <small>A4 or Legal for each kind of document</small></button>
     <button data-act="tab" data-tab="limit">Limitation calculator <small>last date to file</small></button>
     <label class="menu-file"><input type="file" accept=".json,application/json" data-act="updfile" hidden><b>Apply diary update from Claude</b><small>pick the diary-update file you downloaded</small></label>
@@ -578,7 +582,7 @@ function sheetEdit(m) {
     <button class="save" type="submit">${isNew ? 'Add matter' : 'Save changes'}</button>
     ${isNew ? '' : `<button class="ghost" type="button" data-act="del" data-id="${m.id}" style="color:var(--red)">Remove from diary</button>`}
   </form>`);
-  $('#mform').onsubmit = e => {
+  $('#mform').onsubmit = async e => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries());
     if (fd.status !== 'Decided') fd.outcome = '';
@@ -587,6 +591,7 @@ function sheetEdit(m) {
     if (!fd.title) fd.title = fd.clients;
     if (fd.cnr) fd.cnr = fd.cnr.toUpperCase().replace(/\s+/g, '');
     fd.clientCode = codeClean(fd.clientCode || '');
+    if (isNew && typeof conflictGate === 'function' && !(await conflictGate(fd))) return;
     if (isNew) {
       const rec = touch({ id: uid(), n: nextNumber(fd.year), hearings: [], created: todayIso(), ...fd });
       rec.no = rec.year + '/' + rec.n;
