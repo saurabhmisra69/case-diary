@@ -12,7 +12,7 @@ const stHelper = () => { try { return localStorage.getItem('cd.sthelper') === '1
 async function stSearch(term) {
   if (stMode() === 'pc' && stHelper()) {   // open the helper straight away, while the tap still counts as the user's own action
     const ln = document.createElement('a'); ln.href = 'smst:search?q=' + encodeURIComponent(term); ln.rel = 'noopener'; document.body.appendChild(ln); ln.click(); ln.remove();
-    toast('Asking Supreme Today to search “' + term + '”… If nothing opens, see Research › “Helper not working?”', 6000);
+    toast('Searching “' + term + '” in Supreme Today… (it opens Global Search and shows the results in a few seconds)', 7000);
     try { navigator.clipboard.writeText(term); } catch (e) {}
     return;
   }
@@ -51,7 +51,7 @@ function sheetResearch(m) {
   openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · Supreme Today</small><h1>Research</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><span class="lbl" style="margin:0">Open in</span><div class="seg">${Object.entries(ST_MODES).map(([k, l]) => `<button type="button" class="${mode === k ? 'on' : ''}" data-rs="mode" data-v="${k}">${l}</button>`).join('')}</div></div>
     ${mode === 'pc' ? `<div class="toggles" style="margin-top:8px"><label><span>Helper installed on this PC <small>(opens Supreme Today and types the search)</small></span><input type="checkbox" data-rs="helper" ${stHelper() ? 'checked' : ''}></label></div>${stHelper() ? '<p class="hint" style="margin:4px 0 0"><b>Helper not working?</b> Check that “1 Install helper.reg” was run, and that Chrome was allowed to open the helper. The helper writes what it did to helper-log.txt in its folder.</p>' : ''}` : ''}
-    <p class="hint">Tap a search: it is copied${mode === 'web' ? ' and Supreme Today opens' : ''}; paste it in Supreme Today's search. For a Bare Act, choose <b>All Options › Bare Acts</b> there.</p>
+    <p class="hint">${mode === 'pc' && stHelper() ? 'Tap a search: Supreme Today comes to the front, opens <b>Global Search</b> and searches it. Leave the mouse still for those few seconds.' : 'Tap a search: it is copied' + (mode === 'web' ? ' and Supreme Today opens' : '') + "; paste it in Supreme Today's search."} For a Bare Act, choose <b>All Options › Bare Acts</b> there.</p>
     <form id="rs_form" style="display:flex;gap:8px;margin:8px 0 12px"><input class="in" id="rs_q" placeholder="Your own search, e.g. bail parity 2024" style="flex:1"><button class="save" type="submit" style="margin:0;width:auto;padding:0 16px">Search</button></form>
     ${typeof sectionLinks === 'function' && sectionLinks(m).length ? `<div class="grp"><span class="lbl">On your Bare Acts shelf</span><div class="chips">${sectionLinks(m).map(x => `<button class="chip on" data-act="actsec" data-k="${x.k}" data-no="${esc(x.no)}">${esc(x.label)}</button>`).join('')}</div></div>` : ''}
     ${groups.map(([h, xs]) => `<div class="grp"><span class="lbl">${esc(h)}</span><div class="chips">${xs.map(x => `<button class="chip" data-rs="go" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div></div>`).join('') || '<p class="hint">Add parties, sections or case no. to the matter to get ready searches.</p>'}
