@@ -637,6 +637,11 @@ function runOneTimeFixes() {
       ['Jai Prakash Awasthi, Advocate', 'Izhar Ahmad, Advocate'].forEach(n => { const key = n.replace(/,?\s*advocate$/i, '').toLowerCase(); if (!L.some(j => !j.deleted && j.name.replace(/,?\s*advocate$/i, '').toLowerCase() === key)) L.push({ id: uid(), name: n, phone: '', u: Date.now() }); });
       d.fixes = [...(d.fixes || []), '2026-10-24-juniors']; });
   }
+  if (!done.includes('2026-10-24-izhar-chand')) {
+    change(d => { const j = (d.meta?.juniors || []).find(x => !x.deleted && /^izhar ahmad\b/i.test(x.name) && !/chand/i.test(x.name));
+      if (j) { j.name = 'Izhar Ahmad (Chand), Advocate'; j.u = Date.now(); for (const m of d.matters || []) (m.tasks || []).forEach(t => { if (t.who === j.id) t.whoName = j.name; }); }
+      d.fixes = [...(d.fixes || []), '2026-10-24-izhar-chand']; });
+  }
   for (const fx of ONE_TIME_FIXES) {
     if (done.includes(fx.id)) continue;
     let hits = live().filter(fx.find);
