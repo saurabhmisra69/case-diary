@@ -579,7 +579,7 @@ function sheetEdit(m) {
   openSheet(`<div class="s-head"><div><small style="color:var(--hc)">${isNew ? 'New matter' : 'Edit ' + esc(mref(m))}</small><h1>${isNew ? 'Add a matter' : esc(m.title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
   <form id="mform" class="grp" style="gap:14px" autocomplete="off">
     <div class="two">${fld('year', 'Year (for numbering)', m.year, 'number', 'min="1990" max="2100" required')}<div class="field"><label for="f_forum">Forum</label><select class="in" id="f_forum" name="forum">${fopt}</select></div></div>
-    ${fld('clients', 'Client name(s)', m.clients, 'text', 'required placeholder="e.g. Nikhil Agnihotri & Anr."')}
+    ${fld('clients', 'Client name(s)', m.clients, 'text', 'required list="clientnames" placeholder="e.g. Nikhil Agnihotri & Anr."')}<datalist id="clientnames">${(typeof clientGroups === 'function' ? clientGroups() : []).filter(g => g.key !== '(no client name)').map(g => `<option value="${esc(g.name)}">`).join('')}</datalist>
     ${fld('aka', 'Client also known as', (typeof aliasesOf === 'function' ? aliasesOf(m.clients) : []).join(', '), 'text', 'placeholder="other names of the same client, e.g. Anuj Kumar Gupta (separate with commas)"')}
     ${fld('title', 'Parties (title)', m.title, 'text', 'placeholder="e.g. Ritz Restaurant v. Ram Dular Pathak"')}
     ${fld('court', 'Court', m.court, 'text', 'list="courts" placeholder="e.g. High Court, Lucknow Bench · Court 7"')}
@@ -616,10 +616,12 @@ function sheetEdit(m) {
     const akaHad = typeof aliasesOf === 'function' ? aliasesOf(fd.clients) : [];
     if (isNew) aka.unshift(...akaHad);   // a new matter only adds names; it never drops names saved earlier
     const akaChanged = typeof aliasesOf === 'function' && (aka.length || !isNew) && [...new Set(aka)].join('|') !== akaHad.join('|');
+    if (isNew && typeof clientInfo === 'function' && fd.clients) { const ci = clientInfo(fd.clients); for (const k of CI_TO_MATTER) if (!fd[k] && ci[k]) fd[k] = ci[k]; }   // an existing client's saved contact details
     if (isNew && typeof conflictGate === 'function' && !(await conflictGate(fd))) return;
     if (isNew) {
       const rec = touch({ id: uid(), n: nextNumber(fd.year), hearings: [], created: todayIso(), ...fd });
       rec.no = rec.year + '/' + rec.n;
+      { const same = live().filter(x => x.clientCode && clientKey(x.clients) === clientKey(rec.clients)), cs = [...new Set(same.map(x => x.clientCode))]; if (cs.length === 1) rec.clientCode = cs[0]; }   // an existing client keeps his code
       if (rec.nextDate) rec.calPending = true;
       change(d => { d.matters.push(rec); if (akaChanged) setAliases(d, rec.clients, aka); });
       closeSheet(); toast('Matter ' + mref(rec) + ' added');

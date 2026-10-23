@@ -105,16 +105,69 @@ VIEWS.clients = function () {
     }).join('') : '<div class="card empty">No clients yet. They appear here as you add matters.</div>'}
   </div></main>`;
 };
+/* Client profile: kept once per client in meta.clientInfo { client key: {...} }; mobile, WhatsApp and email are also copied to the client's matters,
+   which is where bills, reminders and sharing read them. */
+const CI_FIELDS = [['phone', 'Mobile', 'tel', '10-digit mobile'], ['whatsapp', 'WhatsApp no.', 'tel', 'blank = same as mobile'], ['email', 'Email', 'email', 'for bills, receipts and updates'],
+  ['altName', 'Alternate contact – name', 'text', 'e.g. son, pairokar'], ['altPhone', 'Alternate mobile', 'tel', '10-digit mobile'], ['pan', 'PAN / GSTIN', 'text', 'for bills and TDS']];
+const CI_TO_MATTER = ['phone', 'whatsapp', 'email', 'altName', 'altPhone'];
+function clientInfo(name) {
+  const k = clientKey(name), saved = (S.data?.meta?.clientInfo || {})[k] || {}, ms = live().filter(m => clientKey(m.clients) === k).sort((a, b) => (b.u || 0) - (a.u || 0));
+  const out = { ...saved }; for (const f of CI_TO_MATTER) if (!out[f]) { const m = ms.find(x => x[f]); if (m) out[f] = m[f]; }
+  return out;
+}
 function sheetClient(k) {
   const gr = clientGroups().find(x => x.key === k); if (!gr) return;
   const due = gr.ms.reduce((s, m) => s + feeDue(m), 0), recd = gr.ms.reduce((s, m) => s + num(m.feeReceived), 0);
-  const wa = phoneDigits(gr.phone);
-  openSheet(`<div class="s-head"><div><small style="color:var(--hc)">Client</small><h1>${esc(gr.name)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
-    <div class="kv"><span>Also known as</span><b>${esc(gr.aka.join(', ') || '—')} <button class="linkbtn" data-act="aka" data-k="${esc(gr.key)}">${gr.aka.length ? 'Edit' : 'Add'}</button></b><span>Mobile</span><b>${esc(gr.phone || '—')}</b><span>Matters</span><b>${gr.ms.length}</b><span>Fees received</span><b>${rupees(recd)}</b><span>Fees pending</span><b style="color:${due ? 'var(--saffron-ink)' : 'inherit'}">${rupees(due)}</b></div>
+  const ci = clientInfo(gr.ms[0].clients), wa = phoneDigits(ci.whatsapp || ci.phone || gr.phone);
+  const r = (l, v) => v ? `<span>${l}</span><b>${v}</b>` : '';
+  openSheet(`<div class="s-head"><div><small style="color:var(--hc)">Client${gr.ms.find(m => m.clientCode) ? ' · ' + esc(gr.ms.find(m => m.clientCode).clientCode) : ''}</small><h1>${esc(gr.name)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    <div class="kv">${r('Also known as', esc(gr.aka.join(', ')))}${r('Mobile', ci.phone ? `<a href="tel:${esc(ci.phone)}">${esc(ci.phone)}</a>` : '')}${r('WhatsApp', ci.whatsapp ? esc(ci.whatsapp) : '')}${r('Email', ci.email ? `<a href="mailto:${esc(ci.email)}">${esc(ci.email)}</a>` : '')}${r('Alternate' + (ci.altName ? ' (' + esc(ci.altName) + ')' : ''), ci.altPhone ? `<a href="tel:${esc(ci.altPhone)}">${esc(ci.altPhone)}</a>` : '')}${r('Address', esc(ci.address || '').replace(/\n/g, '<br>'))}${r('PAN / GSTIN', esc(ci.pan || ''))}${r('Notes', esc(ci.notes || ''))}<span>Matters</span><b>${gr.ms.length}</b><span>Fees received</span><b>${rupees(recd)}</b><span>Fees pending</span><b style="color:${due ? 'var(--saffron-ink)' : 'inherit'}">${rupees(due)}</b></div>
+    <button class="ghost" data-act="ciedit" data-k="${esc(gr.key)}" style="margin-top:8px">Edit client details</button>
     <div class="two" style="margin-top:10px">${wa ? `<a class="act wa" style="min-height:48px" href="https://wa.me/${wa}" target="_blank" rel="noopener">${I.wa}WhatsApp ${esc(gr.name.split(' ')[0])}</a>` : '<span></span>'}<button class="act blue" data-act="shareclient" data-k="${esc(gr.key)}" style="min-height:48px">Share…</button></div>
     <div class="chips" style="margin-top:8px"><button class="chip" data-act="shareclient" data-k="${esc(gr.key)}" data-w="update">Matter update</button><button class="chip" data-act="shareclient" data-k="${esc(gr.key)}" data-w="doc">Document</button>${due ? `<button class="chip" data-act="shareclient" data-k="${esc(gr.key)}" data-w="fee">Fee reminder</button>` : ''}<button class="chip" data-act="shareclient" data-k="${esc(gr.key)}" data-w="card">Contact card</button></div>
     <div class="grp"><span class="lbl">Matters</span><div class="list">${gr.ms.sort((a, b) => (b.year - a.year) || (b.n - a.n)).map(m => `<button class="card row" data-act="open" data-id="${m.id}" style="box-shadow:none;border:2px solid var(--line)"><div class="item sm" style="background:${forumOf(m).c}"><small>REF.</small><b>${esc(mrefBox(m))}</b></div><span class="m-col"><span class="m-title">${esc(m.title)}</span><span class="m-meta">${esc([m.court, metaLine(m)].filter(Boolean).join(' · '))}</span></span><span style="font-size:12px;font-weight:700;color:var(--muted)">${m.nextDate ? dmy(m.nextDate) : esc(shortSt(m.status))}</span></button>`).join('')}</div></div>`);
 }
+function sheetClientEdit(k) {
+  const gr = clientGroups().find(x => x.key === k); if (!gr) return;
+  const ci = clientInfo(gr.ms[0].clients);
+  const f = (id, label, type, ph) => `<div class="field"><label for="ce_${id}">${label}</label><input class="in" id="ce_${id}" name="${id}" type="${type}" value="${esc(ci[id] || '')}" placeholder="${esc(ph)}"></div>`;
+  openSheet(`<div class="s-head"><div><small style="color:var(--hc)">Client · ${gr.ms.length} matter${gr.ms.length > 1 ? 's' : ''}</small><h1>Edit client details</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    <form id="ce_form" class="grp" style="gap:12px" autocomplete="off">
+      <div class="field"><label for="ce_name">Client name</label><input class="in" id="ce_name" name="name" value="${esc(gr.name)}" required></div>
+      <div class="field"><label for="ce_aka">Also known as <small>(one name per line)</small></label><textarea class="in" id="ce_aka" name="aka" rows="2" placeholder="e.g. Anuj Kumar Gupta">${esc(gr.aka.join('\n'))}</textarea></div>
+      <div class="two">${f('phone', ...CI_FIELDS[0].slice(1))}${f('whatsapp', ...CI_FIELDS[1].slice(1))}</div>
+      ${f('email', ...CI_FIELDS[2].slice(1))}
+      <div class="two">${f('altName', ...CI_FIELDS[3].slice(1))}${f('altPhone', ...CI_FIELDS[4].slice(1))}</div>
+      <div class="field"><label for="ce_address">Address <small>(printed on bills)</small></label><textarea class="in" id="ce_address" name="address" rows="3">${esc(ci.address || '')}</textarea></div>
+      ${f('pan', ...CI_FIELDS[5].slice(1))}
+      <div class="field"><label for="ce_notes">Notes about the client</label><textarea class="in" id="ce_notes" name="notes" rows="2" placeholder="e.g. refers clients; prefers calls after 7 pm">${esc(ci.notes || '')}</textarea></div>
+      <div class="toggles"><label><span>Put this mobile, WhatsApp and email on all ${gr.ms.length} of the client's matters <small>(off = only where blank)</small></span><input type="checkbox" id="ce_all" checked></label></div>
+      <button class="save" type="submit">Save</button><button type="button" class="linkbtn" data-ce="back">‹ Back</button></form>`);
+  $('#sheet-root').onclick = e => { if (e.target.closest('[data-ce]')) sheetClient(k); };
+  $('#ce_form').onsubmit = e => { e.preventDefault();
+    const fd = Object.fromEntries(new FormData(e.target).entries()); for (const x in fd) fd[x] = String(fd[x]).trim();
+    const all = $('#ce_all').checked, newName = fd.name.replace(/\s+/g, ' '), aka = fd.aka.split(/\n|;/).map(x => x.trim()).filter(Boolean);
+    let newKey = k;
+    change(d => {
+      d.meta = d.meta || {};
+      // rename: matters written with the old main name take the new one; other name forms stay and become "also known as"
+      if (newName && newName !== gr.name) {
+        const oldBase = baseKey(gr.name);
+        gr.ms.forEach(m => { if (baseKey(m.clients) === oldBase) { const nv = String(m.clients).replace(/\s+/g, ' ').replace(gr.name, newName); logChange(m, 'Client: ' + m.clients + ' → ' + nv); m.clients = nv; touch(m); } else if (!aka.some(a => baseKey(a) === baseKey(m.clients))) aka.push(clientName(m.clients)); });
+        newKey = baseKey(newName);
+        for (const store of ['aka', 'clientInfo']) if (d.meta[store] && d.meta[store][k] && newKey !== k) { d.meta[store] = Object.assign({}, d.meta[store], { [newKey]: d.meta[store][k] }); delete d.meta[store][k]; }
+        if (baseKey(gr.name) !== newKey) aka.push(gr.name);
+      }
+      setAliases(d, newName, aka.filter(a => baseKey(a) !== baseKey(newName)));
+      const info = {}; for (const [id] of CI_FIELDS) if (fd[id]) info[id] = fd[id]; if (fd.address) info.address = fd.address; if (fd.notes) info.notes = fd.notes;
+      d.meta.clientInfo = Object.assign({}, d.meta.clientInfo, { [newKey]: info });
+      live().filter(m => clientKey(m.clients) === newKey).forEach(m => { let ch = false;
+        for (const id of CI_TO_MATTER) { const v = fd[id] || ''; if ((all ? v && m[id] !== v : v && !m[id])) { logChange(m, (FIELD_NAMES[id] || id) + ': ' + (m[id] || '—') + ' → ' + v); m[id] = v; ch = true; } }
+        if (ch) touch(m); });
+    });
+    toast('Client details saved'); sheetClient(newKey); };
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-act="ciedit"]'); if (b) sheetClientEdit(b.dataset.k); });
 
 /* ================= Fees ================= */
 VIEWS.fees = function () {
