@@ -320,3 +320,7 @@ body{padding-left:24px} .nav{left:24px} .scrim{left:24px}
 .dup-card{border-left:6px solid #C0262D;padding:12px 16px}
 
 .fee-form{border-top:2px solid var(--saffron);padding-top:12px;margin-top:6px}
+
+.terms{display:flex;flex-direction:column;gap:6px}
+.term{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:start;font-size:13px;line-height:1.4}
+.term input[type=checkbox]{width:18px;height:18px;margin-top:2px}

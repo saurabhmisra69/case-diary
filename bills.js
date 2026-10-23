@@ -6,6 +6,21 @@
 
 const BANK = { name: 'SAURABH MISRA', bank: 'State Bank of India', branch: 'High Court (Lucknow)', type: 'Savings', acct: '31749622512', ifsc: 'SBIN0006219', micr: '226002018', upi: '9415181917@upi' };
 const SIG_KEY = 'cd.sigItem';
+const BILL_TERMS = [
+  ['exp', 'Out-of-pocket expenses (court fee, stamps, affidavit, oath commissioner / notary, typing, photocopy, certified copies) are not included in this bill and shall be charged separately at actuals.'],
+  ['work', 'Drafting, case preparation and filing shall be taken up only after receipt of full payment of the agreed fee.'],
+  ['scope', 'This fee is for the work / stage mentioned above only. Appeal, revision, review, execution, contempt, or any fresh application or proceeding shall be charged separately.'],
+  ['out', 'Appearance outside Lucknow, with travel and stay, shall be charged separately.'],
+  ['only', 'Payment shall be made only in favour of Saurabh Misra. No payment to any junior, clerk or other person is valid unless a receipt is issued by the undersigned.'],
+  ['refund', 'Fee once paid is not refundable after the work has been commenced.'],
+  ['result', 'The fee is for professional services and does not depend on the outcome of the case. No assurance as to the result is given or implied.'],
+  ['coop', 'The client shall provide documents, information and instructions in time. Any delay caused by their non-supply shall not be attributable to the counsel.'],
+  ['due', 'Payable within 7 days of the date of this bill.'],
+  ['abey', 'Further work may be kept in abeyance until the dues are cleared.'],
+  ['gst', 'GST, where applicable, is payable by the client under reverse charge.'],
+  ['jur', 'Subject to Lucknow jurisdiction.'],
+];
+const defaultTerms = () => (S.data?.meta?.billTerms) || ['exp', 'work'];
 function fyOf(iso) { const d = parseIso(iso || todayIso()), y = d.getFullYear(), s = d.getMonth() >= 3 ? y : y - 1; return s + '-' + String((s + 1) % 100).padStart(2, '0'); }
 function nextSeq(kind, iso) {
   const k = 'seq:' + kind + ':' + fyOf(iso);
@@ -147,6 +162,8 @@ async function makeBillDoc(m, b, withSig) {
     tbl(D, rows, [900, 6126, 2000], { head: true, right: [2], boldLast: true }),
     PB(D, '(Rupees ' + inWords(b.total) + ' only)', { before: 80, bold: true }),
     ...(b.note ? [PB(D, b.note)] : []),
+    ...(() => { const ts = [...(b.terms || []).map(k => (BILL_TERMS.find(x => x[0] === k) || [])[1]).filter(Boolean).map(t => t.replace('within 7 days', 'within ' + (b.dueDays || 7) + ' days')), ...String(b.extraTerms || '').split('\n').map(s => s.trim()).filter(Boolean)];
+      return ts.length ? [PB(D, 'Terms:', { bold: true, size: 18, before: 120, after: 40 }), ...ts.map((t, i) => PB(D, (i + 1) + '. ' + t, { size: 18, after: 30 }))] : []; })(),
     PB(D, 'PAYMENT DETAILS', { bold: true, before: 160, after: 60 }),
     PB(D, 'All payments shall be made only in favour of "Saurabh Misra" by NEFT, RTGS, UPI or cheque.', { after: 80 }),
     tbl(D, [['Account Name', BANK.name], ['Bank', BANK.bank], ['Branch', BANK.branch], ['Account No.', BANK.acct], ['IFS Code', BANK.ifsc], ['MICR Code', BANK.micr], ['UPI ID', BANK.upi]], [2600, 6426], { keyCol: true }),
@@ -200,7 +217,8 @@ function docReady(m, r, title) {
 /* ---------- bill sheet ---------- */
 function sheetBill(m, bill) {
   const isNew = !bill, d0 = todayIso();
-  const st = { items: bill ? bill.items.map(x => ({ ...x })) : [{ d: 'Professional fee for ' + (m.type ? m.type + ' ' : '') + (m.caseNo || 'the above matter'), amt: feeDue(m) || '' }], sig: true };
+  const st = { items: bill ? bill.items.map(x => ({ ...x })) : [{ d: 'Professional fee for ' + (m.type ? m.type + ' ' : '') + (m.caseNo || 'the above matter'), amt: feeDue(m) || '' }], sig: true,
+    terms: bill && bill.terms ? bill.terms.slice() : defaultTerms(), extra: bill ? bill.extraTerms || '' : (S.data?.meta?.billTermsExtra || ''), dueDays: (S.data?.meta?.billDueDays) || 7 };
   const draw = () => {
     const tot = st.items.reduce((s, x) => s + num(x.amt), 0);
     openSheet(`<div class="s-head"><div><small style="color:var(--saffron-ink)">${esc(m.no)} · ${isNew ? 'new bill' : 'bill ' + esc(bill.no)}</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
@@ -211,13 +229,18 @@ function sheetBill(m, bill) {
         ${st.items.map((it, i) => `<div class="two" style="grid-template-columns:minmax(0,2.2fr) minmax(0,1fr) auto;align-items:end"><div class="field" style="margin:0"><input class="in" data-bi="d" data-i="${i}" value="${esc(it.d)}" placeholder="e.g. Drafting and filing of ${esc(m.type || 'application')}"></div><div class="field" style="margin:0"><input class="in" data-bi="amt" data-i="${i}" inputmode="numeric" value="${esc(it.amt)}" placeholder="₹"></div>${st.items.length > 1 ? `<button type="button" class="linkbtn" data-bx="rm" data-i="${i}" style="color:var(--red)">✕</button>` : '<span></span>'}</div>`).join('')}
         <button type="button" class="ghost" data-bx="add">+ Add a line</button>
         <div class="picked"><b>Total ${rupees(tot)}</b><span>Rupees ${esc(inWords(tot))} only</span></div>
+        <span class="lbl">Terms (printed under the total)</span>
+        <div class="terms">${BILL_TERMS.map(([k, t]) => `<label class="term"><input type="checkbox" data-bt="${k}" ${st.terms.includes(k) ? 'checked' : ''}><span>${esc(k === 'due' ? t.replace('7', st.dueDays) : t)}${k === 'due' ? ` <input class="in" data-bd="1" inputmode="numeric" value="${st.dueDays}" style="width:56px;min-height:32px;padding:2px 6px;display:inline-block"> days` : ''}</span></label>`).join('')}</div>
+        <div class="field"><label for="b_extra">YOUR OWN TERMS (ONE PER LINE)</label><textarea class="in" id="b_extra" rows="2">${esc(st.extra)}</textarea></div>
+        <button type="button" class="linkbtn" data-bx="deft">Save these terms as my default for new bills</button>
         <div class="field"><label for="b_note">NOTE (OPTIONAL)</label><input class="in" id="b_note" name="note" value="${esc(bill ? bill.note || '' : '')}" placeholder="e.g. First of four quarterly instalments"></div>
         <div class="toggles"><label><span>Add my signature</span><input type="checkbox" id="b_sig" ${st.sig ? 'checked' : ''}></label></div>
         <button class="save" type="submit">${isNew ? 'Make bill' : 'Save and remake bill'}</button>
       </form>`);
     $('#billform').onsubmit = submit;
   };
-  const keep = () => { const v = {}; ['b_no', 'b_date', 'b_to', 'b_note'].forEach(id => { const el = $('#' + id); if (el) v[id] = el.value; }); st.sig = $('#b_sig')?.checked; return v; };
+  const keep = () => { const v = {}; ['b_no', 'b_date', 'b_to', 'b_note'].forEach(id => { const el = $('#' + id); if (el) v[id] = el.value; }); st.sig = $('#b_sig')?.checked;
+    st.terms = [...document.querySelectorAll('[data-bt]')].filter(x => x.checked).map(x => x.dataset.bt); st.extra = $('#b_extra')?.value || ''; st.dueDays = +($('[data-bd]')?.value) || st.dueDays; return v; };
   const restore = v => Object.entries(v).forEach(([id, val]) => { const el = $('#' + id); if (el) el.value = val; });
   async function submit(e) {
     e.preventDefault();
@@ -225,7 +248,7 @@ function sheetBill(m, bill) {
     const total = items.reduce((s, x) => s + num(x.amt), 0); if (!total) return toast('Enter the amount');
     if (st.sig && !(localStorage.getItem(SIG_KEY) || S.data?.meta?.sigItem)) { const ok = await chooseSignature(); if (!ok) { st.sig = false; } }
     const rec = bill || { id: uid() };
-    Object.assign(rec, { no: v.b_no.trim(), date: v.b_date || todayIso(), to: v.b_to.trim(), note: v.b_note.trim(), items: items.map(x => ({ d: x.d.trim(), amt: num(x.amt) })), total });
+    Object.assign(rec, { no: v.b_no.trim(), date: v.b_date || todayIso(), to: v.b_to.trim(), note: v.b_note.trim(), items: items.map(x => ({ d: x.d.trim(), amt: num(x.amt) })), total, terms: st.terms.slice(), extraTerms: st.extra.trim(), dueDays: st.dueDays });
     change(() => { m.bills = m.bills || []; if (isNew) m.bills.push(rec); logChange(m, (isNew ? 'Bill made: ' : 'Bill remade: ') + rec.no + ' · ' + rupees(total)); touch(m); });
     const n = +(rec.no.split('/').pop()) || 0; if (isNew && n) bumpSeq('BILL', rec.date, n);
     openSheet(`<div class="s-head"><div><small>${esc(m.no)}</small><h1>Making bill…</h1></div></div>`);
@@ -236,6 +259,7 @@ function sheetBill(m, bill) {
   $('#sheet-root').onclick = e => {
     const b = e.target.closest('[data-bx]'); if (!b) return;
     const v = keep();
+    if (b.dataset.bx === 'deft') { change(d => { d.meta = d.meta || {}; d.meta.billTerms = st.terms.slice(); d.meta.billTermsExtra = st.extra.trim(); d.meta.billDueDays = st.dueDays; }); toast('Saved as your default terms'); return; }
     if (b.dataset.bx === 'add') st.items.push({ d: '', amt: '' }); else st.items.splice(+b.dataset.i, 1);
     draw(); restore(v);
   };
