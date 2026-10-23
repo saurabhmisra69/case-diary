@@ -150,6 +150,9 @@ function merge(local, remote) {
   for (const m of local.matters || []) { const r = map.get(m.id); if (!r || (m.u || 0) >= (r.u || 0)) map.set(m.id, m); }
   out.matters = [...map.values()];
   const fx = [...new Set([...(local.fixes || []), ...(remote.fixes || [])])]; if (fx.length) out.fixes = fx;
+  const lm = local.meta || {}, rm = remote.meta || {}, meta = { ...rm, ...lm };
+  for (const k of new Set([...Object.keys(lm), ...Object.keys(rm)])) if (/^seq:/.test(k)) meta[k] = Math.max(+lm[k] || 0, +rm[k] || 0);
+  if (Object.keys(meta).length) out.meta = meta;
   return out;
 }
 async function pull() {
