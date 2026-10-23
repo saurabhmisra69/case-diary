@@ -301,7 +301,7 @@ function pickDoc(m, title, exts) {
     const ok = it => it.folder || exts.includes((it.name.split('.').pop() || '').toLowerCase());
     const draw = () => {
       const cur = st.stack[st.stack.length - 1];
-      openSheet(`<div class="s-head"><div><small>${esc(m.no)}</small><h1>${esc(title)}</h1></div><button class="x" data-pd="cancel" aria-label="Close">${I.x}</button></div>
+      openSheet(`<div class="s-head"><div><small>${esc(mref(m))}</small><h1>${esc(title)}</h1></div><button class="x" data-pd="cancel" aria-label="Close">${I.x}</button></div>
         <label class="act blue" style="margin-bottom:10px">From this ${isPhone() ? 'phone' : 'computer'}<input type="file" accept="${exts.map(e => '.' + e).join(',')}" data-pd="local" hidden></label>
         ${cur ? `<div class="crumbs">${st.stack.length > 1 ? '<button data-pd="up">‹ Back</button><span>›</span>' : '<button data-pd="root">‹ Case folders</button><span>›</span>'}<button class="on">${esc(cur.name)}</button></div>` : ''}
         <div class="flist" style="max-height:52vh;overflow:auto">${st.err ? `<p class="empty">${esc(st.err)}</p>` : !st.items ? '<p class="empty">Reading folder…</p>' : st.items.filter(ok).map(it => { const [ic, bg] = fileIcon(it); return `<button class="frow" data-pd="${it.folder ? 'into' : 'pick'}" data-id="${it.id}"><span class="ficon" style="background:${bg}">${ic}</span><span class="fname">${esc(it.name)}<small>${it.folder ? 'folder' : kb(it.size || 0)}</small></span></button>`; }).join('') || '<p class="empty">Nothing suitable here.</p>'}</div>`);
@@ -383,7 +383,7 @@ function sheetDraft(m, preset) {
     const T = T0();
     if (!T.hi && S2.lang === 'hi') S2.lang = 'en';
     const fields = S2.key === 'adjournment' ? [['reason', S2.lang === 'hi' ? 'Reason (in Hindi, optional)' : 'Reason (optional; default "exigencies of work")']] : T.fields;
-    openSheet(`<div class="s-head"><div><small style="color:var(--hc)">${esc(m.no)} · draft</small><h1>${esc(m.title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    openSheet(`<div class="s-head"><div><small style="color:var(--hc)">${esc(mref(m))} · draft</small><h1>${esc(m.title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
       ${S2.format ? `<div class="picked"><b>Your format: ${esc(S2.format.name)}</b><span><button class="linkbtn" data-dr="noformat">Use the app's drafts instead</button></span></div>` : `
       <div class="grp"><span class="lbl">Document</span><div class="chips">${Object.entries(TEMPLATES).filter(([, t]) => !t.forum || (t.forum === 'HC' ? m.forum === 'HC' : m.forum !== 'HC')).map(([k, t]) => `<button class="chip ${S2.key === k ? 'on' : ''}" data-dr="key" data-v="${k}">${t.en}</button>`).join('')}</div></div>
       ${T.hi ? `<div class="grp"><span class="lbl">Language</span><div class="chips"><button class="chip ${S2.lang === 'en' ? 'on' : ''}" data-dr="lang" data-v="en">English</button><button class="chip ${S2.lang === 'hi' ? 'on' : ''}" data-dr="lang" data-v="hi">हिन्दी</button></div></div>` : ''}`}
@@ -530,7 +530,7 @@ async function makeCover(m) {
   const prov = PROV[String(m.type || '').trim()] || m.type || '';
   const caseLine = [m.caseNo, prov].filter(Boolean).join('; ');
   const rows = [
-    ['Diary no.', m.no], ["Hon'ble Court", m.court || fo],
+    ['Matter ref.', mref(m)], ["Hon'ble Court", m.court || fo],
     ['Case', caseLine], ['CNR', m.cnr], ['Filing no.', m.filingNo],
     ['Crime / FIR', [m.crimeNo, m.sections ? 'u/s ' + m.sections : '', m.ps ? 'P.S. ' + m.ps : ''].filter(Boolean).join(', ')],
     ['Parties', pt.first + (pt.second ? '\nv.\n' + pt.second : '')], ['Appearing for', m.side], ['Allotted to', typeof allotName === 'function' && allotName(m) !== 'Self' ? allotName(m) : ''], ['Client(s)', m.clients],
@@ -560,21 +560,21 @@ async function makeCover(m) {
       para(run('Printed ' + dmy(todayIso()) + ' from SM Chambers', { size: 14, color: '7F7F7F' }), { align: D.AlignmentType.RIGHT, before: 80 }),
     ] }] });
   const blob = await D.Packer.toBlob(doc);
-  const name = cleanName('File cover ' + m.no.replace('/', '-') + ' ' + (m.title || m.clients || '').slice(0, 60) + ' (' + paper + ')') + '.docx';
+  const name = cleanName('File cover ' + mref(m).replace(/\//g, '-') + ' ' + (m.title || m.clients || '').slice(0, 60) + ' (' + paper + ')') + '.docx';
   let itemId = '', parentId = '';
   if (m.folderId) { try { const it = await uploadFile(m.folderId, new File([blob], name), name); itemId = it.id; parentId = m.folderId; } catch (e) {} }
   return { blob, name, itemId, parentId, paper };
 }
 function sheetCover(m) {
   delete PAPER_NOW.cover;
-  openSheet(`<div class="s-head"><div><small>${esc(m.no)} · file cover</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+  openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · file cover</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <p class="hint">Chamber header, case details, contacts and a ruled table for dates, on one page.</p>${paperSwitch('cover')}<button class="save" data-cv="make">Make file cover</button>`);
   $('#sheet-root').onclick = e => { if (e.target.closest('[data-cv="make"]')) coverMake(m); };
 }
 async function coverMake(m) {
-  openSheet(`<div class="s-head"><div><small>${esc(m.no)} · file cover</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div><p class="hint">Making the ${esc(paperOf('cover'))} cover…</p>`);
+  openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · file cover</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div><p class="hint">Making the ${esc(paperOf('cover'))} cover…</p>`);
   let r; try { r = await makeCover(m); } catch (e) { closeSheet(); toast(e.message); return; }
-  openSheet(`<div class="s-head"><div><small>${esc(m.no)} · file cover</small><h1>Ready to print</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+  openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · file cover</small><h1>Ready to print</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <p class="hint">${esc(r.name)}${r.itemId ? ' · saved in the case folder' : ''}. ${r.paper === 'A4' ? 'A4 page (8.27 × 11.69 in)' : 'Legal-size page (8.5 × 14 in)'}: chamber header, case details, contacts and a ruled table for dates.</p>
     <div class="three"><button class="act primary" data-cv="open">Open in Word</button><button class="act blue" data-cv="pdf">PDF to print</button><button class="act blue" data-cv="share">Share</button></div>
     <button class="ghost" data-cv="dl" style="width:100%;margin-top:8px">Download</button>`);

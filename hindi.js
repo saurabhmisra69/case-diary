@@ -96,7 +96,7 @@ const HI_RULES = [
   [/^\+1 week$/, () => '+1 सप्ताह'], [/^\+2 weeks$/, () => '+2 सप्ताह'], [/^\+1 month$/, () => '+1 माह'],
   [/^(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/, (m, d, mo) => d + ' ' + MON3[mo]],
   [/^(.+) · (\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/, (m, x, d, mo) => (HI[x] || x) + ' · ' + d + ' ' + MON3[mo]],
-  [/^Edit (\d{4}\/\d+)$/, (m, n) => n + ' संपादित करें'],
+  [/^Edit (SM\/\S+)$/, (m, n) => n + ' संपादित करें'],
 ];
 const SKIP = 'option,script,style,textarea,input,select,[contenteditable],.m-title,.notr,#lock .lock-title';
 function hiText(t) {

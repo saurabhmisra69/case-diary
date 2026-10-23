@@ -95,6 +95,11 @@ const S = {
 };
 const emptyData = () => ({ v: 1, matters: [], updated: 0 });
 const live = () => (S.data?.matters || []).filter(m => !m.deleted);
+/* the matter reference shown everywhere (the diary no. stays only as the internal key):
+   SM/2026-013/C004-RDP in full, SM/2026-013 without a client code, 2026-013 in the small boxes */
+const mrefBase = m => m ? (m.ref || ('SM/' + m.year + '-' + String(m.n).padStart(3, '0'))) : '';
+const mref = m => m ? mrefBase(m) + (m.clientCode ? '/' + m.clientCode : '') : '';
+const mrefBox = m => mrefBase(m).replace(/^SM\//, '');
 
 function persistLocal() {
   try { localStorage.setItem(LS_DATA, JSON.stringify(S.data)); localStorage.setItem(LS_DIRTY, S.dirty ? '1' : '0'); } catch (e) {}
@@ -212,20 +217,20 @@ async function writeExcel() {
   if (!window.XLSX) return;
   const ms = live().sort(byNo);
   const rows = ms.map(m => ({
-    'Matter No.': m.no, 'Client(s)': m.clients, 'Title': m.title, 'Forum': FORUMS[m.forum]?.label || '', 'Court': m.court,
+    'Matter Ref.': mref(m), 'Client(s)': m.clients, 'Title': m.title, 'Forum': FORUMS[m.forum]?.label || '', 'Court': m.court,
     'Type': m.type, 'Case no.': m.caseNo, 'Crime / FIR no.': m.crimeNo, 'Police station': m.ps, 'Sections': m.sections,
     'Nature': m.nature, 'Appearing for': m.side, 'Status': m.status, 'Last date': dmy(m.lastDate), 'Next date': dmy(m.nextDate),
     'Fixed for': m.purpose, 'Item': m.item, 'Fees agreed': num(m.feeAgreed), 'Fees received': num(m.feeReceived),
     'Balance': Math.max(0, num(m.feeAgreed) - num(m.feeReceived)), 'CNR': m.cnr || '', 'Filing no.': m.filingNo || '', 'Client phone': m.phone, 'WhatsApp': m.whatsapp || '', 'Alternate contact': [m.altName, m.altPhone].filter(Boolean).join(' '), 'Deadline': dmy(m.deadline), 'Deadline for': m.deadlineFor, 'OneDrive folder': m.folderPath || '', 'Notes': m.notes,
   }));
   const hist = [];
-  for (const m of ms) for (const h of (m.hearings || [])) hist.push({ 'Matter No.': m.no, 'Title': m.title, 'Date': dmy(h.date), 'What happened': h.happened, 'Next date': dmy(h.next), 'Fixed for': h.purpose, 'Note': h.note });
+  for (const m of ms) for (const h of (m.hearings || [])) hist.push({ 'Matter Ref.': mref(m), 'Title': m.title, 'Date': dmy(h.date), 'What happened': h.happened, 'Next date': dmy(h.next), 'Fixed for': h.purpose, 'Note': h.note });
   const pays = [];
-  for (const m of ms) for (const p of (m.payments || [])) pays.push({ 'Matter No.': m.no, 'Client(s)': m.clients, 'Title': m.title, 'Date': dmy(p.date), 'Amount': num(p.amount), 'Mode': p.mode, 'Note': p.note });
+  for (const m of ms) for (const p of (m.payments || [])) pays.push({ 'Matter Ref.': mref(m), 'Client(s)': m.clients, 'Title': m.title, 'Date': dmy(p.date), 'Amount': num(p.amount), 'Mode': p.mode, 'Note': p.note });
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{ 'Matter No.': '' }]), 'Matters');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hist.length ? hist : [{ 'Matter No.': '' }]), 'Hearings');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pays.length ? pays : [{ 'Matter No.': '' }]), 'Fee payments');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{ 'Matter Ref.': '' }]), 'Matters');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hist.length ? hist : [{ 'Matter Ref.': '' }]), 'Hearings');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pays.length ? pays : [{ 'Matter Ref.': '' }]), 'Fee payments');
   const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   await g(drivePath(EXCEL_FILE) + ':/content', { method: 'PUT', headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }, body: buf });
 }
@@ -246,7 +251,7 @@ async function flushCalendar() {
       }
       const ev = {
         subject: 'Court: ' + m.title + (m.caseNo ? ' (' + m.caseNo + ')' : ''),
-        body: { contentType: 'text', content: [m.court, m.purpose ? 'Fixed for: ' + m.purpose : '', m.item ? 'Item ' + m.item : '', 'Matter ' + m.no].filter(Boolean).join('\n') },
+        body: { contentType: 'text', content: [m.court, m.purpose ? 'Fixed for: ' + m.purpose : '', m.item ? 'Item ' + m.item : '', 'Matter ref. ' + mref(m)].filter(Boolean).join('\n') },
         isAllDay: true, showAs: 'free',
         start: { dateTime: m.nextDate + 'T00:00:00', timeZone: 'India Standard Time' },
         end: { dateTime: addDays(m.nextDate, 1) + 'T00:00:00', timeZone: 'India Standard Time' },
@@ -342,7 +347,7 @@ const waOf = m => phoneDigits(m.whatsapp) || phoneDigits(m.phone);
 function phoneDigits(p) { let d = String(p || '').replace(/\D/g, ''); if (d.length === 10) d = '91' + d; if (d.length === 11 && d[0] === '0') d = '91' + d.slice(1); return d.length >= 11 ? d : ''; }
 function matches(m, q) {
   q = q.toLowerCase().trim(); if (!q) return true;
-  const hay = [m.no, m.title, m.clients, m.caseNo, m.crimeNo, m.ps, m.court, m.sections, m.type, m.side, m.item, m.cnr, m.filingNo, m.phone, m.whatsapp, m.altPhone, m.altName, m.folderName, m.purpose, m.notes].join(' ').toLowerCase();
+  const hay = [m.no, mref(m), m.title, m.clients, m.caseNo, m.crimeNo, m.ps, m.court, m.sections, m.type, m.side, m.item, m.cnr, m.filingNo, m.phone, m.whatsapp, m.altPhone, m.altName, m.folderName, m.purpose, m.notes].join(' ').toLowerCase();
   const flat = s => s.replace(/[^a-z0-9\u0900-\u097f]/g, ''), hayFlat = flat(hay);
   // every word must match; "2787/2024", "2787-2024" and "27872024" all find the same case
   return q.split(/\s+/).every(w => hay.includes(w) || (flat(w) && hayFlat.includes(flat(w))));
@@ -458,7 +463,7 @@ function briefHtml(list, deadlines, fees) {
 }
 function itemBox(m) {
   const f = forumOf(m);
-  return m.item ? `<div class="item" style="background:${f.c}"><small>ITEM</small><b>${esc(m.item)}</b></div>` : `<div class="item sm" style="background:${f.c}"><small>NO.</small><b>${esc(m.no)}</b></div>`;
+  return m.item ? `<div class="item" style="background:${f.c}"><small>ITEM</small><b>${esc(m.item)}</b></div>` : `<div class="item sm" style="background:${f.c}"><small>REF.</small><b>${esc(mrefBox(m))}</b></div>`;
 }
 function metaLine(m) { return [m.caseNo ? (m.type ? m.type + ' ' : '') + m.caseNo : m.type, m.crimeNo ? 'FIR ' + m.crimeNo + (m.ps ? ', PS ' + m.ps : '') : '', m.side ? 'for ' + m.side : ''].filter(Boolean).join(' · '); }
 function matterCard(m) {
@@ -507,7 +512,7 @@ function viewMatters() {
       const fo = forumOf(m), late = needsDate(m);
       const right = f === 'fees' ? rupees(feeDue(m)) : f === 'deadline' ? dmy(m.deadline) : (m.nextDate ? dmy(m.nextDate) : shortSt(m.status));
       return `<button class="card row" data-act="open" data-id="${m.id}">
-        <div class="item sm" style="background:${fo.c}"><small>NO.</small><b>${esc(m.no)}</b></div>
+        <div class="item sm" style="background:${fo.c}"><small>REF.</small><b>${esc(mrefBox(m))}</b></div>
         <span class="m-col"><span class="m-title">${dupStar(m)}${esc(m.title || m.clients)}</span><span class="m-meta">${esc([m.court, metaLine(m)].filter(Boolean).join(' · '))}</span></span>
         <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:${late ? 'var(--red)' : 'var(--muted)'};text-align:right">${esc(right)}</span>
       </button>`;
@@ -557,7 +562,7 @@ function sheetDetail(m) {
   const f = forumOf(m);
   const row = (k, v) => v ? `<span>${k}</span><b>${esc(v)}</b>` : '';
   const hist = [...(m.hearings || [])].reverse();
-  openSheet(`<div class="s-head"><div><small style="color:${f.ink}">${esc(m.no)} · ${esc(m.court || f.label)}</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+  openSheet(`<div class="s-head"><div><small style="color:${f.ink}">${esc(mref(m))} · ${esc(m.court || f.label)}</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <div class="kv">${row('Client(s)', m.clients)}${row('Status', m.status)}${row('Type', m.type)}${row('Case no.', m.caseNo)}${row('Crime / FIR', m.crimeNo)}${row('Police station', m.ps)}${row('Sections', m.sections)}${row('Nature', m.nature)}${row('Appearing for', m.side)}${row('Last date', dmy(m.lastDate))}${row('Next date', dmy(m.nextDate))}${row('Fixed for', m.purpose)}${row('Item', m.item)}${row('Deadline', m.deadline ? dmy(m.deadline) + (m.deadlineFor ? ' · ' + m.deadlineFor : '') + (m.deadlineDone ? ' (done)' : '') : '')}${row('Fees', m.feeAgreed ? rupees(m.feeAgreed) + ' agreed · ' + rupees(m.feeReceived) + ' received' : '')}${row('Client phone', m.phone)}${row('Notes', m.notes)}</div>
     <div class="acts" style="grid-template-columns:1fr 1fr 1fr"><button class="act primary" data-act="record" data-id="${m.id}">Next date</button><button class="act blue" data-act="edit" data-id="${m.id}">Edit</button><button class="act wa" data-act="wa" data-id="${m.id}" ${waOf(m) ? '' : 'disabled'}>${I.wa}Client</button></div>
     ${m.deadline && !m.deadlineDone ? `<button class="ghost" data-act="deadlinedone" data-id="${m.id}">Mark deadline as done</button>` : ''}
@@ -571,7 +576,7 @@ function sheetEdit(m) {
   const opt = (arr, v) => (v && !arr.includes(v) ? `<option selected>${esc(v)}</option>` : '') + arr.map(x => `<option ${x === v ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const fopt = Object.entries(FORUMS).map(([k, f]) => `<option value="${k}" ${k === m.forum ? 'selected' : ''}>${f.label}</option>`).join('');
   const fld = (id, label, val, type = 'text', extra = '') => `<div class="field"><label for="f_${id}">${label}</label><input class="in" id="f_${id}" name="${id}" type="${type}" value="${esc(val || '')}" ${extra}></div>`;
-  openSheet(`<div class="s-head"><div><small style="color:var(--hc)">${isNew ? 'New matter' : 'Edit ' + esc(m.no)}</small><h1>${isNew ? 'Add a matter' : esc(m.title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+  openSheet(`<div class="s-head"><div><small style="color:var(--hc)">${isNew ? 'New matter' : 'Edit ' + esc(mref(m))}</small><h1>${isNew ? 'Add a matter' : esc(m.title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
   <form id="mform" class="grp" style="gap:14px" autocomplete="off">
     <div class="two">${fld('year', 'Year (for numbering)', m.year, 'number', 'min="1990" max="2100" required')}<div class="field"><label for="f_forum">Forum</label><select class="in" id="f_forum" name="forum">${fopt}</select></div></div>
     ${fld('clients', 'Client name(s)', m.clients, 'text', 'required placeholder="e.g. Nikhil Agnihotri & Anr."')}
@@ -612,7 +617,7 @@ function sheetEdit(m) {
       rec.no = rec.year + '/' + rec.n;
       if (rec.nextDate) rec.calPending = true;
       change(d => d.matters.push(rec));
-      closeSheet(); toast('Matter ' + rec.no + ' added');
+      closeSheet(); toast('Matter ' + mref(rec) + ' added');
     } else {
       const old = find(m.id); const before = { caseNo: old.caseNo, type: old.type, court: old.court };
       change(() => {
@@ -760,7 +765,7 @@ document.addEventListener('click', e => {
   if (a === 'record') return sheetRecord(find(id));
   if (a === 'wa') return sendWa(find(id));
   if (a === 'deadlinedone') { const m = find(id); change(() => { m.deadlineDone = true; touch(m); }); return; }
-  if (a === 'del') { const m = find(id); if (confirm('Remove ' + m.no + ' from the diary? The OneDrive case folder is not touched.')) { change(() => { m.deleted = true; m.calPending = !!m.eventId; m.nextDate = ''; touch(m); }); closeSheet(); if (S.tab === 'matter') { S.tab = S.prevTab || 'home'; render(); } toast('Removed from diary'); } return; }
+  if (a === 'del') { const m = find(id); if (confirm('Remove ' + mref(m) + ' from the diary? The OneDrive case folder is not touched.')) { change(() => { m.deleted = true; m.calPending = !!m.eventId; m.nextDate = ''; touch(m); }); closeSheet(); if (S.tab === 'matter') { S.tab = S.prevTab || 'home'; render(); } toast('Removed from diary'); } return; }
   if (a === 'openfolder') return openDriveItem(DIARY_DIR);
   if (a === 'openexcel') return openDriveItem(EXCEL_FILE);
   if (a === 'install') {

@@ -25,7 +25,7 @@ function pickMatter(title, onPick) {
   const list = () => live().filter(m => matches(m, q))
     .sort((a, b) => ((b.status === 'Pending') - (a.status === 'Pending')) || (a.nextDate || '9999').localeCompare(b.nextDate || '9999'))
     .slice(0, 40);
-  const rows = () => list().map(m => { const f = forumOf(m); return `<button class="frow" data-pm="${m.id}"><span class="ficon" style="background:${f.soft};color:${f.ink};font-size:11px;font-weight:700">${esc(m.no)}</span><span class="fname">${esc(m.title || m.clients)}<small>${esc([m.court, m.caseNo, m.nextDate ? 'next ' + dmy(m.nextDate) : ''].filter(Boolean).join(' · '))}</small></span></button>`; }).join('') || '<p class="empty">No matter found.</p>';
+  const rows = () => list().map(m => { const f = forumOf(m); return `<button class="frow" data-pm="${m.id}"><span class="ficon" style="background:${f.soft};color:${f.ink};font-size:11px;font-weight:700">${esc(mref(m))}</span><span class="fname">${esc(m.title || m.clients)}<small>${esc([m.court, m.caseNo, m.nextDate ? 'next ' + dmy(m.nextDate) : ''].filter(Boolean).join(' · '))}</small></span></button>`; }).join('') || '<p class="empty">No matter found.</p>';
   openSheet(`<div class="s-head"><div><small>SM Chambers</small><h1>${esc(title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <label class="search" style="border:1px solid var(--line)">${I.search}<input type="search" id="pm_q" placeholder="Name, case no., court" autocomplete="off"></label>
     <div class="flist" id="pm_list" style="max-height:55vh;overflow:auto">${rows()}</div>`);
@@ -81,12 +81,12 @@ function sheetShared(files, skipAsk) {
         $('#sheet-root').onclick = ev => { const x = ev.target.closest('[data-sa2]'); if (x) go(ACTS.find(a => a.k === x.dataset.sa2)); }; return; }
       const add = async m => { closeSheet(); toast('Adding to the library…', 4000); try { const dir = await libFolder(); const recs = []; for (const f of files) { const it = await uploadFile(dir.id, f, f.name); recs.push(await indexFile({ ...it, name: it.name || f.name })); } await saveTextIndex();
         if (m) change(() => { m.authorities = m.authorities || []; recs.forEach(r => { if (!m.authorities.includes(r.id)) m.authorities.push(r.id); logChange(m, 'Authority added: ' + r.title); }); touch(m); });
-        toast(recs.length + ' added to the Judgment library' + (m ? ' and to ' + m.no : '') + '. Check the details under Edit / tag.', 5000); sheetLibrary(m && m.id); } catch (er) { toast('Could not add: ' + er.message, 5000); } };
+        toast(recs.length + ' added to the Judgment library' + (m ? ' and to ' + mref(m) : '') + '. Check the details under Edit / tag.', 5000); sheetLibrary(m && m.id); } catch (er) { toast('Could not add: ' + er.message, 5000); } };
       if (b.dataset.sq === 'lib') add(null); else pickMatter('Use it in which matter?', m => add(m)); };
     return;
   }
   pickMatter('Which matter is this for?', m => {
-    openSheet(`<div class="s-head"><div><small>${esc(m.no)} · ${files.length} file${files.length > 1 ? 's' : ''} shared</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · ${files.length} file${files.length > 1 ? 's' : ''} shared</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
       <div class="menu" style="gap:10px">
         ${isOrderLike ? `<button data-sh="read">Read the order <small>${aiKey() ? 'fills the next date; files it in 2 Orders' : 'needs your key in More › Order reading'}</small></button>` : ''}
         ${files.some(f => /\.docx?$/i.test(f.name)) ? '<button data-sh="1 Pleadings">Save in 1 Pleadings <small>a draft from Claude, kept with its own name</small></button>' : ''}
@@ -106,7 +106,7 @@ function sheetShared(files, skipAsk) {
 /* 4 ─ send a matter to the Claude app */
 function matterText(m) {
   const L = [m.title || m.clients, [m.type, m.caseNo].filter(Boolean).join(' '), m.court, m.side ? 'Appearing for ' + m.side : '',
-    m.nextDate ? 'Next date ' + dmy(m.nextDate) + (m.purpose ? ' for ' + m.purpose : '') : 'No next date', 'Diary no. ' + m.no, m.folderPath ? 'Folder: ' + m.folderPath : ''];
+    m.nextDate ? 'Next date ' + dmy(m.nextDate) + (m.purpose ? ' for ' + m.purpose : '') : 'No next date', 'Matter ref. ' + mref(m), m.folderPath ? 'Folder: ' + m.folderPath : ''];
   return L.filter(Boolean).join('\n') + '\n\nClaude, please: ';
 }
 async function askClaude(m) {

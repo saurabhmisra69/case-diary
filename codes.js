@@ -50,7 +50,7 @@ function sheetCodes(filter) {
     const locked = g.code && ccLocked(g), ek = 'e_' + btoa(unescape(encodeURIComponent(g.key))).replace(/[^a-z0-9]/gi, '');
     return `<div class="card" style="padding:12px 14px;box-shadow:none;border:1px solid var(--line)">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><b>${esc(g.name)}</b>${g.code ? `<b style="font-family:var(--mono);color:var(--dc-ink)">${esc(g.code)}</b>` : ''}</div>
-      <div class="hist" style="margin-top:6px">${g.ms.map(m => `<div><b style="font-size:11px">${esc(m.no)}</b><span>${esc(m.title || '')}${m.caseNo ? ' · ' + esc(m.caseNo) : ''}<br><button class="linkbtn" data-cc="client" data-id="${m.id}">Change client</button></span></div>`).join('')}</div>
+      <div class="hist" style="margin-top:6px">${g.ms.map(m => `<div><b style="font-size:11px">${esc(mref(m))}</b><span>${esc(m.title || '')}${m.caseNo ? ' · ' + esc(m.caseNo) : ''}<br><button class="linkbtn" data-cc="client" data-id="${m.id}">Change client</button></span></div>`).join('')}</div>
       ${g.code === 'MIXED' ? `<p class="hint" style="color:var(--red)">These matters have different codes: ${esc([...new Set(g.ms.map(m => m.clientCode).filter(Boolean))].join(', '))}. Set one below.</p>` : ''}
       ${(() => { const numbered = !g.code || g.code === 'MIXED' || ccPre(g.code);
         if (g.code && g.code !== 'MIXED' && locked) return `<p class="hint" style="margin:8px 0 0;color:var(--dc-ink)">✓ Fixed${(S.data?.meta?.codeFixed || {})[g.code] ? '' : ' — a letter has gone out with this code'}</p>`;
@@ -96,7 +96,7 @@ function sheetCodes(filter) {
 }
 function changeClient(m, back) {
   const names = [...new Set(live().map(x => clientName(x.clients)).filter(Boolean))].sort();
-  openSheet(`<div class="s-head"><div><small>${esc(m.no)} · ${esc(m.title || '')}</small><h1>Who is your client?</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+  openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · ${esc(m.title || '')}</small><h1>Who is your client?</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <form id="ch_form" class="grp" style="gap:12px"><div class="field"><label for="ch_n">CLIENT NAME(S)</label><input class="in" id="ch_n" list="ch_l" value="${esc(m.clients || '')}" required><datalist id="ch_l">${names.map(n => `<option value="${esc(n)}">`).join('')}</datalist></div>
     <p class="hint" style="margin:0">Pick an existing client to put this matter with their other matters, or type a new name (e.g. Sana Rizvi).</p>
     <button class="save" type="submit">Save</button><button type="button" class="linkbtn" data-ch="back">‹ Back</button></form>`);

@@ -35,7 +35,7 @@ function askCode(m, then) {
     if (m.clientCode && !pre) return then ? then() : closeSheet();
     const locked = m.clientCode && ccLocked({ code: m.clientCode, ms: live().filter(x => x.clientCode === m.clientCode) });
     if (locked) { toast(m.clientCode + ' is fixed'); return then ? then() : closeSheet(); }
-    openSheet(`<div class="s-head"><div><small>${esc(m.no)} · client code</small><h1>${esc(clientName(m.clients) || m.title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · client code</small><h1>${esc(clientName(m.clients) || m.title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
       <p class="hint">The number is given by the app; the initials are yours to change until the first letter goes out.</p>
       <form id="cc_form"><div style="display:flex;gap:6px;align-items:center"><span class="ccpre">${esc(pre)}</span><input class="in" id="cc_in" value="${esc(ini)}" maxlength="6" style="flex:1;font-family:var(--mono);text-transform:uppercase" autocapitalize="characters" spellcheck="false" required aria-label="Initials"></div>
       <button class="save" type="submit" style="margin-top:12px">Save</button><button type="button" class="linkbtn" data-act="codes" style="margin-top:8px">All client codes</button></form>`);
@@ -46,7 +46,7 @@ function askCode(m, then) {
     return;
   }
   const sug = suggestCode(m);
-  openSheet(`<div class="s-head"><div><small>${esc(m.no)} · client code</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+  openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · client code</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <p class="hint">A short fixed code for this client, used in letter numbers: ${esc(refBase(m))}/<b>CODE</b>/${new Date().getFullYear()}/01. Use the same code for all of this client's matters, so they share one series.</p>
     <form id="cc_form"><div class="field"><label for="cc_in">CLIENT CODE</label><input class="in" id="cc_in" list="cc_list" value="${esc(m.clientCode || sug)}" style="text-transform:uppercase;font-family:var(--mono)" autocapitalize="characters" spellcheck="false" required><datalist id="cc_list">${allCodes().map(c => `<option value="${esc(c)}">`).join('')}</datalist></div>
     <button class="save" type="submit">Save code</button></form>`);

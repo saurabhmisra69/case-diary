@@ -37,7 +37,7 @@ VIEWS.calendar = function () {
     <section class="card calcard"><div class="calgrid">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<span class="dh">${d}</span>`).join('')}${cells}</div><div class="legend">${legend}</div></section>
     <section class="list">
       <div class="h2"><h2>${DOWL[parseIso(sel).getDay()]}, ${dmy(sel)}</h2>${list.length ? `<button class="linkbtn" data-act="causelist" data-day="${sel}">Cause list ↓</button>` : ''}</div>
-      ${dl.map(m => `<button class="card row" data-act="open" data-id="${m.id}"><div class="item sm" style="background:var(--red)"><small>DUE</small><b>${esc(m.no)}</b></div><span class="m-col"><span class="m-title">${esc(m.deadlineFor || 'Deadline')}</span><span class="m-meta">${esc(m.title)}</span></span><span></span></button>`).join('')}
+      ${dl.map(m => `<button class="card row" data-act="open" data-id="${m.id}"><div class="item sm" style="background:var(--red)"><small>DUE</small><b>${esc(mrefBox(m))}</b></div><span class="m-col"><span class="m-title">${esc(m.deadlineFor || 'Deadline')}</span><span class="m-meta">${esc(m.title)}</span></span><span></span></button>`).join('')}
       ${list.length ? groupByCourt(list).map(([court, ms]) => { const f = forumOf(ms[0]); return `<span class="court-tag" style="background:${f.soft};color:${f.ink}">${esc(court)}</span>` + ms.map(matterCard).join(''); }).join('') : (dl.length || done.length ? '' : '<div class="card empty">Nothing listed on this day.</div>')}
       ${done.map(m => { const h = (m.hearings || []).filter(x => x.date === sel).slice(-1)[0]; return `<button class="card row" data-act="open" data-id="${m.id}">${itemBox(m)}<span class="m-col"><span class="m-title">${esc(m.title)}</span><span class="m-meta">${esc(h.happened)}${h.next ? ' · next ' + dmy(h.next) : ''}</span></span><span class="done-pill">Heard</span></button>`; }).join('')}
     </section>
@@ -81,7 +81,7 @@ function sheetClient(k) {
     <div class="kv"><span>Mobile</span><b>${esc(gr.phone || '—')}</b><span>Matters</span><b>${gr.ms.length}</b><span>Fees received</span><b>${rupees(recd)}</b><span>Fees pending</span><b style="color:${due ? 'var(--saffron-ink)' : 'inherit'}">${rupees(due)}</b></div>
     <div class="two" style="margin-top:10px">${wa ? `<a class="act wa" style="min-height:48px" href="https://wa.me/${wa}" target="_blank" rel="noopener">${I.wa}WhatsApp ${esc(gr.name.split(' ')[0])}</a>` : '<span></span>'}<button class="act blue" data-act="shareclient" data-k="${esc(gr.key)}" style="min-height:48px">Share…</button></div>
     <div class="chips" style="margin-top:8px"><button class="chip" data-act="shareclient" data-k="${esc(gr.key)}" data-w="update">Matter update</button><button class="chip" data-act="shareclient" data-k="${esc(gr.key)}" data-w="doc">Document</button>${due ? `<button class="chip" data-act="shareclient" data-k="${esc(gr.key)}" data-w="fee">Fee reminder</button>` : ''}<button class="chip" data-act="shareclient" data-k="${esc(gr.key)}" data-w="card">Contact card</button></div>
-    <div class="grp"><span class="lbl">Matters</span><div class="list">${gr.ms.sort((a, b) => (b.year - a.year) || (b.n - a.n)).map(m => `<button class="card row" data-act="open" data-id="${m.id}" style="box-shadow:none;border:2px solid var(--line)"><div class="item sm" style="background:${forumOf(m).c}"><small>NO.</small><b>${esc(m.no)}</b></div><span class="m-col"><span class="m-title">${esc(m.title)}</span><span class="m-meta">${esc([m.court, metaLine(m)].filter(Boolean).join(' · '))}</span></span><span style="font-size:12px;font-weight:700;color:var(--muted)">${m.nextDate ? dmy(m.nextDate) : esc(shortSt(m.status))}</span></button>`).join('')}</div></div>`);
+    <div class="grp"><span class="lbl">Matters</span><div class="list">${gr.ms.sort((a, b) => (b.year - a.year) || (b.n - a.n)).map(m => `<button class="card row" data-act="open" data-id="${m.id}" style="box-shadow:none;border:2px solid var(--line)"><div class="item sm" style="background:${forumOf(m).c}"><small>REF.</small><b>${esc(mrefBox(m))}</b></div><span class="m-col"><span class="m-title">${esc(m.title)}</span><span class="m-meta">${esc([m.court, metaLine(m)].filter(Boolean).join(' · '))}</span></span><span style="font-size:12px;font-weight:700;color:var(--muted)">${m.nextDate ? dmy(m.nextDate) : esc(shortSt(m.status))}</span></button>`).join('')}</div></div>`);
 }
 
 /* ================= Fees ================= */
@@ -102,7 +102,7 @@ VIEWS.fees = function () {
     </section>
     <section class="acts" style="grid-template-columns:1fr 1fr 1fr;margin:0 0 4px"><button class="act blue" data-act="dues">Dues by age</button><button class="act blue" data-act="careg">CA register</button><button class="act blue" data-act="juniors">Juniors</button></section>
     <section class="list"><div class="h2"><h2>By matter</h2></div>
-      ${sorted.length ? sorted.map(m => `<div class="card feerow"><button class="m-col" data-act="open" data-id="${m.id}" style="border:0;background:none;text-align:left;padding:0"><span class="m-title">${esc(m.title)}</span><span class="m-meta">${esc(m.no)} · ${rupees(m.feeReceived)} of ${rupees(m.feeAgreed)}</span></button><span class="feedue ${feeDue(m) ? '' : 'paid'}">${feeDue(m) ? rupees(feeDue(m)) : 'Paid'}</span><button class="act primary" data-act="pay" data-id="${m.id}" style="min-height:40px">+ Payment</button></div>`).join('') : '<div class="card empty">No fees entered yet. Add the agreed fee in a matter (Edit), then record payments here.</div>'}
+      ${sorted.length ? sorted.map(m => `<div class="card feerow"><button class="m-col" data-act="open" data-id="${m.id}" style="border:0;background:none;text-align:left;padding:0"><span class="m-title">${esc(m.title)}</span><span class="m-meta">${esc(mref(m))} · ${rupees(m.feeReceived)} of ${rupees(m.feeAgreed)}</span></button><span class="feedue ${feeDue(m) ? '' : 'paid'}">${feeDue(m) ? rupees(feeDue(m)) : 'Paid'}</span><button class="act primary" data-act="pay" data-id="${m.id}" style="min-height:40px">+ Payment</button></div>`).join('') : '<div class="card empty">No fees entered yet. Add the agreed fee in a matter (Edit), then record payments here.</div>'}
     </section>
     ${pays.length ? `<section class="card"><div class="h2"><h2>Recent payments</h2></div><div class="hist" style="margin-top:8px">${pays.slice(0, 25).map(({ m, p }) => `<div><b>${dmy(p.date)}</b><span><b style="font-family:inherit">${rupees(gross(p))}</b>${num(p.tds) ? ' <small>(incl. TDS ' + rupees(p.tds) + ')</small>' : ''} · ${esc(p.mode || '')} · ${esc(m.title)}${p.note ? '<br><span style="color:var(--muted)">' + esc(p.note) + '</span>' : ''}</span></div>`).join('')}</div></section>` : ''}
   </main>`;
@@ -132,7 +132,7 @@ function sheetFees(m, focus) {
     const due = feeDue(m), ed = st.edit;
     const ag = m.agreedParts || [], pays = (m.payments || []).slice().sort((x, y) => (y.date || '').localeCompare(x.date || ''));
     const formAgreed = st.kind === 'agreed', v = ed || {};
-    openSheet(`<div class="s-head"><div><small style="color:var(--saffron-ink)">${esc(m.no)} · fees</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    openSheet(`<div class="s-head"><div><small style="color:var(--saffron-ink)">${esc(mref(m))} · fees</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
       <div class="kv"><span>Agreed</span><b>${rupees(m.feeAgreed)}</b><span>Received</span><b>${rupees(m.feeReceived)}</b><span>Balance</span><b style="color:${due ? 'var(--red)' : 'var(--dc-ink)'}">${rupees(due)}</b></div>
       <div class="three" style="margin-top:12px"><button type="button" class="act blue" data-act="mkbill" data-id="${m.id}">Generate bill</button><button type="button" class="act blue" data-act="mkrcpt" data-id="${m.id}">Generate receipt</button><span></span></div>
       <p class="hint" style="margin:8px 0 0">Matter ref. <b style="font-family:var(--mono)">${esc(matterRef(m))}</b>${m.clientCode ? '' : ` · <button class="linkbtn" data-act="setcode" data-id="${m.id}">Set client code</button>`}</p>
@@ -356,7 +356,7 @@ VIEWS.limit = function () {
         <div class="kv" style="margin-top:12px"><span>Period</span><b>${r.u === 'ni' ? '15 days + 1 month' : r.v + ' ' + ({ d: 'days', m: 'months', y: 'years' })[r.u]}</b>${res.excl ? `<span>Copy time added</span><b>${res.excl} days</b>` : ''}<span>Basis</span><b>${esc(r.b)}</b></div>
         ${res.sun ? '<p class="hint" style="color:var(--saffron-ink)">This falls on a Sunday. If the court is closed, filing on the day it reopens is in time (Section 4, Limitation Act, 1963). Better to file before.</p>' : ''}
         <p class="hint">Please confirm the period against the bare Act before filing.</p>
-        <div class="field" style="margin-top:12px"><label for="l_m">SAVE AS DEADLINE IN A MATTER</label><select class="in" id="l_m" data-lim="mid"><option value="">Choose matter…</option>${open.map(m => `<option value="${m.id}" ${m.id === s.mid ? 'selected' : ''}>${esc(m.no + ' · ' + m.title.slice(0, 60))}</option>`).join('')}</select></div>
+        <div class="field" style="margin-top:12px"><label for="l_m">SAVE AS DEADLINE IN A MATTER</label><select class="in" id="l_m" data-lim="mid"><option value="">Choose matter…</option>${open.map(m => `<option value="${m.id}" ${m.id === s.mid ? 'selected' : ''}>${esc(mref(m) + ' · ' + m.title.slice(0, 60))}</option>`).join('')}</select></div>
         <button class="save" data-act="limsave" ${s.mid ? '' : 'disabled'} style="margin-top:10px">Save deadline · ${dmy(res.last)}</button>`
       : '<p class="empty">Choose the remedy and enter the date to see the last date.</p>'}
     </section>
@@ -378,7 +378,7 @@ document.addEventListener('click', e => {
     const res = limCalc(S.lim), m = find(S.lim.mid); if (!res || !m) return;
     if (m.deadline && !m.deadlineDone && m.deadline !== res.last && !confirm('This matter already has a deadline on ' + dmy(m.deadline) + '. Replace it?')) return;
     change(() => { m.deadline = res.last; m.deadlineFor = res.r.n.replace(/\s*\(.*\)$/, ''); m.deadlineDone = false; touch(m); });
-    toast('Deadline saved in ' + m.no);
+    toast('Deadline saved in ' + mref(m));
   }
 });
 document.addEventListener('change', e => {
@@ -410,7 +410,7 @@ function expensesBlock(m) {
 function sheetExpense(m) {
   const juniors = [...new Set(live().flatMap(x => expList(x).map(e => e.to)).filter(Boolean))].sort();
   const st = { type: EXP_TYPES[0], bearer: '', parts: ['Filing', 'Photocopy', 'Affidavit', 'Stamp', 'Junior fee'] };
-  const draw = () => openSheet(`<div class="s-head"><div><small style="color:var(--saffron-ink)">${esc(m.no)} · add expense</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+  const draw = () => openSheet(`<div class="s-head"><div><small style="color:var(--saffron-ink)">${esc(mref(m))} · add expense</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <form id="expform" class="grp" style="gap:14px">
       <div class="field"><label>TYPE</label><div class="chips">${EXP_TYPES.map(t => `<button type="button" class="chip ${st.type === t ? 'on' : ''}" data-ex="type" data-v="${t}">${t}</button>`).join('')}</div></div>
       <div class="two"><div class="field"><label for="e_amt">AMOUNT (₹)</label><input class="in" id="e_amt" name="amount" inputmode="numeric" required></div><div class="field"><label for="e_date">DATE</label><input class="in" id="e_date" name="date" type="date" value="${todayIso()}"></div></div>

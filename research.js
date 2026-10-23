@@ -41,7 +41,7 @@ function sheetResearch(m) {
     ['Topics', TOPICS[m.type] || []],
   ].filter(([, xs]) => xs.length);
   const mode = stMode();
-  openSheet(`<div class="s-head"><div><small>${esc(m.no)} · Supreme Today</small><h1>Research</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+  openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · Supreme Today</small><h1>Research</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><span class="lbl" style="margin:0">Open in</span><div class="seg">${Object.entries(ST_MODES).map(([k, l]) => `<button type="button" class="${mode === k ? 'on' : ''}" data-rs="mode" data-v="${k}">${l}</button>`).join('')}</div></div>
     <p class="hint">Tap a search: it is copied${mode === 'web' ? ' and Supreme Today opens' : ''}; paste it in Supreme Today's search. For a Bare Act, choose <b>All Options › Bare Acts</b> there.</p>
     <form id="rs_form" style="display:flex;gap:8px;margin:8px 0 12px"><input class="in" id="rs_q" placeholder="Your own search, e.g. bail parity 2024" style="flex:1"><button class="save" type="submit" style="margin:0;width:auto;padding:0 16px">Search</button></form>

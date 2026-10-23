@@ -33,7 +33,7 @@ function sheetLimitSet(m) {
   const sug = suggestRemedies(m), lastH = (m.hearings || []).filter(h => h.date <= todayIso()).map(h => h.date).sort().pop() || m.closedOn || todayIso();
   const st = { pick: new Set(sug.slice(0, 1)), from: lastH, ccA: '', ccR: '' };
   const draw = () => {
-    openSheet(`<div class="s-head"><div><small>${esc(m.no)} · limitation</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · limitation</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
       <div class="field"><label for="lm_from">DATE OF ORDER / JUDGMENT</label><input class="in" type="date" id="lm_from" value="${st.from}"></div>
       <div class="two"><div class="field"><label for="lm_a">CERTIFIED COPY APPLIED</label><input class="in" type="date" id="lm_a" value="${st.ccA}"></div><div class="field"><label for="lm_r">COPY READY</label><input class="in" type="date" id="lm_r" value="${st.ccR}"></div></div>
       <span class="lbl">Remedies${m.outcome === 'In our favour' ? ' (the other side\'s)' : ''}</span>
@@ -85,7 +85,7 @@ function allotBox(m) {
 }
 const jWa = j => j ? (j.wa || j.phone || '') : '';
 function sheetJuniorForm(j, then, m) {
-  openSheet(`<div class="s-head"><div><small>${m ? esc(m.no) : 'Juniors'}</small><h1>${j ? 'Edit junior' : 'Add a junior'}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+  openSheet(`<div class="s-head"><div><small>${m ? esc(mref(m)) : 'Juniors'}</small><h1>${j ? 'Edit junior' : 'Add a junior'}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <form id="jf_form" class="grp" style="gap:12px"><div class="field"><label for="jf_n">NAME</label><input class="in" id="jf_n" required value="${esc(j ? j.name : '')}" placeholder="e.g. Rahul Verma"></div>
     <div class="two"><div class="field"><label for="jf_p">MOBILE NO.</label><input class="in" id="jf_p" type="tel" inputmode="tel" value="${esc(j ? j.phone || '' : '')}" placeholder="10 digits"></div>
     <div class="field"><label for="jf_w">WHATSAPP NO.</label><input class="in" id="jf_w" type="tel" inputmode="tel" value="${esc(j ? j.wa || '' : '')}" placeholder="blank = same as mobile"></div></div>
@@ -114,7 +114,7 @@ function sendTask(m, t) {
 }
 function sheetTask(m) {
   const J = juniors(), fromExp = juniorNamesFromExpenses().filter(n => !J.some(j => j.name.toLowerCase() === n.toLowerCase()));
-  openSheet(`<div class="s-head"><div><small>${esc(m.no)} · task</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+  openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · task</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <form id="tk_form" class="grp" style="gap:12px">
       <div class="field"><label for="tk_text">TASK</label><input class="in" id="tk_text" required list="tk_list" placeholder="e.g. File inspection application, Court 7"><datalist id="tk_list">${['File inspection application', 'Obtain certified copy of order', 'Mention the matter', 'File vakalatnama', 'Collect documents from client', 'Get affidavit sworn', 'Take next date', 'Check listing / cause list', 'File written statement', 'Deposit court fee'].map(x => `<option value="${x}">`).join('')}</datalist></div>
       <div class="two"><div class="field"><label for="tk_due">BY</label><input class="in" type="date" id="tk_due" value="${m.nextDate && m.nextDate > todayIso() ? addDays(m.nextDate, -1) : addDays(todayIso(), 1)}"></div>
@@ -217,7 +217,7 @@ async function sheetLibrary(forMatter) {
   const tags = [...new Set(library().flatMap(x => (x.tags || '').toLowerCase().split(/\s*,\s*/).filter(Boolean)))].sort();
   const draw = () => {
     const L = libMatches();
-    openSheet(`<div class="s-head"><div><small>${library().length} judgment${library().length === 1 ? '' : 's'}${m ? ' · for ' + esc(m.no) : ''}</small><h1>Judgment library</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    openSheet(`<div class="s-head"><div><small>${library().length} judgment${library().length === 1 ? '' : 's'}${m ? ' · for ' + esc(mref(m)) : ''}</small><h1>Judgment library</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
       <div class="field"><input class="in" id="lb_q" type="search" value="${esc(LIB.q)}" placeholder="Search words, section, party, citation…"></div>
       ${tags.length ? `<div class="chips" style="margin-bottom:8px"><button class="chip ${LIB.tag ? '' : 'on'}" data-lb="tag" data-v="">All</button>${tags.map(t => `<button class="chip ${LIB.tag === t ? 'on' : ''}" data-lb="tag" data-v="${esc(t)}">${esc(t)}</button>`).join('')}</div>` : ''}
       <div class="two" style="margin-bottom:10px"><label class="act blue">+ Add judgment<input type="file" accept=".pdf,.docx" data-lb="up" hidden multiple></label><button class="act blue" data-act="stsearch" data-v="${esc(LIB.q || '')}">Search Supreme Today</button></div>
@@ -314,7 +314,7 @@ function sheetTemplates() {
       <div class="hist">${T.map(it => `<div><b>DOCX</b><span><b style="font-family:inherit">${esc(it.name.replace(/\.docx$/i, ''))}</b><br><button class="linkbtn" data-tp="open" data-i="${it.id}">Open</button></span></div>`).join('') || '<p class="empty">No template yet.</p>'}</div>
       <div class="grp" style="margin-top:14px"><span class="lbl">Make a template from a past draft</span>
         <p class="hint" style="margin:0 0 8px">Pick the matter the old draft was made for, then the draft. Its case no., parties, client, crime no., P.S., sections and dates become blanks that fill themselves next time (Draft › Use my own format).</p>
-        <div class="field"><label for="tp_m">THE OLD DRAFT WAS FOR</label><select class="in" id="tp_m">${ms.map(m => `<option value="${m.id}">${esc(m.no)} · ${esc((m.title || m.clients).slice(0, 60))}</option>`).join('')}</select></div>
+        <div class="field"><label for="tp_m">THE OLD DRAFT WAS FOR</label><select class="in" id="tp_m">${ms.map(m => `<option value="${m.id}">${esc(mref(m))} · ${esc((m.title || m.clients).slice(0, 60))}</option>`).join('')}</select></div>
         <div class="field"><label for="tp_n">TEMPLATE NAME</label><input class="in" id="tp_n" placeholder="e.g. Bail application – Sessions"></div>
         <button class="save" data-tp="make">Pick the draft (.docx)</button></div>`);
     $('#sheet-root').onclick = async e => {
@@ -360,6 +360,6 @@ document.addEventListener('click', async e => {
     if ($('#sheet-root').innerHTML && /Juniors &amp; tasks/.test($('#sheet-root').innerHTML)) sheetJuniorsTasks(); else render(); return; }
   if (a === 'library') return sheetLibrary(m && m.id);
   if (a === 'templates') return sheetTemplates();
-  if (a === 'authlist') { openSheet(`<div class="s-head"><div><small>${esc(m.no)}</small><h1>Making list of authorities…</h1></div></div>`);
+  if (a === 'authlist') { openSheet(`<div class="s-head"><div><small>${esc(mref(m))}</small><h1>Making list of authorities…</h1></div></div>`);
     try { const r = await makeAuthorityList(m); docReady(m, r, 'List of authorities', () => { closeSheet(); render(); }, 'Back to the matter'); } catch (er) { toast(er.message); closeSheet(); } }
 });

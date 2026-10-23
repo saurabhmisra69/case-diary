@@ -95,7 +95,7 @@ const followsScheme = name => /\(\d{4}-\d{3}\)$/.test(name || '') || /^\d{4}-\d{
 
 /* "0 Matter details.txt" inside each matter folder: the full title and particulars, kept up to date. */
 function detailsText(m) {
-  const L = [['Full title', m.title], ['Diary no.', m.no], ['Client(s)', m.clients], ['Court', m.court], ['Type', m.type], ['Case no.', m.caseNo], ['Crime / FIR no.', m.crimeNo], ['Police station', m.ps], ['Sections', m.sections], ['Appearing for', m.side], ['Status', m.status], ['Next date', m.nextDate ? dmy(m.nextDate) + (m.purpose ? ', ' + m.purpose : '') : ''], ['Notes', m.notes]];
+  const L = [['Full title', m.title], ['Matter ref.', mref(m)], ['Client(s)', m.clients], ['Court', m.court], ['Type', m.type], ['Case no.', m.caseNo], ['Crime / FIR no.', m.crimeNo], ['Police station', m.ps], ['Sections', m.sections], ['Appearing for', m.side], ['Status', m.status], ['Next date', m.nextDate ? dmy(m.nextDate) + (m.purpose ? ', ' + m.purpose : '') : ''], ['Notes', m.notes]];
   return L.filter(x => x[1]).map(x => x[0] + ': ' + x[1]).join('\r\n') + '\r\n\r\n(Kept up to date by SM Chambers.)\r\n';
 }
 let detailsBusy = false;
@@ -151,7 +151,7 @@ function viewMatter(m) {
   const due = feeDue(m);
   return `<header class="phead" style="background:${f.c}">
     <div class="top-row"><button class="backbtn" data-act="back" aria-label="Back">${I.back}</button><button id="syncbtn" class="sync" data-act="sync" style="background:rgba(255,255,255,.18)"></button></div>
-    <div><small style="font-weight:800;opacity:.85">${esc(m.no)} · ${esc(m.court || f.label)} · ${esc(m.status)}${m.status === 'Decided' && m.outcome ? ' (' + esc(m.outcome) + ')' : ''}</small><h1 style="margin-top:4px">${esc(m.title || m.clients)}</h1>
+    <div><small style="font-weight:800;opacity:.85">${esc(mref(m))} · ${esc(m.court || f.label)} · ${esc(m.status)}${m.status === 'Decided' && m.outcome ? ' (' + esc(m.outcome) + ')' : ''}</small><h1 style="margin-top:4px">${esc(m.title || m.clients)}</h1>
     <p class="m-meta" style="color:rgba(255,255,255,.85);margin:6px 0 0">${esc(metaLine(m))}</p></div>
     <div class="next-strip">${m.nextDate ? `<span>Next date</span><b>${DOWL[parseIso(m.nextDate).getDay()].slice(0, 3)}, ${dmy(m.nextDate)}</b>${m.purpose ? `<span>for ${esc(m.purpose)}</span>` : ''}` : `<b>${m.status === 'Pending' ? 'No next date' : esc(m.status)}</b>`}</div>
   </header>
@@ -161,7 +161,7 @@ function viewMatter(m) {
     <div class="acts mp-acts" style="grid-template-columns:1fr 1fr;margin-top:-4px"><button class="act blue" data-act="cover" data-id="${m.id}" style="min-height:42px">Print file cover</button><button class="act blue" data-act="letters" data-id="${m.id}" style="min-height:42px">Letters &amp; notices${(m.letters || []).length ? ' (' + m.letters.length + ')' : ''}</button></div>
     ${pendingOutcome(m) ? `<section class="card ask-card"><b>What happened on ${dmy(m.nextDate)}?</b><div class="chips" style="margin-top:8px">${HAPPENED.map(h => `<button class="chip" data-act="outcome" data-id="${m.id}" data-v="${h}">${h}</button>`).join('')}</div></section>` : ''}
     ${typeof limitCard === 'function' ? limitCard(m) : ''}
-    ${dupsOf(m).length ? `<section class="card dup-card"><b><span class="dupstar">★</span> Entered more than once</b><p class="hint" style="margin:4px 0 8px">The same case also appears as:</p>${dupsOf(m).map(x => `<button class="linkbtn" data-act="open" data-id="${x.id}" style="display:block;text-align:left;margin:4px 0">${esc(x.no)} · ${esc(x.title || x.clients)}${x.court ? ' · ' + esc(x.court) : ''}</button>`).join('')}<p class="hint" style="margin:8px 0 0">Keep one: open the other and use Edit › Remove from diary.</p></section>` : ''}
+    ${dupsOf(m).length ? `<section class="card dup-card"><b><span class="dupstar">★</span> Entered more than once</b><p class="hint" style="margin:4px 0 8px">The same case also appears as:</p>${dupsOf(m).map(x => `<button class="linkbtn" data-act="open" data-id="${x.id}" style="display:block;text-align:left;margin:4px 0">${esc(mref(x))} · ${esc(x.title || x.clients)}${x.court ? ' · ' + esc(x.court) : ''}</button>`).join('')}<p class="hint" style="margin:8px 0 0">Keep one: open the other and use Edit › Remove from diary.</p></section>` : ''}
     <section class="card" style="padding:12px 16px"><div class="stbox" style="margin:0"><div class="field" style="margin:0 0 10px"><label for="fo_${m.id}">Category</label><select class="in" id="fo_${m.id}" data-st="forum" data-id="${m.id}">${Object.entries(FORUMS).map(([k, x]) => `<option value="${k}" ${k === (m.forum || 'District') ? 'selected' : ''}>${x.label}</option>`).join('')}</select></div><div class="field" style="margin:0"><label for="st_${m.id}">Status</label><select class="in" id="st_${m.id}" data-st="status" data-id="${m.id}">${statusList(m).map(s => `<option ${s === (m.status || statusList(m)[0]) ? 'selected' : ''}>${s}</option>`).join('')}${statusList(m).includes(m.status) || !m.status ? '' : `<option selected>${esc(m.status)}</option>`}</select></div>
       ${typeof allotBox === 'function' ? allotBox(m) : ''}
       ${m.forum === 'Advisory' && isRetainer(m) ? retainerBox(m) : ''}${m.forum === 'Advisory' && !isRetainer(m) ? `<button class="act primary" data-act="tocase" data-id="${m.id}" style="width:100%;margin-top:10px;min-height:44px">Convert to case</button>` : ''}${m.prelit ? `<p class="hint" style="margin:8px 0 0">Pre-litigation: ${esc(m.prelit.status || '')}${m.prelit.till ? ' (till ' + dmy(m.prelit.till) + ')' : ''}</p>` : ''}
@@ -280,7 +280,7 @@ function drawPicker() {
   const m = find(S.mid), cur = P.stack[P.stack.length - 1];
   const list = P.results || P.items;
   const rows = it => `<div class="prow"><button class="frow" data-pk="into" data-fid="${it.id}" data-name="${esc(it.name)}"><span class="ficon" style="background:var(--saffron-soft)">${I.folder}</span><span class="fname">${esc(it.name)}${P.results ? `<small>${esc(itemPath(it))}</small>` : `<small>${it.folder?.childCount ?? ''} items</small>`}</span></button><button class="pick" data-pk="link" data-fid="${it.id}">Link</button></div>`;
-  openSheet(`<div class="s-head"><div><small style="color:var(--hc)">${esc(m.no)} · link case folder</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+  openSheet(`<div class="s-head"><div><small style="color:var(--hc)">${esc(mref(m))} · link case folder</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <label class="search" style="border:2px solid var(--line)">${I.search}<input type="search" data-pk="q" placeholder="Search all OneDrive folders" value="${esc(P.q)}" enterkeyhint="search"></label>
     ${P.stack.length > 1 && !P.results ? `<div class="crumbs">${P.stack.map((c, k) => `<button data-pk="crumb" data-i="${k}" ${k === P.stack.length - 1 ? 'class="on"' : ''}>${esc(c.name)}</button>`).join('<span>›</span>')}</div>` : ''}
     ${P.stack.length > 1 && !P.results ? `<button class="save" data-pk="linkcur" style="background:var(--hc);box-shadow:none">Link “${esc(cur.name)}”</button>` : ''}
@@ -322,7 +322,7 @@ async function linkFolder(fid) {
 async function openNewFolder() {
   const m = find(S.mid);
   const N = { parent: null, name: proposedFolderName(m), clientName: cleanName(m.clients), opts: null, busy: false };
-  const draw = () => openSheet(`<div class="s-head"><div><small style="color:var(--hc)">${esc(m.no)} · new case folder</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+  const draw = () => openSheet(`<div class="s-head"><div><small style="color:var(--hc)">${esc(mref(m))} · new case folder</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <div class="grp"><span class="lbl">1 · Client folder</span>
       ${!N.opts ? '<p class="empty">Looking for the client folder…</p>' : `<div class="flist">${N.opts.map(o => `<button class="frow ${N.parent && N.parent.key === o.key ? 'sel' : ''}" data-nf="parent" data-key="${o.key}"><span class="ficon" style="background:${o.isNew ? 'var(--dc-soft)' : 'var(--saffron-soft)'}">${o.isNew ? '+' : I.folder}</span><span class="fname">${esc(o.label)}<small>${esc(o.sub)}</small></span></button>`).join('')}</div>`}
     </div>
@@ -660,7 +660,7 @@ function runOneTimeFixes() {
 /* an advisory / notice matter becomes a court case: same matter, same folder, notice stage kept in history */
 function sheetToCase(m) {
   const fo = Object.entries(FORUMS).filter(([k]) => k !== 'Advisory');
-  openSheet(`<div class="s-head"><div><small>${esc(m.no)} · convert to case</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+  openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · convert to case</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <form id="tc_form">
     <div class="field"><label for="tc_forum">FORUM</label><select class="in" id="tc_forum" name="forum">${fo.map(([k, x]) => `<option value="${k}" ${k === 'District' ? 'selected' : ''}>${x.label}</option>`).join('')}</select></div>
     <div class="field"><label for="tc_court">HON'BLE COURT</label><input class="in" id="tc_court" name="court" placeholder="e.g. CJM, Lucknow / High Court, Lucknow Bench"></div>
@@ -740,7 +740,7 @@ function pendingOutcome(m) {
 function sheetHearing(m, i) {
   const h = m.hearings[i]; if (!h) return;
   const st = { happened: h.happened || 'Listed' };
-  const draw = () => openSheet(`<div class="s-head"><div><small>${esc(m.no)} · hearing history</small><h1>${dmy(h.date)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+  const draw = () => openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · hearing history</small><h1>${dmy(h.date)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <form id="hform" class="grp" style="gap:12px">
       <div class="field"><label for="h_date">DATE OF LISTING</label><input class="in" type="date" id="h_date" name="date" value="${esc(h.date || '')}"></div>
       <div class="field"><label>WHAT HAPPENED</label><div class="chips">${['Listed', ...HAPPENED].map(x => `<button type="button" class="chip ${st.happened === x ? 'on' : ''}" data-hh="${x}">${x}</button>`).join('')}</div></div>

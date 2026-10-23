@@ -39,7 +39,7 @@ async function sheetClaudeDraft(m) {
   const st = { kind: DRAFT_KINDS[0], what: '', lang: 'en', hist: true, read: true, auth: true, pick: new Set(), files: [], papers: null, paper: typeof paperOf === 'function' ? paperOf('draft') : 'Legal' };
   const draw = () => {
     const A = (m.authorities || []).length;
-    openSheet(`<div class="s-head"><div><small>${esc(m.no)} · free, with your Claude app</small><h1>Draft with Claude</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · free, with your Claude app</small><h1>Draft with Claude</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
       <div class="field"><label for="cd_kind">WHAT TO DRAFT</label><select class="in" id="cd_kind">${DRAFT_KINDS.map(k => `<option ${k === st.kind ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
       <div class="field"><label for="cd_what">YOUR INSTRUCTIONS (OPTIONAL)</label><textarea class="in" id="cd_what" rows="3" placeholder="e.g. Grounds: false implication, delay of 9 days in FIR, co-accused granted bail on 12.09.2026">${esc(st.what)}</textarea></div>
       <div class="chips"><button class="chip ${st.lang === 'en' ? 'on' : ''}" data-cd="lang" data-v="en">English</button><button class="chip ${st.lang === 'hi' ? 'on' : ''}" data-cd="lang" data-v="hi">हिन्दी</button></div>

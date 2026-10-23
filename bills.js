@@ -194,7 +194,7 @@ async function makeReceiptDoc(m, rc, p, b, withSig) {
 
 /* ---------- after a document is made: open / PDF / share / download ---------- */
 function docReady(m, r, title, back, backLabel) {
-  openSheet(`<div class="s-head"><div><small>${esc(m.no)}</small><h1>${esc(title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+  openSheet(`<div class="s-head"><div><small>${esc(mref(m))}</small><h1>${esc(title)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <p class="hint">${esc(r.name)}${r.itemId ? ' · saved in the case folder › ' + (r.where || FEE_DIR_NAME[m.id] || '5 Fees') : ''}</p>
     <div class="three"><button class="act primary" data-dk="open">Open in Word</button><button class="act blue" data-dk="pdf">PDF</button><button class="act blue" data-dk="share">Share</button></div>
     <button class="ghost" data-dk="dl" style="width:100%;margin-top:8px">Download</button>
@@ -261,7 +261,7 @@ function sheetBill(m, bill, replaces) {
     Object.assign(rec, { paper: paperOf('bill'), no: v.b_no.trim(), date: v.b_date || todayIso(), to: v.b_to.trim(), note: v.b_note.trim(), items: items.map(x => ({ d: x.d.trim(), amt: num(x.amt) })), total, terms: st.terms.slice(), extraTerms: st.extra.trim(), dueDays: st.dueDays });
     change(() => { freezeRef(m); m.bills = m.bills || []; if (isNew) m.bills.push(rec); if (isNew && replaces) replaces.by = rec.no; logChange(m, (isNew ? 'Bill made: ' : 'Bill remade: ') + rec.no + ' · ' + rupees(total)); touch(m); });
     const n = +(rec.no.split('/').pop()) || 0; if (isNew && n) bumpSeq('BILL', rec.date, n);
-    openSheet(`<div class="s-head"><div><small>${esc(m.no)}</small><h1>Making bill…</h1></div></div>`);
+    openSheet(`<div class="s-head"><div><small>${esc(mref(m))}</small><h1>Making bill…</h1></div></div>`);
     try { const r = await makeBillDoc(m, rec, st.sig); docReady(m, r, 'Bill ' + rec.no); } catch (er) { toast(er.message); sheetFees(m); }
   }
   draw();
@@ -281,7 +281,7 @@ async function sheetReceipt(m, payId, replaces) {
   delete PAPER_NOW.receipt;
   if (m.folderId && !sheetReceipt.busy) {
     sheetReceipt.busy = true;
-    openSheet(`<div class="s-head"><div><small>${esc(m.no)} · receipt</small><h1>Reading bills in the fees folder…</h1></div></div>`);
+    openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · receipt</small><h1>Reading bills in the fees folder…</h1></div></div>`);
     try { const n = await syncFolderBills(m); if (n) toast(n + ' bill' + (n > 1 ? 's' : '') + ' found in the fees folder', 3000); } catch (e) {}
     sheetReceipt.busy = false;
   }
@@ -314,7 +314,7 @@ async function sheetReceipt(m, payId, replaces) {
     if (sig && !(localStorage.getItem(SIG_KEY) || S.data?.meta?.sigItem)) { const ok = await chooseSignature(); if (!ok) sig = false; }
     change(() => { freezeRef(m); if (replaces) replaces.by = rc.no; pay.billId = billId || ''; pay.receiptNo = rc.no; m.receipts = m.receipts || []; const old = m.receipts.find(x => x.no === rc.no && x.payId === pay.id && x.state !== 'Cancelled'); if (old) { Object.assign(old, rc, { id: old.id }); rc.id = old.id; } else m.receipts.push(rc); logChange(m, 'Receipt ' + rc.no + ' for ' + rupees(pay.amount) + (bill ? ' against bill ' + bill.no : '')); touch(m); });
     const n = +(rc.no.split('/').pop()) || 0; if (n) bumpSeq('RCPT', rc.date, n);
-    openSheet(`<div class="s-head"><div><small>${esc(m.no)}</small><h1>Making receipt…</h1></div></div>`);
+    openSheet(`<div class="s-head"><div><small>${esc(mref(m))}</small><h1>Making receipt…</h1></div></div>`);
     try { const r = await makeReceiptDoc(m, rc, pay, bill, sig); docReady(m, r, 'Receipt ' + rc.no); } catch (er) { toast(er.message); sheetFees(m); }
   };
 }
