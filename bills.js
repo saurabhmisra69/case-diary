@@ -44,7 +44,7 @@ function inWords(n) {
   return parts.join(' ');
 }
 const rw = n => rupees(n) + '/- (Rupees ' + inWords(n) + ' only)';
-const billPaid = (m, b) => (m.payments || []).filter(p => p.billId === b.id).reduce((s, p) => s + num(p.amount), 0);
+const billPaid = (m, b) => (m.payments || []).filter(p => p.billId === b.id).reduce((s, p) => s + num(p.amount) + num(p.tds), 0);
 
 /* ---------- signature ---------- */
 async function getSignature() {
@@ -177,7 +177,8 @@ async function makeBillDoc(m, b, withSig) {
 async function makeReceiptDoc(m, rc, p, b, withSig) {
   const D = window.docx; if (!D) throw new Error('Word library still loading, try again');
   const paidOnBill = b ? billPaid(m, b) : 0;
-  const words = `Received with thanks from ${rc.from || m.clients || '__________'} a sum of ₹${num(p.amount).toLocaleString('en-IN')}/- (Rupees ${inWords(p.amount)} only) by ${p.mode || '__________'}${p.note ? ' (' + p.note + ')' : ''} on ${dmy(p.date || rc.date)} towards professional fees${b ? ' against Bill No. ' + b.no + ' dated ' + dmy(b.date) : ''} in the matter mentioned below.`;
+  const G = num(p.amount) + num(p.tds);
+  const words = `Received with thanks from ${rc.from || m.clients || '__________'} a sum of ₹${G.toLocaleString('en-IN')}/- (Rupees ${inWords(G)} only)${num(p.tds) ? `, being ₹${num(p.amount).toLocaleString('en-IN')}/- by ${p.mode || '__________'} and ₹${num(p.tds).toLocaleString('en-IN')}/- by way of tax deducted at source (TDS) ${tdsSec(p.date || rc.date)}` : ` by ${p.mode || '__________'}`}${p.note ? ' (' + p.note + ')' : ''} on ${dmy(p.date || rc.date)} towards professional fees${b ? ' against Bill No. ' + b.no + ' dated ' + dmy(b.date) : ''} in the matter mentioned below.`;
   const summary = b ? [['Bill amount', rw(b.total)], ['Received against this bill (including this payment)', rw(paidOnBill)], ['Balance on this bill', rw(Math.max(0, num(b.total) - paidOnBill))]]
     : [['Total fees agreed', rw(m.feeAgreed)], ['Total received', rw(m.feeReceived)], ['Balance', rw(feeDue(m))]];
   const kids = [...letterhead(D),
@@ -185,7 +186,7 @@ async function makeReceiptDoc(m, rc, p, b, withSig) {
     ...(rc.state === 'Cancelled' ? [voidLine(D, 'CANCELLED', rc)] : []),
     PB(D, 'RECEIPT', { align: D.AlignmentType.CENTER, bold: true, size: 28, after: 240 }),
     PB(D, words, { after: 200 }),
-    tbl(D, [['Matter Ref.', matterRef(m)], ['Matter', caseRefOf(m)], ...(b ? [['Bill No.', b.no + ' dated ' + dmy(b.date)]] : []), ...(rc.replaces ? [['In place of', 'Cancelled Receipt No. ' + rc.replaces]] : []), ['Amount received', rw(p.amount) + (p.mode ? ' by ' + p.mode : '')]], [2600, 6426], { keyCol: true }),
+    tbl(D, [['Matter Ref.', matterRef(m)], ['Matter', caseRefOf(m)], ...(b ? [['Bill No.', b.no + ' dated ' + dmy(b.date)]] : []), ...(rc.replaces ? [['In place of', 'Cancelled Receipt No. ' + rc.replaces]] : []), ...(num(p.tds) ? [['Received by ' + (p.mode || 'payment'), rw(p.amount)], ['TDS deducted', rw(p.tds)], ['Total credited', rw(G)]] : [['Amount received', rw(p.amount) + (p.mode ? ' by ' + p.mode : '')]])], [2600, 6426], { keyCol: true }),
     PB(D, '', { after: 120 }), tbl(D, summary, [3600, 5426], { keyCol: true }),
     ...(await sigBlock(D, withSig))];
   return saveDoc(m, D, kids, cleanName('Receipt ' + rc.no.replace(/\//g, '-') + ' ' + dmy(rc.date) + (rc.state === 'Cancelled' ? ' CANCELLED' : '')) + '.docx', rc.paper || paperOf('receipt'));
@@ -293,7 +294,7 @@ async function sheetReceipt(m, payId, replaces) {
   const d0 = todayIso();
   openSheet(`<div class="s-head"><div><small style="color:var(--saffron-ink)">${esc(matterRef(m))} · ${replaces ? 'receipt in place of ' + esc(replaces.no) : 'receipt'}</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <form id="rcform" class="grp" style="gap:12px">
-      <div class="field"><label for="r_pay">PAYMENT</label><select class="in" id="r_pay">${pays.map(p => `<option value="${p.id}" ${p.id === st.pay ? 'selected' : ''}>${rupees(p.amount)} · ${p.date ? dmy(p.date) : 'no date'}${p.mode ? ' · ' + esc(p.mode) : ''}${p.receiptNo ? ' · receipt ' + esc(p.receiptNo) : ''}</option>`).join('')}</select></div>
+      <div class="field"><label for="r_pay">PAYMENT</label><select class="in" id="r_pay">${pays.map(p => `<option value="${p.id}" ${p.id === st.pay ? 'selected' : ''}>${rupees(num(p.amount) + num(p.tds))}${num(p.tds) ? ' (incl. TDS)' : ''} · ${p.date ? dmy(p.date) : 'no date'}${p.mode ? ' · ' + esc(p.mode) : ''}${p.receiptNo ? ' · receipt ' + esc(p.receiptNo) : ''}</option>`).join('')}</select></div>
       <div class="field"><label for="r_bill">AGAINST BILL</label><select class="in" id="r_bill"><option value="">— No bill —</option>${bills.map(b => { const paid = billPaid(m, b); return `<option value="${b.id}" ${b.id === st.bill ? 'selected' : ''}>${esc(b.no)} · ${b.date ? dmy(b.date) : ''} · ${num(b.total) ? rupees(b.total) : 'amount ?'} · ${paid ? 'part-paid ' + rupees(paid) : 'unpaid'}${b.fromFolder ? ' · ' + esc(FEE_DIR_NAME[m.id] || 'fees folder') : ''}</option>`; }).join('')}</select>
         <p class="hint" style="margin:6px 0 0">${bills.length ? 'Unpaid bills of this matter, including those kept in its fees folder (' + esc(FEE_DIR_NAME[m.id] || '5 …') + ').' : 'No unpaid bill on this matter or in its fees folder.'} <button type="button" class="linkbtn" data-rx="bill">Make a bill</button></p></div>
       <div class="two"><div class="field"><label for="r_no">RECEIPT NO.</label><input class="in" id="r_no" value="${esc(pp && pp.receiptNo ? pp.receiptNo : numNo('RCPT', d0, nextSeq('RCPT', d0)))}"></div><div class="field"><label for="r_date">DATE</label><input class="in" type="date" id="r_date" value="${esc(d0)}"></div></div>
@@ -307,7 +308,7 @@ async function sheetReceipt(m, payId, replaces) {
   $('#rcform').onsubmit = async e => {
     e.preventDefault();
     const pay = (m.payments || []).find(x => x.id === $('#r_pay').value), billId = $('#r_bill').value, bill = (m.bills || []).find(x => x.id === billId) || null;
-    const rc = { id: uid(), no: $('#r_no').value.trim(), date: $('#r_date').value || todayIso(), from: $('#r_from').value.trim(), payId: pay.id, billId, paper: paperOf('receipt'), amount: num(pay.amount), mode: pay.mode || '', ...(replaces ? { replaces: replaces.no } : {}) };
+    const rc = { id: uid(), no: $('#r_no').value.trim(), date: $('#r_date').value || todayIso(), from: $('#r_from').value.trim(), payId: pay.id, billId, paper: paperOf('receipt'), amount: num(pay.amount) + num(pay.tds), tds: num(pay.tds), mode: pay.mode || '', ...(replaces ? { replaces: replaces.no } : {}) };
     if ((m.receipts || []).some(x => x.no === rc.no && x.state !== 'Cancelled' && x.payId !== pay.id) || live().some(x => x.id !== m.id && (x.receipts || []).some(y => y.no === rc.no))) return toast('Receipt no. ' + rc.no + ' is already used');
     let sig = $('#r_sig').checked;
     if (sig && !(localStorage.getItem(SIG_KEY) || S.data?.meta?.sigItem)) { const ok = await chooseSignature(); if (!ok) sig = false; }

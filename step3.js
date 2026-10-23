@@ -89,9 +89,9 @@ VIEWS.fees = function () {
   const agreed = ms.reduce((s, m) => s + num(m.feeAgreed), 0), recd = ms.reduce((s, m) => s + num(m.feeReceived), 0), due = ms.reduce((s, m) => s + feeDue(m), 0);
   const pays = [];
   for (const m of live()) for (const p of (m.payments || [])) pays.push({ m, p });
-  pays.sort((a, b) => b.p.date.localeCompare(a.p.date));
+  pays.sort((a, b) => (b.p.date || '').localeCompare(a.p.date || ''));
   const t = todayIso(), month = t.slice(0, 7);
-  const thisMonth = pays.filter(x => x.p.date.startsWith(month)).reduce((s, x) => s + num(x.p.amount), 0);
+  const thisMonth = pays.filter(x => (x.p.date || '').startsWith(month)).reduce((s, x) => s + gross(x.p), 0);
   const sorted = [...ms].sort((a, b) => feeDue(b) - feeDue(a));
   return pageHead('Fees') + `<main>
     <section class="tiles">
@@ -99,28 +99,33 @@ VIEWS.fees = function () {
       <div class="tile" style="background:var(--dc-soft)"><span style="color:var(--dc-ink)">Received this month</span><b style="color:var(--dc-ink)">${rupees(thisMonth)}</b><span>${MONL[new Date().getMonth()]}</span></div>
       <div class="tile wide" style="background:var(--hc-soft)"><span style="color:var(--hc)">All matters with fees</span><b style="color:var(--hc);font-size:20px">${rupees(recd)} of ${rupees(agreed)} received</b><span>${ms.length} matter${ms.length === 1 ? '' : 's'}</span></div>
     </section>
+    <section class="acts" style="grid-template-columns:1fr 1fr 1fr;margin:0 0 4px"><button class="act blue" data-act="dues">Dues by age</button><button class="act blue" data-act="careg">CA register</button><button class="act blue" data-act="juniors">Juniors</button></section>
     <section class="list"><div class="h2"><h2>By matter</h2></div>
       ${sorted.length ? sorted.map(m => `<div class="card feerow"><button class="m-col" data-act="open" data-id="${m.id}" style="border:0;background:none;text-align:left;padding:0"><span class="m-title">${esc(m.title)}</span><span class="m-meta">${esc(m.no)} · ${rupees(m.feeReceived)} of ${rupees(m.feeAgreed)}</span></button><span class="feedue ${feeDue(m) ? '' : 'paid'}">${feeDue(m) ? rupees(feeDue(m)) : 'Paid'}</span><button class="act primary" data-act="pay" data-id="${m.id}" style="min-height:40px">+ Payment</button></div>`).join('') : '<div class="card empty">No fees entered yet. Add the agreed fee in a matter (Edit), then record payments here.</div>'}
     </section>
-    ${pays.length ? `<section class="card"><div class="h2"><h2>Recent payments</h2></div><div class="hist" style="margin-top:8px">${pays.slice(0, 25).map(({ m, p }) => `<div><b>${dmy(p.date)}</b><span><b style="font-family:inherit">${rupees(p.amount)}</b> · ${esc(p.mode || '')} · ${esc(m.title)}${p.note ? '<br><span style="color:var(--muted)">' + esc(p.note) + '</span>' : ''}</span></div>`).join('')}</div></section>` : ''}
+    ${pays.length ? `<section class="card"><div class="h2"><h2>Recent payments</h2></div><div class="hist" style="margin-top:8px">${pays.slice(0, 25).map(({ m, p }) => `<div><b>${dmy(p.date)}</b><span><b style="font-family:inherit">${rupees(gross(p))}</b>${num(p.tds) ? ' <small>(incl. TDS ' + rupees(p.tds) + ')</small>' : ''} · ${esc(p.mode || '')} · ${esc(m.title)}${p.note ? '<br><span style="color:var(--muted)">' + esc(p.note) + '</span>' : ''}</span></div>`).join('')}</div></section>` : ''}
   </main>`;
 };
 function sheetPay(m) { sheetFees(m, 'pay'); }
 
 /* ---------- fees on a matter: agreed in parts, received in parts; every entry can be edited or removed ---------- */
 const PAY_MODES = ['Cash', 'UPI', 'Bank transfer', 'Cheque'];
+const gross = p => num(p.amount) + num(p.tds);   // TDS deducted by the client counts as fee received
+/* payments from 1.4.2026 fall under the Income-tax Act, 2025 (s. 393(1), certificate Form 131); earlier ones under the 1961 Act (s. 194J, Form 16A) */
+const tdsSec = iso => (iso || todayIso()) >= '2026-04-01' ? 'u/s 393(1) of the Income-tax Act, 2025' : 'u/s 194J of the Income-tax Act, 1961';
+const tdsCert = iso => (iso || todayIso()) >= '2026-04-01' ? 'Form 131' : 'Form 16A';
 function feesTidy(m) {   // old matters: turn the two totals into entries once
   if (!m.agreedParts) m.agreedParts = num(m.feeAgreed) ? [{ id: uid(), date: m.created || '', amount: num(m.feeAgreed), for: 'Fees agreed' }] : [];
   m.payments = (m.payments || []).filter(p => !p.deleted);
-  const paid = m.payments.reduce((s, p) => s + num(p.amount), 0);
+  const paid = m.payments.reduce((s, p) => s + gross(p), 0);
   if (num(m.feeReceived) > paid) m.payments.unshift({ id: uid(), date: '', amount: num(m.feeReceived) - paid, mode: '', note: 'Received earlier (details not entered)' });
 }
 function feesTotal(m) {
   m.feeAgreed = String((m.agreedParts || []).reduce((s, p) => s + num(p.amount), 0));
-  m.feeReceived = String((m.payments || []).reduce((s, p) => s + num(p.amount), 0));
+  m.feeReceived = String((m.payments || []).reduce((s, p) => s + gross(p), 0));
 }
 function sheetFees(m, focus) {
-  if (!m.agreedParts || num(m.feeReceived) !== (m.payments || []).reduce((s, p) => s + num(p.amount), 0)) change(() => { feesTidy(m); feesTotal(m); touch(m); });
+  if (!m.agreedParts || num(m.feeReceived) !== (m.payments || []).reduce((s, p) => s + gross(p), 0)) change(() => { feesTidy(m); feesTotal(m); touch(m); });
   const st = { edit: null, kind: focus === 'agreed' ? 'agreed' : 'pay', mode: 'UPI' };
   const draw = () => {
     const due = feeDue(m), ed = st.edit;
@@ -136,7 +141,7 @@ function sheetFees(m, focus) {
         ${ag.length ? `<div class="hist">${ag.map(p => `<div><b>${p.date ? dmy(p.date) : '—'}</b><span><b style="font-family:inherit">${rupees(p.amount)}</b>${p.for ? ' · ' + esc(p.for) : ''} <button class="linkbtn" data-fe="edita" data-id="${p.id}">Edit</button> <button class="linkbtn" data-fe="dela" data-id="${p.id}" style="color:var(--red)">Remove</button></span></div>`).join('')}</div>` : '<p class="hint" style="margin:0">Nothing agreed yet.</p>'}
         ${formAgreed ? '' : '<button class="ghost" data-fe="newa" style="width:100%;margin-top:8px">+ Add to fees agreed</button>'}</div>
       <div class="grp"><span class="lbl">Fees received</span>
-        ${pays.length ? `<div class="hist">${pays.map(p => `<div><b>${p.date ? dmy(p.date) : '—'}</b><span><b style="font-family:inherit">${rupees(p.amount)}</b>${p.mode ? ' · ' + esc(p.mode) : ''}${p.note ? '<br><span style="color:var(--muted)">' + esc(p.note) + '</span>' : ''} ${p.receiptNo ? '<br><small>Receipt ' + esc(p.receiptNo) + '</small>' : ''} <button class="linkbtn" data-act="mkrcpt" data-id="${m.id}" data-p="${p.id}">Receipt</button> <button class="linkbtn" data-fe="editp" data-id="${p.id}">Edit</button> <button class="linkbtn" data-fe="delp" data-id="${p.id}" style="color:var(--red)">Remove</button></span></div>`).join('')}</div>` : '<p class="hint" style="margin:0">No payment recorded yet.</p>'}
+        ${pays.length ? `<div class="hist">${pays.map(p => `<div><b>${p.date ? dmy(p.date) : '—'}</b><span><b style="font-family:inherit">${rupees(gross(p))}</b>${num(p.tds) ? ` <small>(${rupees(p.amount)} received + ${rupees(p.tds)} TDS · <button class="linkbtn" data-fe="f16a" data-id="${p.id}" style="color:${p.f16a ? 'var(--dc-ink)' : 'var(--red)'}">${p.f16a ? tdsCert(p.date) + ' ✓' : tdsCert(p.date) + ' awaited'}</button>)</small>` : ''}${p.mode ? ' · ' + esc(p.mode) : ''}${p.note ? '<br><span style="color:var(--muted)">' + esc(p.note) + '</span>' : ''} ${p.receiptNo ? '<br><small>Receipt ' + esc(p.receiptNo) + '</small>' : ''} <button class="linkbtn" data-act="mkrcpt" data-id="${m.id}" data-p="${p.id}">Receipt</button> <button class="linkbtn" data-fe="editp" data-id="${p.id}">Edit</button> <button class="linkbtn" data-fe="delp" data-id="${p.id}" style="color:var(--red)">Remove</button></span></div>`).join('')}</div>` : '<p class="hint" style="margin:0">No payment recorded yet.</p>'}
         ${formAgreed ? '<button class="ghost" data-fe="newp" style="width:100%;margin-top:8px">+ Add payment received</button>' : ''}</div>
       <form id="feeform" class="grp fee-form" style="gap:12px">
         <span class="lbl">${ed ? 'Edit ' : 'Add '}${formAgreed ? 'fees agreed' : 'payment received'}</span>
@@ -144,6 +149,8 @@ function sheetFees(m, focus) {
           <div class="field"><label for="fe_date">DATE</label><input class="in" id="fe_date" name="date" type="date" value="${esc(v.date ?? todayIso())}"></div></div>
         ${formAgreed ? `<div class="field"><label for="fe_for">FOR</label><input class="in" id="fe_for" name="for" list="fe_fors" value="${esc(v.for || '')}" placeholder="e.g. Filing and hearing, Bail, per appearance"><datalist id="fe_fors">${['Filing and hearing', 'Drafting', 'Appearance', 'Bail', 'Final arguments', 'Additional work', 'Opinion'].map(x => `<option>${x}</option>`).join('')}</datalist></div>`
         : `<div class="field"><label>MODE</label><div class="chips">${PAY_MODES.map(x => `<button type="button" class="chip ${(st.mode) === x ? 'on' : ''}" data-fe="mode" data-v="${x}">${x}</button>`).join('')}</div></div>
+           <div class="field"><label for="fe_tds">TDS DEDUCTED BY CLIENT (₹, IF ANY)</label><div style="display:flex;gap:8px"><input class="in" id="fe_tds" name="tds" inputmode="numeric" value="${esc(v.tds || '')}" placeholder="blank if no TDS" style="flex:1"><button type="button" class="ghost" data-fe="tds10" style="margin:0;white-space:nowrap">TDS 10%</button></div>
+             <p class="hint" style="margin:4px 0 0">Amount above = what reached you. TDS is added to fees received, and the receipt shows both.</p></div>
            <div class="field"><label for="fe_note">NOTE</label><input class="in" id="fe_note" name="note" value="${esc(v.note || '')}" placeholder="e.g. UTR / cheque no., part payment for filing"></div>
            ${!ed && waOf(m) ? '<div class="toggles"><label><span>Send receipt on WhatsApp</span><input type="checkbox" name="wa" checked></label></div>' : ''}`}
         <button class="save" type="submit">${ed ? 'Save changes' : formAgreed ? 'Add to fees agreed' : 'Save payment'}</button>
@@ -151,7 +158,7 @@ function sheetFees(m, focus) {
       </form>`);
     $('#feeform').onsubmit = submit;
   };
-  const keep = () => { const v = {}; ['fe_amt', 'fe_date', 'fe_for', 'fe_note'].forEach(id => { const el = $('#' + id); if (el) v[id] = el.value; }); return v; };
+  const keep = () => { const v = {}; ['fe_amt', 'fe_date', 'fe_for', 'fe_note', 'fe_tds'].forEach(id => { const el = $('#' + id); if (el) v[id] = el.value; }); return v; };
   const restore = v => Object.entries(v).forEach(([id, val]) => { const el = $('#' + id); if (el) el.value = val; });
   function submit(e) {
     e.preventDefault();
@@ -163,15 +170,16 @@ function sheetFees(m, focus) {
         if (ed) { const was = rupees(ed.amount); Object.assign(ed, { amount: amt, date: fd.date || '', for: (fd.for || '').trim() }); logChange(m, 'Fees agreed entry edited: ' + was + ' → ' + rupees(amt)); }
         else { m.agreedParts.push({ id: uid(), date: fd.date || todayIso(), amount: amt, for: (fd.for || '').trim() }); logChange(m, 'Fees agreed + ' + rupees(amt) + (fd.for ? ' (' + fd.for.trim() + ')' : '')); }
       } else {
-        if (ed) { const was = rupees(ed.amount) + ' ' + (ed.date ? dmy(ed.date) : ''); Object.assign(ed, { amount: amt, date: fd.date || '', mode: st.mode, note: (fd.note || '').trim() }); logChange(m, 'Payment edited: ' + was + ' → ' + rupees(amt) + ' ' + (fd.date ? dmy(fd.date) : '')); }
-        else { m.payments.push({ id: uid(), date: fd.date || todayIso(), amount: amt, mode: st.mode, note: (fd.note || '').trim() }); logChange(m, 'Payment received ' + rupees(amt) + (st.mode ? ' by ' + st.mode : '')); }
+        if (ed) { const was = rupees(ed.amount) + ' ' + (ed.date ? dmy(ed.date) : ''); Object.assign(ed, { amount: amt, tds: num(fd.tds) || 0, date: fd.date || '', mode: st.mode, note: (fd.note || '').trim() }); logChange(m, 'Payment edited: ' + was + ' → ' + rupees(amt) + ' ' + (fd.date ? dmy(fd.date) : '')); }
+        else { const ob = (m.bills || []).filter(b => !b.state && billPaid(m, b) < num(b.total)).sort((x, y) => (x.date || '').localeCompare(y.date || ''))[0];
+          m.payments.push({ id: uid(), date: fd.date || todayIso(), amount: amt, tds: num(fd.tds) || 0, mode: st.mode, note: (fd.note || '').trim(), billId: ob ? ob.id : '' }); logChange(m, 'Payment received ' + rupees(amt) + (st.mode ? ' by ' + st.mode : '') + (num(fd.tds) ? ' + TDS ' + rupees(fd.tds) : '')); }
       }
       feesTotal(m); touch(m);
     });
     toast(ed ? 'Saved' : st.kind === 'agreed' ? 'Added to fees agreed' : 'Payment of ' + rupees(amt) + ' recorded');
     if (!ed && st.kind === 'pay' && fd.wa && waOf(m)) {
       const bal = feeDue(m);
-      const txt = `Namaste.\nReceived with thanks ${rupees(amt)} on ${dmy(fd.date || todayIso())}${st.mode ? ' by ' + st.mode : ''} towards professional fees in your matter: ${m.title}${m.caseNo ? ' (' + m.caseNo + ')' : ''}.${num(m.feeAgreed) ? `\nTotal received: ${rupees(m.feeReceived)} of ${rupees(m.feeAgreed)}.${bal ? ' Balance: ' + rupees(bal) + '.' : ' Fees fully paid.'}` : ''}\n\nSaurabh Misra, Advocate`;
+      const txt = `Namaste.\nReceived with thanks ${rupees(amt + num(fd.tds))}${num(fd.tds) ? ' (' + rupees(amt) + ' + TDS ' + rupees(fd.tds) + ')' : ''} on ${dmy(fd.date || todayIso())}${st.mode ? ' by ' + st.mode : ''} towards professional fees in your matter: ${m.title}${m.caseNo ? ' (' + m.caseNo + ')' : ''}.${num(m.feeAgreed) ? `\nTotal received: ${rupees(m.feeReceived)} of ${rupees(m.feeAgreed)}.${bal ? ' Balance: ' + rupees(bal) + '.' : ' Fees fully paid.'}` : ''}\n\nSaurabh Misra, Advocate`;
       window.open('https://wa.me/' + waOf(m) + '?text=' + encodeURIComponent(txt), '_blank');
     }
     st.edit = null; draw();
@@ -181,6 +189,8 @@ function sheetFees(m, focus) {
     const b = e.target.closest('[data-fe]'); if (!b) return;
     const a = b.dataset.fe, id = b.dataset.id;
     if (a === 'mode') { const v = keep(); st.mode = b.dataset.v; draw(); restore(v); return; }
+    if (a === 'tds10') { const net = num($('#fe_amt').value); if (!net) return toast('Enter the amount received first'); $('#fe_tds').value = Math.round(net / 9); toast('TDS ' + rupees(Math.round(net / 9)) + ' · gross fee ' + rupees(net + Math.round(net / 9))); return; }
+    if (a === 'f16a') { const p = m.payments.find(x => x.id === id); if (p) { change(() => { p.f16a = !p.f16a; logChange(m, tdsCert(p.date) + ' (TDS certificate) ' + (p.f16a ? 'received' : 'marked awaited') + ' for TDS ' + rupees(p.tds)); touch(m); }); draw(); } return; }
     if (a === 'newa' || a === 'newp') { st.kind = a === 'newa' ? 'agreed' : 'pay'; st.edit = null; draw(); setTimeout(() => $('#fe_amt')?.focus(), 60); return; }
     if (a === 'cancel') { st.edit = null; draw(); return; }
     if (a === 'edita' || a === 'editp') {
