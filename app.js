@@ -455,6 +455,7 @@ function viewHome() {
       <button class="tile" style="background:var(--saffron-soft)" data-act="filter" data-f="fees"><span style="color:var(--saffron-ink)">Fees pending</span><b style="color:var(--saffron-ink)">${rupees(fees)}</b><span>${feeClients} matter${feeClients === 1 ? '' : 's'}</span></button>
       <button class="tile" style="background:var(--hc-soft)" data-act="filter" data-f="need"><span style="color:var(--hc)">Need a date</span><b style="color:var(--hc)">${need.length}</b><span>Date passed or blank</span></button>
       <button class="tile" style="background:var(--dc-soft)" data-act="filter" data-f="pending"><span style="color:var(--dc-ink)">Pending matters</span><b style="color:var(--dc-ink)">${pending.length}</b><span>Including reserved</span></button>
+      ${typeof allotTile === 'function' ? allotTile() : ''}
       <button class="tile wide" style="background:var(--hc-soft)" data-act="tab" data-tab="limit"><span style="color:var(--hc)">Limitation</span><b style="color:var(--hc);font-size:19px">Calculate last date</b><span>Appeal, revision, review, s.34, NI Act and more</span></button>
     </section>
   </main>`;
@@ -516,6 +517,7 @@ function viewMatters() {
     dups: m => dupsOf(m).length > 0,
     all: () => true,
   };
+  if (/^al_/.test(f || '')) { const id = f.slice(3); tests[f] = m => isOpen(m) && (id === 'self' ? !m.allot || m.allot === 'self' || !jName(m.allot) : m.allot === id); }
   if (/^st_/.test(f || '')) { const k = f.slice(3); tests[f] = k === 'tofile' ? m => !isRetainer(m) && ['fee', 'prep'].includes(stageOf(m)) : m => !isRetainer(m) && stageOf(m) === k; }
   const ms = live().filter(tests[f] || tests.all).filter(m => !S.stf || (m.status || 'Pending') === S.stf).filter(m => matches(m, S.q))
     .sort((a, b) => f === 'deadline' ? a.deadline.localeCompare(b.deadline) : ((isOpen(b) - isOpen(a)) || ((+a.year || 0) - (+b.year || 0)) || ((+a.n || 0) - (+b.n || 0))));
@@ -524,10 +526,10 @@ function viewMatters() {
   return `<header class="phead">
     <div class="top-row"><h1>Matters</h1><button id="syncbtn" class="sync" data-act="sync"></button></div>
     <label class="search">${I.search}<input type="search" placeholder="Search matters" data-act="q" value="${esc(S.q)}"></label>
-    <div class="filters">${chip('pending', 'Pending')}${chip('st_consult', 'Consultations')}${chip('st_tofile', 'To be filed')}${chip('st_filed', 'Filed – no date yet')}${chip('need', 'Need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory / Pre-litigation')}${live().some(m => dupsOf(m).length) ? chip('dups', '<span class="dupstar">★</span> Duplicates') : ''}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
+    <div class="filters">${/^al_/.test(f || '') ? chip(f, 'Allotted: ' + esc(f === 'al_self' ? 'Self' : jShort(juniors().find(j => j.id === f.slice(3))))) : ''}${chip('pending', 'Pending')}${chip('st_consult', 'Consultations')}${chip('st_tofile', 'To be filed')}${chip('st_filed', 'Filed – no date yet')}${chip('need', 'Need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory / Pre-litigation')}${live().some(m => dupsOf(m).length) ? chip('dups', '<span class="dupstar">★</span> Duplicates') : ''}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
   </header>
   <main><div class="list">
-    <div class="h2"><span class="sub">${ms.length} matter${ms.length === 1 ? '' : 's'}${S.stf ? ' · ' + esc(S.stf) + ' <button class="linkbtn" data-act="filter" data-f="' + f + '">clear</button>' : ''}</span><button class="linkbtn" data-act="cats">Categories</button></div>
+    <div class="h2"><span class="sub">${ms.length} matter${ms.length === 1 ? '' : 's'}${S.stf ? ' · ' + esc(S.stf) + ' <button class="linkbtn" data-act="filter" data-f="' + f + '">clear</button>' : ''}</span><span><button class="linkbtn" data-act="allotted">Allotted</button> · <button class="linkbtn" data-act="cats">Categories</button></span></div>
     ${ms.length ? ms.map((m, i) => {
       const fo = forumOf(m), late = needsDate(m);
       const head = split && i === 0 ? `<div class="h2" style="margin-top:4px"><h2>Pending</h2><span class="sub">${firstShut}</span></div>` : split && i === firstShut ? `<div class="h2" style="margin-top:14px"><h2>Decided / closed</h2><span class="sub">${ms.length - firstShut}</span></div>` : '';

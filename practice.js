@@ -363,3 +363,31 @@ document.addEventListener('click', async e => {
   if (a === 'authlist') { openSheet(`<div class="s-head"><div><small>${esc(mref(m))}</small><h1>Making list of authorities…</h1></div></div>`);
     try { const r = await makeAuthorityList(m); docReady(m, r, 'List of authorities', () => { closeSheet(); render(); }, 'Back to the matter'); } catch (er) { toast(er.message); closeSheet(); } }
 });
+
+/* who has which matters: Self and each junior, pending first; one tap shows the list, another sends it to the junior */
+const jShort = j => j ? ((j.name.match(/\(([^)]+)\)/) || [])[1] || j.name.split(/[\s,]+/)[0]) : 'Self';
+function allotRows() {
+  const rows = [{ id: 'self', name: 'Self', short: 'Self', j: null }, ...juniors().map(j => ({ id: j.id, name: j.name, short: jShort(j), j }))];
+  for (const r of rows) { const ms = live().filter(m => (r.id === 'self' ? !m.allot || m.allot === 'self' || !jName(m.allot) : m.allot === r.id)); r.pend = ms.filter(isOpen); r.done = ms.length - r.pend.length; }
+  return rows;
+}
+function allotTile() {
+  const R = allotRows(); if (R.length < 2) return '';
+  return `<button class="tile wide" style="background:var(--adv-soft, #EFEAF6)" data-act="allotted"><span style="color:var(--adv, #6B5B95)">Allotted — pending matters</span><b style="color:var(--adv, #6B5B95);font-size:17px">${R.map(r => esc(r.short) + ' ' + r.pend.length).join(' · ')}</b><span>Tap to see who has which matters</span></button>`;
+}
+function sheetAllotted() {
+  const R = allotRows();
+  openSheet(`<div class="s-head"><div><small>Pending matters by who handles them</small><h1>Allotted</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    ${R.map(r => `<div class="card" style="padding:12px 14px;box-shadow:none;border:1px solid var(--line);margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>${esc(r.name)}</b><b style="font-family:var(--mono)">${r.pend.length} pending</b></div>
+      <p class="hint" style="margin:2px 0 8px">${r.done} decided / closed${r.pend.filter(m => !m.nextDate || m.nextDate < todayIso()).length ? ' · ' + r.pend.filter(m => !m.nextDate || m.nextDate < todayIso()).length + ' need a date' : ''}</p>
+      <div class="hist">${r.pend.slice().sort((a, b) => (a.nextDate || '9999').localeCompare(b.nextDate || '9999')).slice(0, 6).map(m => `<button class="hrow" data-act="open" data-id="${m.id}"><b>${m.nextDate ? dmy(m.nextDate).slice(0, 5) : '—'}</b><span>${esc(m.title || m.clients || '')}<br><small>${esc(mref(m))}${m.court ? ' · ' + esc(m.court) : ''}</small></span></button>`).join('')}</div>
+      <div class="chips" style="margin-top:8px">${r.pend.length ? `<button class="chip on" data-act="filter" data-f="al_${r.id}">All ${r.pend.length} in Matters</button>` : ''}${r.j && jWa(r.j) && r.pend.length ? `<button class="chip" data-al="wa" data-j="${r.id}">Send his list on WhatsApp</button>` : ''}</div></div>`).join('')}
+    <button class="ghost" data-act="jtasks">Juniors &amp; tasks</button>`);
+  $('#sheet-root').onclick = e => { const b = e.target.closest('[data-al="wa"]'); if (!b) return;
+    const r = allotRows().find(x => x.id === b.dataset.j); if (!r) return;
+    const list = r.pend.slice().sort((a, c) => (a.nextDate || '9999').localeCompare(c.nextDate || '9999')).map((m, i) => `${i + 1}. ${m.title || m.clients}${m.caseNo ? ' — ' + (m.type ? m.type + ' ' : '') + m.caseNo : ''}${m.court ? ', ' + m.court : ''} — next: ${m.nextDate ? dmy(m.nextDate) + (m.purpose ? ' (' + m.purpose + ')' : '') : 'date to be found'}`).join('\n');
+    const txt = `${r.name.replace(/,?\s*Advocate$/i, '')} ji,\nMatters allotted to you (${r.pend.length}) as on ${dmy(todayIso())}:\n${list}\n\n— Saurabh Misra, Advocate`;
+    window.open('https://wa.me/' + phoneDigits(jWa(r.j)) + '?text=' + encodeURIComponent(txt), '_blank'); };
+}
+document.addEventListener('click', e => { if (e.target.closest('[data-act="allotted"]')) sheetAllotted(); });
