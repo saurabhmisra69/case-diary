@@ -3,7 +3,7 @@
    Search by section number or any word; open a section from any matter. */
 'use strict';
 
-const ACTS_DIR = DIARY_DIR + '/Bare Acts', ACT_CACHE = 'cd-acts';
+const ACTS_DIR = DIARY_DIR + '/Bare Acts', ACT_CACHE = 'cd-acts', ACT_V = 2;   // ACT_V: version of the section reader; Acts read by an older one are read again
 const ACTS = [
   { k: 'BNS', n: 'Bharatiya Nyaya Sanhita, 2023', rx: /nyaya\s*sanhita|\bBNS\b/i },
   { k: 'BNSS', n: 'Bharatiya Nagarik Suraksha Sanhita, 2023', rx: /nagarik\s*suraksha|\bBNSS\b/i },
@@ -41,9 +41,10 @@ async function pdfFullText(buf) {
 function splitSections(text) {
   const t = text.replace(/\r/g, '').replace(/[ \t]+/g, ' ');
   // a section starts on a new line: "420. Cheating and dishonestly inducing delivery of property.—Whoever ..."
-  const rx = /(?:^|\n)\s*(\d{1,4}[A-Z]{0,3})\.\s+([A-Z][^\n]{1,220}?)\s*\.?\s*[—–]\s*/g;
+  // the heading may run onto the next line, but never past the start of another numbered line; India Code uses —, – or ― after it
+  const rx = /(?:^|\n)\s*(\d{1,4}[A-Z]{0,3})\.\s+([A-Z](?:(?!\n\s*\d{1,4}[A-Z]{0,3}\.\s)[^—–―−]){0,260}?)\s*\.?\s*(?:[—–―−]|\.\s?-{1,2}(?=\s?[A-Z(]))\s*/g;
   const hits = []; let m;
-  while ((m = rx.exec(t))) hits.push({ no: m[1], head: m[2].replace(/\.$/, '').trim(), at: m.index, body: rx.lastIndex });
+  while ((m = rx.exec(t))) hits.push({ no: m[1], head: m[2].replace(/\s+/g, ' ').replace(/\.$/, '').trim(), at: m.index, body: rx.lastIndex });
   const seen = new Set(), out = [];
   hits.forEach((h, i) => { if (seen.has(h.no)) return; seen.add(h.no); const end = i + 1 < hits.length ? hits[i + 1].at : t.length;
     out.push({ no: h.no, head: h.head, text: t.slice(h.body, end).replace(/\n(?!\s*\(\w+\))/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 20000) }); });
@@ -67,13 +68,13 @@ async function addActFile(a, it, buf, show) {
   if (secs.length < 5) throw new Error('Could not find the sections in ' + it.name + ' — is it the India Code PDF of the Act?');
   await g(drivePath(ACTS_DIR + '/_text/' + a.k + '.json') + ':/content', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(secs) });
   await actCachePut(a.k, secs); AX[a.k] = secs;
-  change(d => { d.meta = d.meta || {}; d.meta.acts = Object.assign({}, d.meta.acts, { [a.k]: { itemId: it.id, name: it.name, sections: secs.length, added: todayIso(), u: Date.now() } }); });
+  change(d => { d.meta = d.meta || {}; d.meta.acts = Object.assign({}, d.meta.acts, { [a.k]: { itemId: it.id, name: it.name, sections: secs.length, added: todayIso(), u: Date.now(), v: ACT_V } }); });
   return secs.length;
 }
 /* files put in the Bare Acts folder by hand (or from the PC) are picked up */
 async function scanActs(show) {
   const dir = await actsFolder(), files = (await listChildren(dir.id)).filter(it => it.file && /\.(pdf|docx)$/i.test(it.name)); let n = 0;
-  for (const it of files) { const a = ACT_OF(it.name); if (!a || (shelf()[a.k] && shelf()[a.k].itemId === it.id)) continue;
+  for (const it of files) { const a = ACT_OF(it.name); if (!a || (shelf()[a.k] && shelf()[a.k].itemId === it.id && (shelf()[a.k].v || 1) >= ACT_V)) continue;
     try { const r = await g('/me/drive/items/' + it.id + '/content'); await addActFile(a, it, await (await r.blob()).arrayBuffer(), show); n++; } catch (e) { toast(e.message, 5000); } }
   return n;
 }
