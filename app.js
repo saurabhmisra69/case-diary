@@ -505,7 +505,8 @@ function viewMatters() {
     all: () => true,
   };
   const ms = live().filter(tests[f] || tests.all).filter(m => !S.stf || (m.status || 'Pending') === S.stf).filter(m => matches(m, S.q))
-    .sort((a, b) => f === 'deadline' ? a.deadline.localeCompare(b.deadline) : ((a.nextDate || '9999').localeCompare(b.nextDate || '9999') || byNo(b, a)));
+    .sort((a, b) => f === 'deadline' ? a.deadline.localeCompare(b.deadline) : ((isOpen(b) - isOpen(a)) || ((+a.year || 0) - (+b.year || 0)) || ((+a.n || 0) - (+b.n || 0))));
+  const firstShut = f === 'deadline' ? -1 : ms.findIndex(m => !isOpen(m)), split = firstShut > 0;   // a heading between pending and decided
   const chip = (k, l) => `<button class="${f === k ? 'on' : ''}" data-act="filter" data-f="${k}">${l}</button>`;
   return `<header class="phead">
     <div class="top-row"><h1>Matters</h1><button id="syncbtn" class="sync" data-act="sync"></button></div>
@@ -514,10 +515,11 @@ function viewMatters() {
   </header>
   <main><div class="list">
     <div class="h2"><span class="sub">${ms.length} matter${ms.length === 1 ? '' : 's'}${S.stf ? ' · ' + esc(S.stf) + ' <button class="linkbtn" data-act="filter" data-f="' + f + '">clear</button>' : ''}</span><button class="linkbtn" data-act="cats">Categories</button></div>
-    ${ms.length ? ms.map(m => {
+    ${ms.length ? ms.map((m, i) => {
       const fo = forumOf(m), late = needsDate(m);
+      const head = split && i === 0 ? `<div class="h2" style="margin-top:4px"><h2>Pending</h2><span class="sub">${firstShut}</span></div>` : split && i === firstShut ? `<div class="h2" style="margin-top:14px"><h2>Decided / closed</h2><span class="sub">${ms.length - firstShut}</span></div>` : '';
       const right = f === 'fees' ? rupees(feeDue(m)) : f === 'deadline' ? dmy(m.deadline) : (m.nextDate ? dmy(m.nextDate) : shortSt(m.status));
-      return `<button class="card row" data-act="open" data-id="${m.id}">
+      return head + `<button class="card row" data-act="open" data-id="${m.id}">
         <div class="item sm" style="background:${fo.c}"><small>REF.</small><b>${esc(mrefBox(m))}</b></div>
         <span class="m-col"><span class="m-title">${dupStar(m)}${esc(m.title || m.clients)}</span><span class="m-meta">${esc([m.court, metaLine(m)].filter(Boolean).join(' · '))}</span></span>
         <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:${late ? 'var(--red)' : 'var(--muted)'};text-align:right">${esc(right)}</span>

@@ -88,18 +88,20 @@ function clientGroups() {
   for (const gr of map.values()) gr.aka = aliasesOf(gr.ms[0].clients);
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
+const sortName = n => String(n || '').replace(/^\s*((dr|smt|shri|sri|sh|mr|mrs|ms|m\/s|messrs|km|kumari|late|the)\.?\s+)+/i, '');   // Dr. Kanav Jain sorts under K
 VIEWS.clients = function () {
   const q = (S.cq || '').toLowerCase();
-  const gs = clientGroups().filter(gr => !q || gr.name.toLowerCase().includes(q) || gr.aka.some(a => a.toLowerCase().includes(q)) || gr.ms.some(m => matches(m, q)));
+  const gs = clientGroups().map(gr => Object.assign(gr, { live: gr.ms.some(m => isOpen(m)) })).sort((a, b) => (b.live - a.live) || ((a.key === '(no client name)') - (b.key === '(no client name)')) || sortName(a.name).localeCompare(sortName(b.name), 'en', { sensitivity: 'base' })).filter(gr => !q || gr.name.toLowerCase().includes(q) || gr.aka.some(a => a.toLowerCase().includes(q)) || gr.ms.some(m => matches(m, q)));
   return pageHead('Clients', `<label class="search">${I.search}<input type="search" placeholder="Search clients" data-act="cq" value="${esc(S.cq || '')}"></label>`) + `
   <main><div class="list">
     <div class="h2"><span class="sub">${gs.length} client${gs.length === 1 ? '' : 's'}</span></div>
-    ${gs.length ? gs.map(gr => {
+    ${gs.length ? gs.map((gr, i) => {
+      const head = i === 0 && gr.live ? `<div class="h2"><h2>Pending matters</h2><span class="sub">${gs.filter(g => g.live).length}</span></div>` : (!gr.live && (i === 0 || gs[i - 1].live)) ? `<div class="h2" style="margin-top:14px"><h2>Decided / closed matters only</h2><span class="sub">${gs.filter(g => !g.live).length}</span></div>` : '';
       const pend = gr.ms.filter(m => isOpen(m));
       const next = pend.map(m => m.nextDate).filter(d => d && d >= todayIso()).sort()[0];
       const due = gr.ms.reduce((s, m) => s + feeDue(m), 0);
       const init = gr.name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
-      return `<button class="card row" data-act="client" data-k="${esc(gr.key)}"><span class="avatar">${esc(init || '?')}</span>
+      return head + `<button class="card row" data-act="client" data-k="${esc(gr.key)}"><span class="avatar">${esc(init || '?')}</span>
         <span class="m-col"><span class="m-title">${esc(gr.name)}</span>${gr.aka.length ? `<span class="m-meta">also ${esc(gr.aka.join(', '))}</span>` : ''}<span class="m-meta">${pend.length} pending · ${gr.ms.length - pend.length} closed${next ? ' · next ' + dmy(next) : ''}</span></span>
         <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:${due ? 'var(--saffron-ink)' : 'var(--muted)'}">${due ? rupees(due) : ''}</span></button>`;
     }).join('') : '<div class="card empty">No clients yet. They appear here as you add matters.</div>'}
