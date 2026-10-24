@@ -3,7 +3,7 @@
    Search by section number or any word; open a section from any matter. */
 'use strict';
 
-const ACTS_DIR = DIARY_DIR + '/Bare Acts', ACT_CACHE = 'cd-acts', ACT_V = 2;   // ACT_V: version of the section reader; Acts read by an older one are read again
+const ACTS_DIR = DIARY_DIR + '/Bare Acts', ACT_CACHE = 'cd-acts', ACT_V = 3;   // ACT_V: version of the section reader; Acts read by an older one are read again
 const ACTS = [
   { k: 'BNS', n: 'Bharatiya Nyaya Sanhita, 2023', rx: /nyaya\s*sanhita|\bBNS\b/i },
   { k: 'BNSS', n: 'Bharatiya Nagarik Suraksha Sanhita, 2023', rx: /nagarik\s*suraksha|\bBNSS\b/i },
@@ -41,8 +41,8 @@ async function pdfFullText(buf) {
 function splitSections(text) {
   const t = text.replace(/\r/g, '').replace(/[ \t]+/g, ' ');
   // a section starts on a new line: "420. Cheating and dishonestly inducing delivery of property.—Whoever ..."
-  // the heading may run onto the next line, but never past the start of another numbered line; India Code uses —, – or ― after it
-  const rx = /(?:^|\n)\s*(\d{1,4}[A-Z]{0,3})\.\s+([A-Z](?:(?!\n\s*\d{1,4}[A-Z]{0,3}\.\s)[^—–―−]){0,260}?)\s*\.?\s*(?:[—–―−]|\.\s?-{1,2}(?=\s?[A-Z(]))\s*/g;
+  // an amended section starts with its footnote mark, e.g. "2[41A."; the heading may run onto the next line, but never past the start of another numbered line; India Code uses —, – or ― after it
+  const rx = /(?:^|\n)\s*(?:\d{1,3}\s?\[)?(\d{1,4}[A-Z]{0,3})\.\s+([A-Z](?:(?!\n\s*(?:\d{1,3}\s?\[)?\d{1,4}[A-Z]{0,3}\.\s)[^—–―−]){0,260}?)\s*\.?\s*(?:[—–―−]|\.\s?-{1,2}(?=\s?[A-Z(]))\s*/g;
   const hits = []; let m;
   while ((m = rx.exec(t))) hits.push({ no: m[1], head: m[2].replace(/\s+/g, ' ').replace(/\.$/, '').trim(), at: m.index, body: rx.lastIndex });
   const seen = new Set(), out = [];
