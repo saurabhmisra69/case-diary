@@ -104,7 +104,7 @@ function changeClient(m, back) {
     <p class="hint" style="margin:0">Pick an existing client to put this matter with their other matters, or type a new name (e.g. Sana Rizvi).</p>
     <button class="save" type="submit">Save</button><button type="button" class="linkbtn" data-ch="back">‹ Back</button></form>`);
   $('#ch_form').onsubmit = e => { e.preventDefault(); const v = $('#ch_n').value.trim(); if (!v || v === m.clients) return back();
-    change(() => { logChange(m, 'Client: ' + (m.clients || '—') + ' → ' + v); m.clients = v; const cc = codeOfClient(v, m.id); m.clientCode = (m.letters || []).length ? m.clientCode : cc; touch(m); });
+    change(() => { logChange(m, 'Client: ' + (m.clients || '—') + ' → ' + v); m.clients = v; const cc = codeOfClient(v, m.id); m.clientCode = (m.letters || []).length ? m.clientCode : cc; if (typeof clientInfo === 'function') { const ci = clientInfo(v); for (const k of CI_TO_MATTER) if (ci[k] && !m[k]) { m[k] = ci[k]; logChange(m, (FIELD_NAMES[k] || k) + ': — → ' + ci[k] + ' (from the client’s details)'); } } touch(m); });
     toast('Client: ' + v); back(); };
   $('#sheet-root').onclick = e => { if (e.target.closest('[data-ch]')) back(); };
 }

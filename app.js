@@ -621,7 +621,17 @@ function sheetEdit(m) {
     $('#f_ccnote').textContent = ccLetters ? '' : his ? 'Same client as in other matters' : clientKey(name) ? 'New client' : '';
   };
   const sameClientCode = (code, name) => live().some(x => x.id !== m.id && x.clientCode === code && sameClient(x.clients, name));
-  ccDraw(); $('#f_clients').addEventListener('input', ccDraw); $('#f_cc').addEventListener('change', e => { e.target.dataset.touched = '1'; });
+  // once the client is known, his saved details come in by themselves (only into empty boxes, or boxes filled earlier this way)
+  const auto = {};
+  const fillClient = () => { if (typeof clientInfo !== 'function') return; const name = $('#f_clients').value, known = clientKey(name) && live().some(x => x.id !== m.id && sameClient(x.clients, name));
+    const ci = known ? clientInfo(name) : {}; let n = 0;
+    for (const k of CI_TO_MATTER) { const el = $('#f_' + k); if (!el) continue;
+      if (ci[k] && (!el.value.trim() || auto[k] === el.value)) { if (el.value !== ci[k]) n++; el.value = ci[k]; auto[k] = ci[k]; el.style.background = 'var(--dc-soft)'; }
+      else if (!ci[k] && auto[k] && auto[k] === el.value) { el.value = ''; delete auto[k]; el.style.background = ''; } }
+    const note = $('#f_ccnote'); if (note && known && n) note.textContent += (note.textContent ? ' · ' : '') + 'mobile, WhatsApp and other details filled from ' + ((clientGroups().find(g => g.key === clientKey(name)) || {}).name || clientName(name)) + '’s record';
+  };
+  ccDraw(); fillClient(); $('#f_clients').addEventListener('input', () => { ccDraw(); fillClient(); });
+  for (const k of ['phone', 'whatsapp', 'email', 'altName', 'altPhone']) $('#f_' + k)?.addEventListener('input', e => { delete auto[k]; e.target.style.background = ''; }); $('#f_cc').addEventListener('change', e => { e.target.dataset.touched = '1'; });
   $('#mform').onsubmit = async e => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries());
