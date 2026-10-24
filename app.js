@@ -307,13 +307,16 @@ function logPast(m, date, how) {
   m.hearings.push({ date, happened: 'Listed', note: how || '' });
   m.hearings.sort((x, y) => (x.date || '').localeCompare(y.date || ''));
 }
-/* matters entered more than once: same CNR, or same case no./year in the same forum, or same title with no case no. */
+/* matters entered more than once: same CNR, or same case no./year in the same forum, or same title with no case no.
+   Two matters with different case numbers (or different CNR / FIR numbers) are never called duplicates. */
+const caseKeyOf = s => { const d = String(s || '').match(/(\d+)\s*(?:\([^)]*\)\s*)?(?:\/|of|-)\s*(\d{4}|\d{2})\b/i); return d ? (+d[1]) + '/' + (d[2].length === 2 ? '20' + d[2] : d[2]) : ''; };
+const caseTextOf = s => String(s || '').toLowerCase().replace(/[^0-9]+/g, ' ').trim();
 function dupKeys(m) {
   const ks = [];
   if (m.cnr) ks.push('cnr:' + m.cnr.toUpperCase());
-  const d = String(m.caseNo || '').match(/(\d+)\s*(?:\/|of|-)\s*(\d{2,4})/i);
-  if (d) { let y = d[2]; if (y.length === 2) y = '20' + y; ks.push('no:' + (m.forum || '') + ':' + (+d[1]) + '/' + y); }
-  else if (m.title) ks.push('t:' + (m.forum || '') + ':' + m.title.toLowerCase().replace(/[^a-z0-9]+/g, ''));
+  const ck = caseKeyOf(m.caseNo);
+  if (ck) ks.push('no:' + (m.forum || '') + ':' + ck);
+  else if (m.title && !caseTextOf(m.caseNo) && !m.crimeNo) ks.push('t:' + (m.forum || '') + ':' + m.title.toLowerCase().replace(/[^a-z0-9]+/g, ''));
   return ks;
 }
 let dupCache = null, dupStamp = '';
@@ -326,12 +329,15 @@ function dupsOf(m) {
     // possible copies: same parties (allowing a spelling slip) where one has no case no., or the numbers match
     const STOP = /^(state|thru|through|prin|secy|home|deptt|civil|secrt|lucknow|govt|government|another|others|other|and|smt|shri|versus|pvt|ltd|private|limited|the|with|anr|ors)$/;
     const toks = x => new Set(String(x.title || x.clients || '').toLowerCase().replace(/u\.?p\.?|m\/s|dr\./g, ' ').split(/[^a-z\u0900-\u097f]+/).filter(w => w.length >= 4 && !STOP.test(w)));
-    const key = x => { const d = String(x.caseNo || '').match(/(\d+)\s*(?:\/|of|-)\s*(\d{2,4})/i); return d ? (+d[1]) + '/' + (d[2].length === 2 ? '20' + d[2] : d[2]) : ''; };
+    const key = x => caseKeyOf(x.caseNo);
     const L = live().filter(x => !x.deleted), T = new Map(L.map(x => [x.id, toks(x)]));
     for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) {
       const p = L[i], q = L[j];
       if (p.forum && q.forum && p.forum !== q.forum) continue;
       const kp = key(p), kq = key(q); if (kp && kq && kp !== kq) continue;
+      const tp = caseTextOf(p.caseNo), tq = caseTextOf(q.caseNo); if (tp && tq && !kp && !kq && tp !== tq) continue;   // both numbered, differently
+      if ((kp && tq && !kq) || (kq && tp && !kp)) { if (!tp.split(' ').some(n => tq.split(' ').includes(n))) continue; }
+      const fp = caseTextOf(p.crimeNo), fq = caseTextOf(q.crimeNo); if (fp && fq && fp !== fq) continue;   // different FIRs
       if (p.cnr && q.cnr && p.cnr !== q.cnr) continue;
       const A = T.get(p.id), B = T.get(q.id); if (A.size < 2 || B.size < 2) continue;
       let shared = 0; A.forEach(w => { if (B.has(w)) shared++; });
