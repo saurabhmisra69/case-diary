@@ -282,7 +282,7 @@ function retainerFallenDue(m, on) {
   return Math.max(accrued, billed);
 }
 const nextInstalment = m => { const r = m.retainer; if (!r || !r.from) return ''; const every = +r.every || 3, t = todayIso(); for (let n = 0; n < 600; n++) { const d = addMonths(r.from, every * n); if (r.to && d > r.to) return ''; if (d > t) return d; } return ''; };
-const feeDue = m => { const fd = isRetainer(m) ? retainerFallenDue(m) : null; return Math.max(0, (fd != null ? fd : num(m.feeAgreed)) - num(m.feeReceived)); };
+const feeDue = m => { const fd = isRetainer(m) ? retainerFallenDue(m) : null; return Math.max(0, (fd != null ? fd : num(m.feeAgreed) + (typeof dateFeeTotal === 'function' ? dateFeeTotal(m) : 0)) - num(m.feeReceived)); };
 const onDay = day => live().filter(m => m.nextDate === day && isOpen(m));
 const doneOn = day => live().filter(m => (m.hearings || []).some(h => h.date === day));
 /* record of changes made to a matter (shown under Hearing history) */

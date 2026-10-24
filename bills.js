@@ -178,15 +178,16 @@ async function makeReceiptDoc(m, rc, p, b, withSig) {
   const D = window.docx; if (!D) throw new Error('Word library still loading, try again');
   const paidOnBill = b ? billPaid(m, b) : 0;
   const G = num(p.amount) + num(p.tds);
-  const words = `Received with thanks from ${rc.from || m.clients || '__________'} a sum of ₹${G.toLocaleString('en-IN')}/- (Rupees ${inWords(G)} only)${num(p.tds) ? `, being ₹${num(p.amount).toLocaleString('en-IN')}/- by ${p.mode || '__________'} and ₹${num(p.tds).toLocaleString('en-IN')}/- by way of tax deducted at source (TDS) ${tdsSec(p.date || rc.date)}` : ` by ${p.mode || '__________'}`}${p.note ? ' (' + p.note + ')' : ''} on ${dmy(p.date || rc.date)} towards professional fees${b ? ' against Bill No. ' + b.no + ' dated ' + dmy(b.date) : ''} in the matter mentioned below.`;
+  const words = `Received with thanks from ${rc.from || m.clients || '__________'} a sum of ₹${G.toLocaleString('en-IN')}/- (Rupees ${inWords(G)} only)${num(p.tds) ? `, being ₹${num(p.amount).toLocaleString('en-IN')}/- by ${p.mode || '__________'} and ₹${num(p.tds).toLocaleString('en-IN')}/- by way of tax deducted at source (TDS) ${tdsSec(p.date || rc.date)}` : ` by ${p.mode || '__________'}`}${p.note ? ' (' + p.note + ')' : ''} on ${dmy(p.date || rc.date)} towards ${num(p.dateFee) ? (num(p.dateFee) < G ? 'professional fees and date fees' : 'date fees') : 'professional fees'}${b ? ' against Bill No. ' + b.no + ' dated ' + dmy(b.date) : ''} in the matter mentioned below.`;
   const summary = b ? [['Bill amount', rw(b.total)], ['Received against this bill (including this payment)', rw(paidOnBill)], ['Balance on this bill', rw(Math.max(0, num(b.total) - paidOnBill))]]
-    : [['Total fees agreed', rw(m.feeAgreed)], ['Total received', rw(m.feeReceived)], ['Balance', rw(feeDue(m))]];
+    : [...(typeof dateFeeRate === 'function' && dateFeeRate(m) ? [['Professional fees agreed', rw(m.feeAgreed)], ['Date fees charged (' + dateFeeDates(m).length + ' dates)', rw(dateFeeTotal(m))]] : [['Total fees agreed', rw(m.feeAgreed)]]), ['Total received', rw(m.feeReceived)], ['Balance', rw(feeDue(m))]];
   const kids = [...letterhead(D),
     new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 9026 }], spacing: { after: 200 }, children: [new D.TextRun({ text: 'Receipt No.: ' + rc.no, bold: true, size: 22, font: 'Times New Roman' }), new D.TextRun({ text: '\tDate: ' + dmy(rc.date), bold: true, size: 22, font: 'Times New Roman' })] }),
     ...(rc.state === 'Cancelled' ? [voidLine(D, 'CANCELLED', rc)] : []),
     PB(D, 'RECEIPT', { align: D.AlignmentType.CENTER, bold: true, size: 28, after: 240 }),
     PB(D, words, { after: 200 }),
     tbl(D, [['Matter Ref.', matterRef(m)], ['Matter', caseRefOf(m)], ...(b ? [['Bill No.', b.no + ' dated ' + dmy(b.date)]] : []), ...(rc.replaces ? [['In place of', 'Cancelled Receipt No. ' + rc.replaces]] : []), ...(num(p.tds) ? [['Received by ' + (p.mode || 'payment'), rw(p.amount)], ['TDS deducted', rw(p.tds)], ['Total credited', rw(G)]] : [['Amount received', rw(p.amount) + (p.mode ? ' by ' + p.mode : '')]])], [2600, 6426], { keyCol: true }),
+    ...(num(p.dateFee) ? (() => { const ds = typeof datesCoveredBy === 'function' ? datesCoveredBy(m, p) : []; return [PB(D, '', { after: 120 }), tbl(D, [['Towards professional fees (case preparation / drafting)', rw(G - num(p.dateFee))], ['Towards date fees' + (ds.length ? ' (' + ds.map(dmy).join(', ') + ')' : ''), rw(num(p.dateFee))]], [5200, 3826], { keyCol: true })]; })() : []),
     PB(D, '', { after: 120 }), tbl(D, summary, [3600, 5426], { keyCol: true }),
     ...(await sigBlock(D, withSig))];
   return saveDoc(m, D, kids, cleanName('Receipt ' + rc.no.replace(/\//g, '-') + ' ' + dmy(rc.date) + (rc.state === 'Cancelled' ? ' CANCELLED' : '')) + '.docx', rc.paper || paperOf('receipt'));
@@ -224,7 +225,7 @@ function sheetBill(m, bill, replaces) {
   if (!m.clientCode) return askCode(m, () => sheetBill(m, bill, replaces));
   if (bill && bill.paper) PAPER_NOW.bill = bill.paper; else delete PAPER_NOW.bill;
   const isNew = !bill, d0 = todayIso(), src = bill || replaces;
-  const st = { items: src ? src.items.map(x => ({ ...x })) : [{ d: 'Professional fee for ' + (m.type ? m.type + ' ' : '') + (m.caseNo || 'the above matter'), amt: feeDue(m) || '' }], sig: true,
+  const st = { items: src ? src.items.map(x => ({ ...x })) : (typeof defaultBillItems === 'function' ? defaultBillItems(m) : [{ d: 'Professional fee for ' + (m.type ? m.type + ' ' : '') + (m.caseNo || 'the above matter'), amt: feeDue(m) || '' }]), sig: true,
     terms: src && src.terms ? src.terms.slice() : defaultTerms(), extra: src ? src.extraTerms || '' : (S.data?.meta?.billTermsExtra || ''), dueDays: (src && src.dueDays) || (S.data?.meta?.billDueDays) || 7 };
   if (bill && bill.state === 'Cancelled') { toast('This bill is cancelled; make a fresh bill instead'); return sheetBill(m, null, bill); }
   const draw = () => {
@@ -236,6 +237,7 @@ function sheetBill(m, bill, replaces) {
         <span class="lbl">Particulars</span>
         ${st.items.map((it, i) => `<div class="two" style="grid-template-columns:minmax(0,2.2fr) minmax(0,1fr) auto;align-items:end"><div class="field" style="margin:0"><input class="in" data-bi="d" data-i="${i}" value="${esc(it.d)}" placeholder="e.g. Drafting and filing of ${esc(m.type || 'application')}"></div><div class="field" style="margin:0"><input class="in" data-bi="amt" data-i="${i}" inputmode="numeric" value="${esc(it.amt)}" placeholder="₹"></div>${st.items.length > 1 ? `<button type="button" class="linkbtn" data-bx="rm" data-i="${i}" style="color:var(--red)">✕</button>` : '<span></span>'}</div>`).join('')}
         <button type="button" class="ghost" data-bx="add">+ Add a line</button>
+        ${(() => { if (typeof unbilledDates !== 'function') return ''; const inBill = new Set(st.items.flatMap(x => x.dates || [])), left = unbilledDates(m).filter(d => !inBill.has(d)); return left.length ? `<button type="button" class="ghost" data-bx="dates">+ Date fees not yet billed (${left.length} date${left.length > 1 ? 's' : ''}, ${rupees(left.length * dateFeeRate(m))})</button>` : ''; })()}
         <div class="picked"><b>Total ${rupees(tot)}</b><span>Rupees ${esc(inWords(tot))} only</span></div>
         <span class="lbl">Terms (printed under the total)</span>
         <div class="terms">${BILL_TERMS.map(([k, t]) => `<label class="term"><input type="checkbox" data-bt="${k}" ${st.terms.includes(k) ? 'checked' : ''}><span>${esc(k === 'due' ? t.replace('7', st.dueDays) : t)}${k === 'due' ? ` <input class="in" data-bd="1" inputmode="numeric" value="${st.dueDays}" style="width:56px;min-height:32px;padding:2px 6px;display:inline-block"> days` : ''}</span></label>`).join('')}</div>
@@ -258,7 +260,7 @@ function sheetBill(m, bill, replaces) {
     if (st.sig && !(localStorage.getItem(SIG_KEY) || S.data?.meta?.sigItem)) { const ok = await chooseSignature(); if (!ok) { st.sig = false; } }
     const rec = bill || { id: uid() };
     if (isNew && replaces) rec.replaces = replaces.no;
-    Object.assign(rec, { paper: paperOf('bill'), no: v.b_no.trim(), date: v.b_date || todayIso(), to: v.b_to.trim(), note: v.b_note.trim(), items: items.map(x => ({ d: x.d.trim(), amt: num(x.amt) })), total, terms: st.terms.slice(), extraTerms: st.extra.trim(), dueDays: st.dueDays });
+    Object.assign(rec, { paper: paperOf('bill'), no: v.b_no.trim(), date: v.b_date || todayIso(), to: v.b_to.trim(), note: v.b_note.trim(), items: items.map(x => ({ d: x.d.trim(), amt: num(x.amt), ...(x.kind ? { kind: x.kind } : {}), ...(x.dates ? { dates: x.dates } : {}) })), total, terms: st.terms.slice(), extraTerms: st.extra.trim(), dueDays: st.dueDays });
     change(() => { freezeRef(m); m.bills = m.bills || []; if (isNew) m.bills.push(rec); if (isNew && replaces) replaces.by = rec.no; logChange(m, (isNew ? 'Bill made: ' : 'Bill remade: ') + rec.no + ' · ' + rupees(total)); touch(m); });
     const n = +(rec.no.split('/').pop()) || 0; if (isNew && n) bumpSeq('BILL', rec.date, n);
     openSheet(`<div class="s-head"><div><small>${esc(mref(m))}</small><h1>Making bill…</h1></div></div>`);
@@ -270,7 +272,8 @@ function sheetBill(m, bill, replaces) {
     const b = e.target.closest('[data-bx]'); if (!b) return;
     const v = keep();
     if (b.dataset.bx === 'deft') { change(d => { d.meta = d.meta || {}; d.meta.billTerms = st.terms.slice(); d.meta.billTermsExtra = st.extra.trim(); d.meta.billDueDays = st.dueDays; }); toast('Saved as your default terms'); return; }
-    if (b.dataset.bx === 'add') st.items.push({ d: '', amt: '' }); else st.items.splice(+b.dataset.i, 1);
+    if (b.dataset.bx === 'dates') { const inBill = new Set(st.items.flatMap(x => x.dates || [])), left = unbilledDates(m).filter(d => !inBill.has(d)); if (left.length) st.items.push(dateFeeLine(m, left)); }
+    else if (b.dataset.bx === 'add') st.items.push({ d: '', amt: '' }); else st.items.splice(+b.dataset.i, 1);
     draw(); restore(v);
   };
 }

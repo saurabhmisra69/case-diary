@@ -222,7 +222,7 @@ function sheetFees(m, focus) {
     const ag = m.agreedParts || [], pays = (m.payments || []).slice().sort((x, y) => (y.date || '').localeCompare(x.date || ''));
     const formAgreed = st.kind === 'agreed', v = ed || {};
     openSheet(`<div class="s-head"><div><small style="color:var(--saffron-ink)">${esc(mref(m))} · fees</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
-      <div class="kv"><span>Agreed</span><b>${rupees(m.feeAgreed)}</b><span>Received</span><b>${rupees(m.feeReceived)}</b><span>Balance</span><b style="color:${due ? 'var(--red)' : 'var(--dc-ink)'}">${rupees(due)}</b></div>
+      <div class="kv"><span>${typeof dateFeeRate === 'function' && dateFeeRate(m) ? 'Professional fees' : 'Agreed'}</span><b>${rupees(m.feeAgreed)}</b>${typeof dateFeeRate === 'function' && dateFeeRate(m) ? `<span>Date fees</span><b>${rupees(dateFeeTotal(m))} <small>(${dateFeeDates(m).length} × ${rupees(dateFeeRate(m))})</small></b>` : ''}<span>Received</span><b>${rupees(m.feeReceived)}</b><span>Balance</span><b style="color:${due ? 'var(--red)' : 'var(--dc-ink)'}">${rupees(due)}</b></div>
       <div class="three" style="margin-top:12px"><button type="button" class="act blue" data-act="mkbill" data-id="${m.id}">Generate bill</button><button type="button" class="act blue" data-act="mkrcpt" data-id="${m.id}">Generate receipt</button><span></span></div>
       <p class="hint" style="margin:8px 0 0">Matter ref. <b style="font-family:var(--mono)">${esc(matterRef(m))}</b>${m.clientCode ? '' : ` · <button class="linkbtn" data-act="setcode" data-id="${m.id}">Set client code</button>`}</p>
       ${(m.bills || []).length ? `<div class="grp" style="margin-top:10px"><span class="lbl">Bills</span><div class="hist">${m.bills.slice().sort((x, y) => (y.date || '').localeCompare(x.date || '')).map(b => { const pd = billPaid(m, b), cx = b.state === 'Cancelled'; return `<div><b>${dmy(b.date)}</b><span${cx ? ' class="voided"' : ''}><b style="font-family:inherit">${esc(b.no)}</b> · ${rupees(b.total)} · ${cx ? `<b class="voidtag">CANCELLED</b> ${dmy(b.stateOn)}${b.reason ? ' · ' + esc(b.reason) : ''}${b.by ? ' · replaced by ' + esc(b.by) : ''}` : `<span style="color:${pd >= num(b.total) ? 'var(--dc-ink)' : 'var(--red)'}">${pd >= num(b.total) ? 'paid' : pd ? 'part-paid ' + rupees(pd) : 'unpaid'}</span>${b.replaces ? ' · in place of ' + esc(b.replaces) : ''} <button class="linkbtn" data-act="openbill" data-id="${m.id}" data-b="${b.id}">Open / edit</button> <button class="linkbtn" data-act="voidbill" data-id="${m.id}" data-v="${b.id}" style="color:var(--red)">Cancel</button>`}</span></div>`; }).join('')}</div></div>` : ''}
@@ -230,6 +230,7 @@ function sheetFees(m, focus) {
       <div class="grp" style="margin-top:12px"><span class="lbl">Fees agreed</span>
         ${ag.length ? `<div class="hist">${ag.map(p => `<div><b>${p.date ? dmy(p.date) : '—'}</b><span><b style="font-family:inherit">${rupees(p.amount)}</b>${p.for ? ' · ' + esc(p.for) : ''} <button class="linkbtn" data-fe="edita" data-id="${p.id}">Edit</button> <button class="linkbtn" data-fe="dela" data-id="${p.id}" style="color:var(--red)">Remove</button></span></div>`).join('')}</div>` : '<p class="hint" style="margin:0">Nothing agreed yet.</p>'}
         ${formAgreed ? '' : '<button class="ghost" data-fe="newa" style="width:100%;margin-top:8px">+ Add to fees agreed</button>'}</div>
+      ${typeof dateFeeSection === 'function' ? dateFeeSection(m) : ''}
       <div class="grp"><span class="lbl">Fees received</span>
         ${pays.length ? `<div class="hist">${pays.map(p => `<div><b>${p.date ? dmy(p.date) : '—'}</b><span><b style="font-family:inherit">${rupees(gross(p))}</b>${num(p.tds) ? ` <small>(${rupees(p.amount)} received + ${rupees(p.tds)} TDS · <button class="linkbtn" data-fe="f16a" data-id="${p.id}" style="color:${p.f16a ? 'var(--dc-ink)' : 'var(--red)'}">${p.f16a ? tdsCert(p.date) + ' ✓' : tdsCert(p.date) + ' awaited'}</button>)</small>` : ''}${p.mode ? ' · ' + esc(p.mode) : ''}${p.note ? '<br><span style="color:var(--muted)">' + esc(p.note) + '</span>' : ''} ${p.receiptNo ? '<br><small>Receipt ' + esc(p.receiptNo) + '</small>' : ''} <button class="linkbtn" data-act="mkrcpt" data-id="${m.id}" data-p="${p.id}">Receipt</button> <button class="linkbtn" data-fe="editp" data-id="${p.id}">Edit</button> <button class="linkbtn" data-fe="delp" data-id="${p.id}" style="color:var(--red)">Remove</button></span></div>`).join('')}</div>` : '<p class="hint" style="margin:0">No payment recorded yet.</p>'}
         ${formAgreed ? '<button class="ghost" data-fe="newp" style="width:100%;margin-top:8px">+ Add payment received</button>' : ''}</div>
@@ -241,6 +242,7 @@ function sheetFees(m, focus) {
         : `<div class="field"><label>MODE</label><div class="chips">${PAY_MODES.map(x => `<button type="button" class="chip ${(st.mode) === x ? 'on' : ''}" data-fe="mode" data-v="${x}">${x}</button>`).join('')}</div></div>
            <div class="field"><label for="fe_tds">TDS DEDUCTED BY CLIENT (₹, IF ANY)</label><div style="display:flex;gap:8px"><input class="in" id="fe_tds" name="tds" inputmode="numeric" value="${esc(v.tds || '')}" placeholder="blank if no TDS" style="flex:1"><button type="button" class="ghost" data-fe="tds10" style="margin:0;white-space:nowrap">TDS 10%</button></div>
              <p class="hint" style="margin:4px 0 0">Amount above = what reached you. TDS is added to fees received, and the receipt shows both.</p></div>
+           ${typeof dateFeeRate === 'function' && dateFeeRate(m) ? `<div class="field"><label for="fe_df">OF WHICH, TOWARDS DATE FEES (₹)</label><input class="in" id="fe_df" name="dateFee" inputmode="numeric" value="${esc(v.dateFee ?? '')}" placeholder="${esc(String(Math.max(0, dateFeeTotal(m) - dateFeePaid(m)) || 0))} due"><p class="hint" style="margin:4px 0 0">The rest is taken towards professional fees. Blank = date fees due first (${rupees(Math.max(0, dateFeeTotal(m) - dateFeePaid(m)))}).</p></div>` : ''}
            <div class="field"><label for="fe_note">NOTE</label><input class="in" id="fe_note" name="note" value="${esc(v.note || '')}" placeholder="e.g. UTR / cheque no., part payment for filing"></div>
            ${!ed && waOf(m) ? '<div class="toggles"><label><span>Send receipt on WhatsApp</span><input type="checkbox" name="wa" checked></label></div>' : ''}`}
         <button class="save" type="submit">${ed ? 'Save changes' : formAgreed ? 'Add to fees agreed' : 'Save payment'}</button>
@@ -248,7 +250,7 @@ function sheetFees(m, focus) {
       </form>`);
     $('#feeform').onsubmit = submit;
   };
-  const keep = () => { const v = {}; ['fe_amt', 'fe_date', 'fe_for', 'fe_note', 'fe_tds'].forEach(id => { const el = $('#' + id); if (el) v[id] = el.value; }); return v; };
+  const keep = () => { const v = {}; ['fe_amt', 'fe_date', 'fe_for', 'fe_note', 'fe_tds', 'fe_df', 'df_rate', 'df_from'].forEach(id => { const el = $('#' + id); if (el) v[id] = el.value; }); return v; };
   const restore = v => Object.entries(v).forEach(([id, val]) => { const el = $('#' + id); if (el) el.value = val; });
   function submit(e) {
     e.preventDefault();
@@ -260,9 +262,10 @@ function sheetFees(m, focus) {
         if (ed) { const was = rupees(ed.amount); Object.assign(ed, { amount: amt, date: fd.date || '', for: (fd.for || '').trim() }); logChange(m, 'Fees agreed entry edited: ' + was + ' → ' + rupees(amt)); }
         else { m.agreedParts.push({ id: uid(), date: fd.date || todayIso(), amount: amt, for: (fd.for || '').trim() }); logChange(m, 'Fees agreed + ' + rupees(amt) + (fd.for ? ' (' + fd.for.trim() + ')' : '')); }
       } else {
-        if (ed) { const was = rupees(ed.amount) + ' ' + (ed.date ? dmy(ed.date) : ''); Object.assign(ed, { amount: amt, tds: num(fd.tds) || 0, date: fd.date || '', mode: st.mode, note: (fd.note || '').trim() }); logChange(m, 'Payment edited: ' + was + ' → ' + rupees(amt) + ' ' + (fd.date ? dmy(fd.date) : '')); }
+        const dfOf = (except) => { if (typeof dateFeeRate !== 'function' || !dateFeeRate(m)) return 0; const g = amt + (num(fd.tds) || 0); if (String(fd.dateFee || '').trim() !== '') return Math.min(g, num(fd.dateFee)); const owed = Math.max(0, dateFeeTotal(m) - (m.payments || []).filter(p => p !== except && !p.deleted).reduce((s, p) => s + num(p.dateFee), 0)); return Math.min(g, owed); };
+        if (ed) { const was = rupees(ed.amount) + ' ' + (ed.date ? dmy(ed.date) : ''); Object.assign(ed, { amount: amt, tds: num(fd.tds) || 0, date: fd.date || '', mode: st.mode, note: (fd.note || '').trim(), dateFee: dfOf(ed) }); logChange(m, 'Payment edited: ' + was + ' → ' + rupees(amt) + ' ' + (fd.date ? dmy(fd.date) : '')); }
         else { const ob = (m.bills || []).filter(b => !b.state && billPaid(m, b) < num(b.total)).sort((x, y) => (x.date || '').localeCompare(y.date || ''))[0];
-          m.payments.push({ id: uid(), date: fd.date || todayIso(), amount: amt, tds: num(fd.tds) || 0, mode: st.mode, note: (fd.note || '').trim(), billId: ob ? ob.id : '' }); logChange(m, 'Payment received ' + rupees(amt) + (st.mode ? ' by ' + st.mode : '') + (num(fd.tds) ? ' + TDS ' + rupees(fd.tds) : '')); }
+          m.payments.push({ id: uid(), date: fd.date || todayIso(), amount: amt, tds: num(fd.tds) || 0, mode: st.mode, note: (fd.note || '').trim(), billId: ob ? ob.id : '', dateFee: dfOf(null) }); logChange(m, 'Payment received ' + rupees(amt) + (st.mode ? ' by ' + st.mode : '') + (num(fd.tds) ? ' + TDS ' + rupees(fd.tds) : '')); }
       }
       feesTotal(m); touch(m);
     });
@@ -276,6 +279,7 @@ function sheetFees(m, focus) {
   }
   draw();
   $('#sheet-root').onclick = e => {
+    const dfb = e.target.closest('[data-df]'); if (dfb && typeof dateFeeClick === 'function') return dateFeeClick(m, dfb, draw);
     const b = e.target.closest('[data-fe]'); if (!b) return;
     const a = b.dataset.fe, id = b.dataset.id;
     if (a === 'mode') { const v = keep(); st.mode = b.dataset.v; draw(); restore(v); return; }
