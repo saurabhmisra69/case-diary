@@ -611,7 +611,7 @@ function sheetEdit(m) {
     ${fld('sections', 'Under section(s)', m.sections)}
     <div class="two"><div class="field"><label for="f_nature">Nature</label><select class="in" id="f_nature" name="nature">${opt(['Criminal', 'Civil', 'Other'], m.nature)}</select></div><div class="field"><label for="f_status">Status</label><select class="in" id="f_status" name="status">${opt(statusList(m), m.status)}</select></div></div>
     <div class="field" id="f_outwrap" style="${m.status === 'Decided' ? '' : 'display:none'}"><label for="f_outcome">Decided — result</label><select class="in" id="f_outcome" name="outcome"><option value="">—</option>${opt(OUTCOMES, m.outcome)}</select></div>
-    ${fld('side', 'Appearing for', m.side, 'text', 'placeholder="e.g. Applicant, OP, Complainant"')}
+    <div class="two">${fld('side', 'Appearing for', m.side, 'text', 'placeholder="e.g. Applicant, OP, Complainant"')}${typeof juniors === 'function' ? `<div class="field"><label for="f_allot">Allotted to</label><select class="in" id="f_allot" name="allot"><option value="self">Self</option>${juniors().map(j => `<option value="${esc(j.id)}" ${m.allot === j.id ? 'selected' : ''}>${esc(j.name)}</option>`).join('')}<option value="__new">+ Add another junior…</option></select></div>` : ''}</div>
     <div class="two">${fld('nextDate', 'Next date', m.nextDate, 'date')}${fld('item', 'Item no.', m.item)}</div>
     ${fld('purpose', 'Fixed for', m.purpose, 'text', 'list="ff"')}<datalist id="ff">${FIXED_FOR.map(x => `<option value="${x}">`).join('')}</datalist>
     <div class="two">${fld('deadline', 'Deadline', m.deadline, 'date')}${fld('deadlineFor', 'Deadline for', m.deadlineFor, 'text', 'placeholder="e.g. Reply, Appeal"')}</div>
@@ -662,6 +662,7 @@ function sheetEdit(m) {
     if (fd.cnr) fd.cnr = fd.cnr.toUpperCase().replace(/\s+/g, '');
     delete fd.clientCode;   // set in Client codes
     const ccPick = fd.ccpick || ''; delete fd.ccpick;
+    const newJunior = fd.allot === '__new'; const allot = newJunior ? 'self' : (fd.allot || 'self'); delete fd.allot;   // Self or a junior; logged by name
     const aka = (fd.aka || '').split(/[,;]/).map(x => x.trim()).filter(Boolean); delete fd.aka;   // kept per client, not per matter
     const akaHad = typeof aliasesOf === 'function' ? aliasesOf(fd.clients) : [];
     if (isNew) aka.unshift(...akaHad);   // a new matter only adds names; it never drops names saved earlier
@@ -672,9 +673,11 @@ function sheetEdit(m) {
       const rec = touch({ id: uid(), n: nextNumber(fd.year), hearings: [], created: todayIso(), ...fd });
       rec.no = rec.year + '/' + rec.n;
       if (ccPick && ccPick !== '@new') rec.clientCode = ccPick;   // an existing client keeps his code
+      if (allot !== 'self') rec.allot = allot;
       if (rec.nextDate) rec.calPending = true;
       change(d => { d.matters.push(rec); if (akaChanged) setAliases(d, rec.clients, aka); });
       closeSheet(); toast('Matter ' + mref(rec) + ' added');
+      if (newJunior && typeof sheetNewJunior === 'function') setTimeout(() => sheetNewJunior(find(rec.id)), 300);
       if (ccPick === '@new' && clientKey(rec.clients) && typeof askCode === 'function') setTimeout(() => askCode(find(rec.id)), 300);
     } else {
       const old = find(m.id); const before = { caseNo: old.caseNo, type: old.type, court: old.court };
@@ -685,12 +688,14 @@ function sheetEdit(m) {
         if (fd.lastDate && fd.lastDate !== old.lastDate) logPast(old, fd.lastDate, 'last date entered in Edit');
         if (old.nextDate !== fd.nextDate || old.status !== fd.status || old.purpose !== fd.purpose || old.court !== fd.court) old.calPending = true;
         Object.assign(old, fd);
+        if (allot !== (old.allot || 'self')) { logChange(old, 'Allotted to: ' + allotName(old) + ' → ' + (allot === 'self' ? 'Self' : jName(allot))); old.allot = allot === 'self' ? '' : allot; }
         if (!ccLetters && ccPick !== '@new' && ccPick !== (old.clientCode || '')) { logChange(old, 'Client code: ' + (old.clientCode || '—') + ' → ' + (ccPick || '—')); old.clientCode = ccPick; }
         if (!ccLetters && ccPick === '@new' && old.clientCode && !sameClientCode(old.clientCode, old.clients)) { logChange(old, 'Client code: ' + old.clientCode + ' → — (new code to be given)'); old.clientCode = ''; }
         touch(old);
         if (akaChanged) setAliases(S.data, old.clients, aka);
       });
       closeSheet(); toast('Saved'); if (typeof afterEdit === 'function') afterEdit(old, before);
+      if (newJunior && typeof sheetNewJunior === 'function') setTimeout(() => sheetNewJunior(find(old.id)), 300);
       if (!ccLetters && ccPick === '@new' && clientKey(old.clients) && typeof askCode === 'function') setTimeout(() => askCode(find(old.id)), 300);
     }
   };
