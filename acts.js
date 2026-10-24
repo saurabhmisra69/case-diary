@@ -74,7 +74,7 @@ async function addActFile(a, it, buf, show) {
 /* files put in the Bare Acts folder by hand (or from the PC) are picked up */
 async function scanActs(show) {
   const dir = await actsFolder(), files = (await listChildren(dir.id)).filter(it => it.file && /\.(pdf|docx)$/i.test(it.name)); let n = 0;
-  for (const it of files) { const a = ACT_OF(it.name); const had = shelf()[a.k];
+  for (const it of files) { const a = ACT_OF(it.name); if (!a) continue; const had = shelf()[a.k];
     // read again when: a new file, an older section reader, or the PDF was replaced (size changed; the CrPC scan of 24.10.2026 was replaced by the clean India Code text)
     if (!a || (had && had.itemId === it.id && (had.v || 1) >= ACT_V && (had.size ? had.size === it.size : !(a.k === 'CrPC' && had.sections < 100)))) continue;
     try { const r = await g('/me/drive/items/' + it.id + '/content'); await addActFile(a, it, await (await r.blob()).arrayBuffer(), show); n++; } catch (e) { toast(e.message, 5000); } }
