@@ -697,7 +697,8 @@ function retainerBox(m) {
     <div class="field" style="margin:10px 0 0"><label for="rt_${m.id}">Term to</label><input class="in" type="date" id="rt_${m.id}" data-rt="to" data-id="${m.id}" value="${esc(r.to || '')}"></div></div>
     <div class="two"><div class="field" style="margin:10px 0 0"><label for="re_${m.id}">Bill every</label><select class="in" id="re_${m.id}" data-rt="every" data-id="${m.id}">${[[1, 'Month'], [3, 'Quarter'], [6, 'Half-year'], [12, 'Year']].map(([v, l]) => `<option value="${v}" ${v === every ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
     <div class="field" style="margin:10px 0 0"><label for="ra_${m.id}">Each bill (₹)</label><input class="in" inputmode="numeric" id="ra_${m.id}" data-rt="amount" data-id="${m.id}" value="${esc(r.amount || '')}"></div></div>
-    <p class="hint" style="margin:8px 0">${n} bill${n === 1 ? '' : 's'} raised${next && (!r.to || next <= r.to) ? ' · next due ' + dmy(next) : ''}</p>
+    <p class="hint" style="margin:8px 0">${n} bill${n === 1 ? '' : 's'} raised${next && (!r.to || next <= r.to) ? ' · next bill ' + dmy(next) : ''}</p>
+    ${r.from && num(r.amount) ? (() => { const fd = retainerFallenDue(m) || 0, rec = num(m.feeReceived), ni = nextInstalment(m); return `<div class="kv" style="margin:0 0 8px"><span>Fallen due so far</span><b>${rupees(fd)}</b><span>Received</span><b>${rupees(rec)}</b><span>Pending now</span><b style="color:${fd > rec ? 'var(--saffron-ink)' : 'var(--dc-ink)'}">${fd > rec ? rupees(fd - rec) : 'Nothing'}</b>${ni ? `<span>Next instalment</span><b>${rupees(num(r.amount))} on ${dmy(ni)}</b>` : ''}</div>`; })() : ''}
     <div class="two"><button class="act blue" data-act="billraised" data-id="${m.id}">Mark bill ${n + 1} raised</button>${n ? `<button class="act blue" data-act="billundo" data-id="${m.id}">Undo last</button>` : '<span></span>'}</div>
   </div>`;
 }

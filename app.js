@@ -221,7 +221,7 @@ async function writeExcel() {
     'Type': m.type, 'Case no.': m.caseNo, 'Crime / FIR no.': m.crimeNo, 'Police station': m.ps, 'Sections': m.sections,
     'Nature': m.nature, 'Appearing for': m.side, 'Status': m.status, 'Last date': dmy(m.lastDate), 'Next date': dmy(m.nextDate),
     'Fixed for': m.purpose, 'Item': m.item, 'Fees agreed': num(m.feeAgreed), 'Fees received': num(m.feeReceived),
-    'Balance': Math.max(0, num(m.feeAgreed) - num(m.feeReceived)), 'CNR': m.cnr || '', 'Filing no.': m.filingNo || '', 'Client phone': m.phone, 'WhatsApp': m.whatsapp || '', 'Alternate contact': [m.altName, m.altPhone].filter(Boolean).join(' '), 'Deadline': dmy(m.deadline), 'Deadline for': m.deadlineFor, 'OneDrive folder': m.folderPath || '', 'Notes': m.notes,
+    'Balance': feeDue(m), 'CNR': m.cnr || '', 'Filing no.': m.filingNo || '', 'Client phone': m.phone, 'WhatsApp': m.whatsapp || '', 'Alternate contact': [m.altName, m.altPhone].filter(Boolean).join(' '), 'Deadline': dmy(m.deadline), 'Deadline for': m.deadlineFor, 'OneDrive folder': m.folderPath || '', 'Notes': m.notes,
   }));
   const hist = [];
   for (const m of ms) for (const h of (m.hearings || [])) hist.push({ 'Matter Ref.': mref(m), 'Title': m.title, 'Date': dmy(h.date), 'What happened': h.happened, 'Next date': dmy(h.next), 'Fixed for': h.purpose, 'Note': h.note });
@@ -271,7 +271,18 @@ const byNo = (a, b) => (a.year - b.year) || (a.n - b.n);
 function nextNumber(year) { return Math.max(0, ...live().filter(m => m.year === year).map(m => m.n)) + 1; }
 const forumOf = m => FORUMS[m.forum] || FORUMS.District;
 const needsDate = m => m.forum !== 'Advisory' && (m.status === 'Pending') && (!m.nextDate || m.nextDate < todayIso());
-const feeDue = m => Math.max(0, num(m.feeAgreed) - num(m.feeReceived));
+/* a retainer paid in advance instalments (e.g. ₹1,00,000 a year in 4 quarterly instalments of ₹25,000): only the
+   instalments that have fallen due by today — or been billed — are pending, not the whole year's fee */
+function retainerFallenDue(m, on) {
+  const r = m.retainer; if (!r || !r.from || !num(r.amount)) return null;
+  const every = +r.every || 3, t = on || todayIso(); let n = 0;
+  while (n < 600) { const d = addMonths(r.from, every * n); if (d > t || (r.to && d > r.to)) break; n++; }
+  const billed = (m.bills || []).filter(b => !b.state).reduce((s, b) => s + num(b.total), 0);
+  const accrued = n * num(r.amount);
+  return Math.max(accrued, billed);
+}
+const nextInstalment = m => { const r = m.retainer; if (!r || !r.from) return ''; const every = +r.every || 3, t = todayIso(); for (let n = 0; n < 600; n++) { const d = addMonths(r.from, every * n); if (r.to && d > r.to) return ''; if (d > t) return d; } return ''; };
+const feeDue = m => { const fd = isRetainer(m) ? retainerFallenDue(m) : null; return Math.max(0, (fd != null ? fd : num(m.feeAgreed)) - num(m.feeReceived)); };
 const onDay = day => live().filter(m => m.nextDate === day && isOpen(m));
 const doneOn = day => live().filter(m => (m.hearings || []).some(h => h.date === day));
 /* record of changes made to a matter (shown under Hearing history) */

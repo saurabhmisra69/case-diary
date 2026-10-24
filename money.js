@@ -70,7 +70,7 @@ function duesList() {
   const out = [];
   for (const m of live()) {
     const billed = (m.bills || []).filter(b => !b.state).reduce((t, b) => t + num(b.total), 0);
-    const due = typeof isRetainer === 'function' && isRetainer(m) ? Math.max(0, billed - num(m.feeReceived)) : feeDue(m); if (due <= 0) continue;   // a retainer is due only as billed
+    const due = feeDue(m); if (due <= 0) continue;   // for a retainer, feeDue counts only the instalments fallen due (or billed)
     const open = (m.bills || []).filter(b => !b.state && billPaid(m, b) < num(b.total)).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     const since = open[0]?.date || ((m.agreedParts || []).map(p => p.date).filter(Boolean).sort()[0]) || m.created || '';
     out.push({ m, due, since, age: daysSince(since), bill: open[open.length - 1] || null, bills: open });
