@@ -617,9 +617,20 @@ ONE_TIME_FIXES.push({ id: '2026-10-21-baghel-writ-308-decided',
     m.hearings = m.hearings || []; if (!m.hearings.some(h => /withdrawn/i.test(h.note || h.happened || ''))) m.hearings.push({ date: todayIso(), happened: 'Decided', note: 'Writ petition dismissed as withdrawn by the petitioner (Baghel). Folder kept with Anuj Gupta\'s matters: papers may be needed in his other cases.' });
     m.keepFolder = true; },
   label: 'Baghel writ (FIR 308): Decided · In our favour. Folder left in place.' });
+/* rule: a matter with no year (for numbering) takes the year written in its case no., e.g. 2787/2024 → 2024.
+   Runs whenever the app opens or syncs, for pending and decided matters alike; the year can still be edited by hand. */
+const yearOfCaseNo = s => { const k = typeof caseKeyOf === 'function' ? caseKeyOf(s) : ''; const y = k ? +k.split('/')[1] : 0; return y >= 1950 && y <= new Date().getFullYear() + 1 ? y : 0; };
+function fillYearsFromCaseNo() {
+  const todo = live().filter(m => !+m.year && yearOfCaseNo(m.caseNo)).sort((a, b) => (+a.n || 0) - (+b.n || 0));
+  if (!todo.length) return 0;
+  change(() => { for (const m of todo) { const y = yearOfCaseNo(m.caseNo), was = mref(m);
+    const n = nextNumber(y); m.year = y; m.n = n; m.no = y + '/' + n; logChange(m, 'Year (for numbering) taken from case no. ' + m.caseNo + ': ' + was + ' → ' + mrefBase(m)); touch(m); } });
+  return todo.length;
+}
 function runOneTimeFixes() {
   if (!S.data || !S.account) return;
   const done = S.data.fixes || [];
+  { const n = fillYearsFromCaseNo(); if (n) toast(n + ' matter' + (n > 1 ? 's' : '') + ' got the year from the case no. (new matter ref.)', 5000); }
   if (!done.includes('2026-10-22-history-backfill')) {
     let n = 0;
     change(d => {

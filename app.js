@@ -652,6 +652,10 @@ function sheetEdit(m) {
       else if (!ci[k] && auto[k] && auto[k] === el.value) { el.value = ''; delete auto[k]; el.style.background = ''; } }
     const note = $('#f_ccnote'); if (note && known && n) note.textContent += (note.textContent ? ' · ' : '') + 'mobile, WhatsApp and other details filled from ' + ((clientGroups().find(g => g.key === clientKey(name)) || {}).name || clientName(name)) + '’s record';
   };
+  { const yEl = $('#f_year'), cEl = $('#f_caseNo'); let yTouched = !isNew && !!+m.year;
+    if (yEl && cEl) { yEl.addEventListener('input', () => { yTouched = true; });
+      const follow = () => { const y = typeof yearOfCaseNo === 'function' ? yearOfCaseNo(cEl.value) : 0; if (y && !yTouched) { yEl.value = y; yEl.style.background = 'var(--dc-soft)'; } };
+      cEl.addEventListener('input', follow); if (!+m.year || isNew) follow(); } }
   ccDraw(); fillClient(); $('#f_clients').addEventListener('input', () => { ccDraw(); fillClient(); });
   for (const k of ['phone', 'whatsapp', 'email', 'altName', 'altPhone']) $('#f_' + k)?.addEventListener('input', e => { delete auto[k]; e.target.style.background = ''; }); $('#f_cc').addEventListener('change', e => { e.target.dataset.touched = '1'; });
   $('#mform').onsubmit = async e => {
