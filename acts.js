@@ -68,13 +68,15 @@ async function addActFile(a, it, buf, show) {
   if (secs.length < 5) throw new Error('Could not find the sections in ' + it.name + ' — is it the India Code PDF of the Act?');
   await g(drivePath(ACTS_DIR + '/_text/' + a.k + '.json') + ':/content', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(secs) });
   await actCachePut(a.k, secs); AX[a.k] = secs;
-  change(d => { d.meta = d.meta || {}; d.meta.acts = Object.assign({}, d.meta.acts, { [a.k]: { itemId: it.id, name: it.name, sections: secs.length, added: todayIso(), u: Date.now(), v: ACT_V } }); });
+  change(d => { d.meta = d.meta || {}; d.meta.acts = Object.assign({}, d.meta.acts, { [a.k]: { itemId: it.id, name: it.name, sections: secs.length, added: todayIso(), u: Date.now(), v: ACT_V, size: it.size || 0 } }); });
   return secs.length;
 }
 /* files put in the Bare Acts folder by hand (or from the PC) are picked up */
 async function scanActs(show) {
   const dir = await actsFolder(), files = (await listChildren(dir.id)).filter(it => it.file && /\.(pdf|docx)$/i.test(it.name)); let n = 0;
-  for (const it of files) { const a = ACT_OF(it.name); if (!a || (shelf()[a.k] && shelf()[a.k].itemId === it.id && (shelf()[a.k].v || 1) >= ACT_V)) continue;
+  for (const it of files) { const a = ACT_OF(it.name); const had = shelf()[a.k];
+    // read again when: a new file, an older section reader, or the PDF was replaced (size changed; the CrPC scan of 24.10.2026 was replaced by the clean India Code text)
+    if (!a || (had && had.itemId === it.id && (had.v || 1) >= ACT_V && (had.size ? had.size === it.size : !(a.k === 'CrPC' && had.sections < 100)))) continue;
     try { const r = await g('/me/drive/items/' + it.id + '/content'); await addActFile(a, it, await (await r.blob()).arrayBuffer(), show); n++; } catch (e) { toast(e.message, 5000); } }
   return n;
 }
