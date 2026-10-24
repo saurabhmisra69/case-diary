@@ -1,32 +1,43 @@
-/* Case Diary — reading a court order photo inside the app.
-   Uses the advocate's own Anthropic API key, kept only in this browser (localStorage).
-   The photo goes straight from this device to Anthropic and to his OneDrive; nowhere else.
-   Nothing is saved until he checks the filled Record sheet and taps Save. */
+/* SM Chambers — reading a court order with the Claude app (free with the Claude plan; no API key, no charge).
+   The photo goes from this device to the Claude app (shared on the phone, or attached by hand on the PC) and to his OneDrive; nowhere else.
+   Claude replies with a short block; he pastes it back here and checks the filled Record sheet before saving. */
 'use strict';
 
-const AI_KEY = 'cd.aikey', AI_MODEL = 'claude-sonnet-5-5';
-function aiKey() { try { return localStorage.getItem(AI_KEY) || ''; } catch (e) { return ''; } }
-function setAiKey(v) { try { v ? localStorage.setItem(AI_KEY, v) : localStorage.removeItem(AI_KEY); } catch (e) {} }
+try { localStorage.removeItem('cd.aikey'); } catch (e) {}   // the old paid API key is no longer used: removed from this device
 
-function sheetAiKey() {
-  const k = aiKey();
-  openSheet(`<div class="s-head"><div><small>More</small><h1>Order reading</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
-  <p class="hint" style="margin:0 0 10px">Photograph an order and the app fills the next date, purpose, item and any deadline for you to check. It uses your own Anthropic API key. The key stays only on this device. Each order costs about ₹1–3.</p>
-  <div class="field"><label for="ai_k">API KEY</label><input class="in" id="ai_k" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" value="${k ? '••••••••' + esc(k.slice(-4)) : ''}"></div>
-  <p class="hint" style="margin:6px 0 12px">Create it at console.anthropic.com › API keys, then paste it here. Set a monthly spending limit there as well.</p>
-  <button class="save" data-ai="savekey">Save key on this device</button>
-  ${k ? `<button class="ghost" data-ai="delkey" style="margin-top:10px;width:100%;color:var(--red)">Remove key from this device</button>` : ''}`);
-  const root = $('#sheet-root');
-  root.onclick = e => {
-    const el = e.target.closest('[data-ai]'); if (!el) return;
-    if (el.dataset.ai === 'savekey') {
-      const v = $('#ai_k').value.trim();
-      if (v.startsWith('••')) { closeSheet(); return; }
-      if (!/^sk-ant-/.test(v)) { toast('That does not look like an Anthropic key (it starts with sk-ant-)'); return; }
-      setAiKey(v); closeSheet(); root.onclick = null; toast('Key saved on this device'); render();
-    }
-    if (el.dataset.ai === 'delkey') { setAiKey(''); closeSheet(); root.onclick = null; toast('Key removed'); render(); }
-  };
+/* the free bridge: send the paper + request to the Claude app, paste the reply back. Resolves with the parsed reply, or null. */
+function claudeAppRead({ m, file, prompt, title, download }) {
+  return new Promise(resolve => {
+    const phone = typeof isPhone === 'function' ? isPhone() : /Android|iPhone/i.test(navigator.userAgent);
+    const ask = prompt + '\n\nReply with ONLY that JSON, in one code block, nothing else — I will copy it back into my case diary.';
+    let done = false; const finish = v => { if (done) return; done = true; resolve(v); };
+    openSheet(`<div class="s-head"><div><small>${esc(m ? mref(m) : 'SM Chambers')} · free, with your Claude plan</small><h1>${esc(title || 'Read with Claude')}</h1></div><button class="x" data-ca="cancel" aria-label="Close">${I.x}</button></div>
+      <ol class="hint" style="margin:0 0 10px;padding-left:18px;line-height:1.6"><li>Tap <b>Send to Claude</b>. ${phone ? 'Choose the <b>Claude</b> app and send.' : 'Claude opens in a new tab; press <b>Ctrl+V</b> to paste the request, and attach <b>' + esc(file ? file.name : 'the paper') + '</b>' + (download ? ' (just saved in Downloads)' : '') + '.'}</li>
+      <li>When Claude answers, tap its <b>Copy</b> button.</li><li>Come back here and tap <b>Paste reply</b>.</li></ol>
+      <button class="save" data-ca="send">Send to Claude</button>
+      <div class="field" style="margin-top:14px"><label for="ca_txt">Claude’s reply</label><textarea class="in" id="ca_txt" rows="5" placeholder="Paste Claude’s reply here" style="font-family:var(--mono);font-size:12px"></textarea></div>
+      <div class="two"><button class="ghost" data-ca="paste" style="margin:0">Paste reply</button><button class="act primary" data-ca="use" style="min-height:44px">Fill from this reply</button></div>
+      <button class="linkbtn" data-ca="cancel" style="margin-top:8px">Cancel</button>`);
+    const root = $('#sheet-root');
+    const parse = () => { const t = $('#ca_txt').value; const a = t.indexOf('{'), b = t.lastIndexOf('}'); if (a < 0 || b < a) return null; try { return JSON.parse(t.slice(a, b + 1)); } catch (e) { return null; } };
+    root.onclick = async e => {
+      const b = e.target.closest('[data-ca]'); if (!b) return;
+      const a = b.dataset.ca;
+      if (a === 'cancel') { root.onclick = null; closeSheet(); return finish(null); }
+      if (a === 'send') {
+        if (phone && navigator.share) {
+          const data = { title: title || 'Read this order', text: ask, ...(file && navigator.canShare && navigator.canShare({ files: [file] }) ? { files: [file] } : {}) };
+          try { await navigator.share(data); return; } catch (er) { if (er.name === 'AbortError') return; }
+        }
+        try { await navigator.clipboard.writeText(ask); } catch (er) {}
+        if (file && download) { const l = document.createElement('a'); l.href = URL.createObjectURL(file); l.download = file.name; document.body.appendChild(l); l.click(); l.remove(); }
+        window.open('https://claude.ai/new', '_blank');
+        toast('Request copied. In Claude: Ctrl+V, attach ' + (file ? file.name : 'the paper') + ', send.', 7000); return;
+      }
+      if (a === 'paste') { try { $('#ca_txt').value = await navigator.clipboard.readText(); } catch (er) { toast('Long-press the box and choose Paste'); return; } }
+      if (a === 'use' || a === 'paste') { const o = parse(); if (!o) { if (a === 'use') toast('That does not look like Claude’s reply. Copy the whole answer and paste again.', 5000); return; } root.onclick = null; closeSheet(); finish(o); }
+    };
+  });
 }
 
 function pickOrderFile() {
@@ -66,23 +77,8 @@ Reply with ONLY a JSON object, no other text:
 Never guess a date. If a date cannot be read clearly, give "" and name it in doubtful.`;
 }
 
-async function askClaudeOrder(m, blob, isPdf) {
-  const data = await toB64(blob);
-  const part = isPdf ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } }
-                     : { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } };
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-api-key': aiKey(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify({ model: AI_MODEL, max_tokens: 1024, messages: [{ role: 'user', content: [part, { type: 'text', text: orderPrompt(m) }] }] })
-  });
-  if (r.status === 401) throw new Error('The API key was not accepted. Check it in More › Order reading.');
-  if (r.status === 429) throw new Error('Too many requests or spending limit reached. Try again shortly.');
-  if (!r.ok) { let t = ''; try { t = (await r.json()).error?.message || ''; } catch (e) {} throw new Error('Could not read the order (' + r.status + ') ' + t); }
-  const j = await r.json();
-  const txt = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
-  const s = txt.indexOf('{'), e = txt.lastIndexOf('}');
-  if (s < 0) throw new Error('The order could not be read. Please enter the date with Next date.');
-  return JSON.parse(txt.slice(s, e + 1));
+async function askClaudeOrder(m, file) {
+  return claudeAppRead({ m, file, prompt: orderPrompt(m), title: 'Read this order' });
 }
 
 const isIso = d => /^\d{4}-\d{2}-\d{2}$/.test(d || '');
@@ -99,16 +95,13 @@ async function fileOrder(m, file, blob, isPdf, dateIso) {
 }
 
 async function readOrder(m, given) {
-  if (!aiKey()) { sheetAiKey(); toast('First add your API key'); return; }
   const file = given || await pickOrderFile(); if (!file) return;
   const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
   if (isPdf && file.size > 20 * 1024 * 1024) { toast('PDF is too large (over 20 MB)'); return; }
-  openSheet(`<div class="s-head"><div><small>${esc(mref(m))}</small><h1>Reading the order…</h1></div></div><p class="hint">This takes about 10–20 seconds. Keep the app open.</p>`);
   let blob = file, o;
-  try {
-    if (!isPdf) blob = await shrinkImage(file);
-    o = await askClaudeOrder(m, blob, isPdf);
-  } catch (e) { closeSheet(); toast(e.message, 5000); return; }
+  try { if (!isPdf) blob = await shrinkImage(file); } catch (e) {}
+  const send = isPdf ? file : new File([blob], (file.name || 'order').replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+  o = await askClaudeOrder(m, send); if (!o) return;
   // file the order in "2 Orders" in the background; reading does not wait for it
   fileOrder(m, file, blob, isPdf, o.orderDate).then(w => w && toast('Order filed in ' + w, 4000)).catch(e => toast('Order read, but not filed: ' + e.message, 5000));
   const dl = (o.directions || []).filter(d => isIso(d.dueDate)).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
@@ -130,6 +123,5 @@ async function readOrder(m, given) {
 
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
-  if (el.dataset.act === 'aikey') sheetAiKey();
   if (el.dataset.act === 'readorder') { const m = find(el.dataset.id); if (m) readOrder(m); }
 });

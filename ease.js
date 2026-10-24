@@ -88,7 +88,7 @@ function sheetShared(files, skipAsk) {
   pickMatter('Which matter is this for?', m => {
     openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · ${files.length} file${files.length > 1 ? 's' : ''} shared</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
       <div class="menu" style="gap:10px">
-        ${isOrderLike ? `<button data-sh="read">Read the order <small>${aiKey() ? 'fills the next date; files it in 2 Orders' : 'needs your key in More › Order reading'}</small></button>` : ''}
+        ${isOrderLike ? `<button data-sh="read">Read the order <small>free with the Claude app · fills the next date; files it in 2 Orders</small></button>` : ''}
         ${files.some(f => /\.docx?$/i.test(f.name)) ? '<button data-sh="1 Pleadings">Save in 1 Pleadings <small>a draft from Claude, kept with its own name</small></button>' : ''}
         <button data-sh="2 Orders">Save in 2 Orders <small>named with today's date</small></button>
         <button data-sh="3 Documents">Save in 3 Documents</button>

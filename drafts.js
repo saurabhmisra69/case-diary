@@ -350,19 +350,13 @@ async function paperToImages(doc) {
 
 /* read an order with Claude and fill the draft's blanks */
 async function readOrderForDraft(m, doc) {
-  if (!aiKey()) throw new Error('Add your API key in More › Order reading first');
-  const isPdf = /\.pdf$/i.test(doc.name);
-  const blob = isPdf ? doc.blob : await shrinkImage(doc.blob);
-  const data = await toB64(blob);
-  const part = isPdf ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } } : { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } };
   const prompt = `This is an Indian court order (English or Hindi, possibly handwritten) in the matter "${m.title}" (${m.type || ''} ${m.caseNo || ''}). Reply with ONLY JSON:
 {"orderDate":"DD.MM.YYYY","courtNo":"court number if shown, else empty","interimRelief":"the interim protection granted, in a short clause such as 'no coercive action shall be taken against the applicant' or 'further proceedings of Case No. X shall remain stayed'; empty if none","operatesTill":"till when the interim order operates, e.g. 'till the next date of listing' or a date; empty if not stated","nextDate":"DD.MM.YYYY or empty","directions":"anything the party must do, with time limits, in one sentence; empty if none","summary":"what the order says in one or two plain English sentences"}
 Never guess a date: leave it empty if unclear.`;
-  const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': aiKey(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify({ model: AI_MODEL, max_tokens: 800, messages: [{ role: 'user', content: [part, { type: 'text', text: prompt }] }] }) });
-  if (!r.ok) throw new Error(r.status === 401 ? 'The API key was not accepted' : 'Could not read the order (' + r.status + ')');
-  const t = ((await r.json()).content || []).map(c => c.text || '').join('');
-  return JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1));
+  const file = new File([doc.blob], doc.name || 'order.pdf', { type: doc.blob.type || '' });
+  const o = await claudeAppRead({ m, file, prompt, title: 'Read the order for this draft', download: true });
+  if (!o) throw new Error('Not filled — no reply pasted');
+  return o;
 }
 function applyOrderToFields(key, o, f) {
   if (o.orderDate) f.orderDate = o.orderDate;
@@ -435,10 +429,10 @@ function sheetDraft(m, preset) {
     else if (k === 'fromorder') {
       const doc = await pickDoc(m, 'Which order?', ['pdf', 'jpg', 'jpeg', 'png', 'webp']); bind();
       if (!doc) return draw();
-      S2.busy = 'Reading the order…'; draw();
+      S2.busy = 'Waiting for Claude’s reply…'; draw();
       try { const o = await readOrderForDraft(m, doc); applyOrderToFields(S2.key, o, S2.f); toast('Filled from the order dated ' + (o.orderDate || '?') + '. Please check.', 4000); }
       catch (er) { toast(er.message, 5000); }
-      S2.busy = ''; draw();
+      S2.busy = ''; bind(); draw();
     }
     else if (k === 'annex') {
       const doc = await pickDoc(m, 'Attach which paper?', ['pdf', 'jpg', 'jpeg', 'png', 'webp']); bind();

@@ -561,7 +561,6 @@ function viewMore() {
     <button data-act="paper">Paper size <small>A4 or Legal for each kind of document</small></button>
     <button data-act="tab" data-tab="limit">Limitation calculator <small>last date to file</small></button>
     <label class="menu-file"><input type="file" accept=".json,application/json" data-act="updfile" hidden><b>Apply update from Claude</b><small>pick the update file you downloaded</small></label>
-    <button data-act="aikey">Order reading <small>${aiKey() ? 'key saved on this device' : 'add your API key'}</small></button>
     <button data-act="tab" data-tab="sort">Sort old folders <small>moves from the Folder Sorting Sheet</small></button>
     <button data-act="sync">Sync now <small>${esc(syncLabel()[1])}</small></button>
     <button data-act="openfolder">Open SM Chambers data in OneDrive <small>data file, Excel copy, backups</small></button>

@@ -104,7 +104,6 @@ async function onViewerClick(e) {
   else if (a === 'rfree') readFree();
   else if (a === 'rapp') sendToClaudeApp();
   else if (a === 'rpc') queueForPc();
-  else if (a === 'read') readThisPaper();
   else if (a === 'rclose') { const p = document.getElementById('v_read'); if (p) p.remove(); }
   else if (a === 'go') { const fn = (V.actions || [])[+b.dataset.i]; if (fn) { closeViewer(); setTimeout(fn, 150); } }
   else if (a === 'copy') { try { await navigator.clipboard.writeText(V.readText || ''); toast('Copied'); } catch (er) { toast('Could not copy'); } }
@@ -126,32 +125,6 @@ Reply with ONLY a JSON object:
  "watch": ["anything risky or urgent the advocate should notice, e.g. interim order lapsing, last opportunity, costs, warrant"],
  "sameMatter": true or false}
 Never guess a date; leave it empty if unclear.`;
-}
-async function readThisPaper() {
-  if (!V.blob) { toast('Still opening…'); return; }
-  if (!aiKey()) { closeViewer(); setTimeout(() => { sheetAiKey(); toast('First add your API key'); }, 150); return; }
-  const m = S.tab === 'matter' ? find(S.mid) : null;
-  const old = document.getElementById('v_read'); if (old) old.remove();
-  const panel = document.createElement('div'); panel.id = 'v_read'; panel.className = 'v-read-panel';
-  panel.innerHTML = '<p class="v-msg" style="margin:8px 0">Reading… about 10–30 seconds.</p>';
-  document.getElementById('viewer').appendChild(panel);
-  let o;
-  try {
-    const isPdf = V.kind === 'pdf';
-    if (isPdf && V.blob.size > 30 * 1024 * 1024) throw new Error('This PDF is too large to read (over 30 MB)');
-    const blob = isPdf ? V.blob : await shrinkImage(V.blob, 1800);
-    const data = await toB64(blob);
-    const part = isPdf ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } } : { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } };
-    const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': aiKey(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: AI_MODEL, max_tokens: 1500, messages: [{ role: 'user', content: [part, { type: 'text', text: readPrompt(m) }] }] }) });
-    if (r.status === 401) throw new Error('The API key was not accepted (More › Order reading)');
-    if (!r.ok) { let t = ''; try { t = (await r.json()).error?.message || ''; } catch (e) {} throw new Error('Could not read (' + r.status + ') ' + t); }
-    const t = ((await r.json()).content || []).map(c => c.text || '').join('');
-    o = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1));
-  } catch (e) { panel.innerHTML = `<p class="v-msg">${esc(e.message)}</p><button class="v-btn" data-v="rclose">Close</button>`; return; }
-  if (!document.getElementById('v_read')) return;
-  showReading(o, m, 'Read by Claude with your API key. Please check against the paper.');
 }
 function showReading(o, m, note) {
   const panel = document.getElementById('v_read'); if (!panel) return;
@@ -203,7 +176,6 @@ function readMenu() {
       <button class="v-act" data-v="rfree">Quick read on this phone<small>Free · typed orders (High Court website PDFs, typed orders)</small></button>
       <button class="v-act alt" data-v="rapp">Send to the Claude app<small>Free with your Claude plan · reads anything, even handwriting</small></button>
       ${m ? `<button class="v-act alt" data-v="rpc">Claude reads it on my PC<small>Free · matter updated when your computer is on</small></button>` : ''}
-      ${aiKey() ? `<button class="v-act alt" data-v="read">Instant full read<small>Paid, about ₹1–3 · handwriting too</small></button>` : ''}
     </div>`);
 }
 
@@ -287,8 +259,7 @@ async function readFree() {
     readPanel(`<div class="v-read-head"><b>This paper is a scan or photo</b><button class="v-btn" data-v="rclose" aria-label="Close">${I.x}</button></div>
       <p>There is no typed text in it, so the free reader cannot read it. Use one of these:</p>
       <div class="v-acts"><button class="v-act alt" data-v="rapp">Send to the Claude app<small>Free with your plan</small></button>
-      ${m ? `<button class="v-act alt" data-v="rpc">Claude reads it on my PC<small>Free · when your computer is on</small></button>` : ''}
-      ${aiKey() ? `<button class="v-act alt" data-v="read">Instant full read<small>Paid, about ₹1–3</small></button>` : ''}</div>`);
+      ${m ? `<button class="v-act alt" data-v="rpc">Claude reads it on my PC<small>Free · when your computer is on</small></button>` : ''}</div>`);
     return;
   }
   showReading(ruleRead(t, m), m, 'Quick read on this phone, by rules, not by Claude. It picks up dates and standard wording; always check against the paper.');
