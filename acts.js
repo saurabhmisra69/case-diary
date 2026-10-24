@@ -1,4 +1,4 @@
-/* SM Chambers — Bare Acts shelf. Official PDFs from India Code (indiacode.nic.in) kept in
+/* SM Chambers — Bare Acts shelf. Official PDFs from India Code (indiacode.gov.in) kept in
    OneDrive › SM Chambers data › Bare Acts; each Act is read once, split into sections, and kept for offline use.
    Search by section number or any word; open a section from any matter. */
 'use strict';
@@ -27,7 +27,8 @@ const ACTS = [
   { k: 'ITA25', n: 'Income-tax Act, 2025', rx: /income[-\s]*tax\s*act,?\s*2025/i },
 ];
 const ACT_OF = s => { const t = String(s || ''); return ACTS.find(a => a.rx.test(t)); };
-const indiaCodeUrl = a => 'https://www.indiacode.nic.in/simple-search?query=' + encodeURIComponent(a.n.replace(/,\s*\d{4}$/, ''));
+// India Code moved to indiacode.gov.in (Oct 2026); tax laws are kept by the Income Tax Department instead
+const indiaCodeUrl = a => a.k === 'ITA25' ? 'https://incometaxindia.gov.in/pages/indiacode/tax-laws-rules.aspx' : 'https://indiacode.gov.in/search?query=' + encodeURIComponent(a.n.replace(/,\s*\d{4}$/, ''));
 const shelf = () => S.data?.meta?.acts || {};   // { k: { itemId, name, sections, added, u } }
 const AX = {};   // sections loaded in memory: { k: [{ no, head, text }] }
 
@@ -85,7 +86,7 @@ async function sheetActs() {
   openSheet(`<div class="s-head"><div><small>${have} of ${ACTS.length} on your shelf</small><h1>Bare Acts</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     ${have ? `<form id="ac_all" style="display:flex;gap:8px;margin-bottom:10px"><input class="in" id="ac_q" placeholder="Search all Acts: a word or phrase" style="flex:1"><button class="save" type="submit" style="margin:0;width:auto;padding:0 16px">Search</button></form>` : ''}
     <div class="hist">${ACTS.map(a => sh[a.k] ? `<button class="hrow" data-ac="open" data-k="${a.k}"><b style="color:var(--dc-ink)">✓ ${a.k}</b><span><b style="font-family:inherit">${esc(a.n)}</b><br><small>${sh[a.k].sections} sections · added ${dmy(sh[a.k].added)}</small></span></button>`
-      : `<div><b style="color:var(--muted)">${a.k}</b><span><b style="font-family:inherit">${esc(a.n)}</b><br><a class="linkbtn" href="${indiaCodeUrl(a)}" target="_blank" rel="noopener">Get it from India Code ↗</a> · <label class="linkbtn">Add the PDF<input type="file" accept=".pdf" data-ac="up" data-k="${a.k}" hidden></label></span></div>`).join('')}</div>
+      : `<div><b style="color:var(--muted)">${a.k}</b><span><b style="font-family:inherit">${esc(a.n)}</b><br><a class="linkbtn" href="${indiaCodeUrl(a)}" target="_blank" rel="noopener">${a.k === 'ITA25' ? 'Get it from the Income Tax Department ↗' : 'Get it from India Code ↗'}</a> · <label class="linkbtn">Add the PDF<input type="file" accept=".pdf" data-ac="up" data-k="${a.k}" hidden></label></span></div>`).join('')}</div>
     <p class="hint">On India Code, open the Act and download its PDF. Then add it here, or share it to SM Chambers › Bare Acts. It is read once, then works offline.</p>`);
   const root = $('#sheet-root');
   root.onclick = e => { const b = e.target.closest('[data-ac="open"]'); if (b) sheetAct(b.dataset.k); };

@@ -1,5 +1,5 @@
 /* Offline support: keeps the app itself available without internet. Case data is never cached here. */
-const CACHE = 'case-diary-v1.79.0';
+const CACHE = 'case-diary-v1.79.1';
 const SHELL = ['./', 'index.html', 'app.css', 'app.js', 'paper.js', 'guard.js', 'files.js', 'step3.js', 'sort.js', 'drafts.js', 'ai.js', 'ease.js', 'viewer.js', 'voice.js', 'bills.js', 'refs.js', 'money.js', 'practice.js', 'insight.js', 'comms.js', 'assist.js', 'research.js', 'acts.js', 'codes.js', 'hindi.js', 'lib/jszip.min.js', 'lib/docx.umd.js', 'manifest.webmanifest', 'lib/msal-browser.min.js', 'lib/xlsx.full.min.js', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE && k !== 'cd-share').map(k => caches.delete(k)))).then(() => self.clients.claim())); });
