@@ -13,7 +13,7 @@ function updateText(m) {
 }
 function feeText(m, due) {
   const b = (m.bills || []).filter(x => !x.state && billPaid(m, x) < num(x.total)).slice(-1)[0];
-  return `Namaste.\nA gentle reminder: ${rupees(due)} is pending towards professional fees in your matter: ${m.title}${m.caseNo ? ' (' + m.caseNo + ')' : ''}.${b ? '\nBill No. ' + b.no + ' dated ' + dmy(b.date) + '.' : ''}\n\nPayment may be made to:\nSaurabh Misra\nA/c ${BANK.acct}, ${BANK.bank}, ${BANK.branch}\nIFSC ${BANK.ifsc}\nUPI ${BANK.upi}\n\nKindly ignore if already paid.` + SIGN;
+  return `Namaste.\nA gentle reminder: ${rupees(due)} is pending ${typeof pendingWords === 'function' ? pendingWords(m) : 'towards professional fees'} in your matter: ${m.title}${m.caseNo ? ' (' + m.caseNo + ')' : ''}.${b ? '\nBill No. ' + b.no + ' dated ' + dmy(b.date) + '.' : ''}\n\nPayment may be made to:\nSaurabh Misra\nA/c ${BANK.acct}, ${BANK.bank}, ${BANK.branch}\nIFSC ${BANK.ifsc}\nUPI ${BANK.upi}\n\nKindly ignore if already paid.` + SIGN;
 }
 function cardText(gr) {
   const m0 = gr.ms[0];

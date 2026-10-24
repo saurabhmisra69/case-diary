@@ -63,3 +63,21 @@ function dateFeeClick(m, b, redraw) {
     return redraw();
   }
 }
+
+/* wording for WhatsApp messages */
+function pendingSplit(m) {   // what is pending under each head
+  const df = Math.max(0, dateFeeTotal(m) - dateFeePaid(m)), prof = Math.max(0, feeDue(m) - df);
+  return { prof, df };
+}
+function pendingWords(m) {
+  if (!dateFeeRate(m)) return 'towards professional fees';
+  const { prof, df } = pendingSplit(m);
+  if (prof && df) return 'towards fees (professional fees ' + rupees(prof) + ' + date fees ' + rupees(df) + ')';
+  return df ? 'towards date fees' : 'towards professional fees';
+}
+function paymentWords(m, p) {   // "towards professional fees ₹4,000 and date fees ₹6,000 (12.08.2026, …)"
+  const g = num(p.amount) + num(p.tds), d = num(p.dateFee);
+  if (!d) return 'towards professional fees';
+  const ds = datesCoveredBy(m, p), dtxt = 'date fees ' + rupees(d) + (ds.length ? ' (' + ds.map(dmy).join(', ') + ')' : '');
+  return g - d > 0 ? 'towards professional fees ' + rupees(g - d) + ' and ' + dtxt : 'towards ' + dtxt;
+}

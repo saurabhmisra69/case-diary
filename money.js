@@ -91,7 +91,7 @@ function sheetDues() {
     b.textContent = 'Preparing…';
     let link = '';
     if (x.bill && x.bill.fileId) { try { const r = await g('/me/drive/items/' + x.bill.fileId + '/createLink', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'view', scope: 'anonymous' }) }); if (r.ok) link = (await r.json()).link.webUrl; } catch (er) {} }
-    const txt = `Namaste.\nThis is a gentle reminder that ${rupees(x.due)} is pending towards professional fees in your matter: ${x.m.title}${x.m.caseNo ? ' (' + x.m.caseNo + ')' : ''}.` +
+    const txt = `Namaste.\nThis is a gentle reminder that ${rupees(x.due)} is pending ${typeof pendingWords === 'function' ? pendingWords(x.m) : 'towards professional fees'} in your matter: ${x.m.title}${x.m.caseNo ? ' (' + x.m.caseNo + ')' : ''}.` +
       (x.bill ? `\nBill No. ${x.bill.no} dated ${dmy(x.bill.date)}.` + (link ? '\nBill: ' + link : '') : '') +
       `\n\nPayment may be made to:\nSaurabh Misra\nA/c ${BANK.acct}, ${BANK.bank}, ${BANK.branch}\nIFSC ${BANK.ifsc}\nUPI ${BANK.upi}\n\nKindly ignore if already paid.\nSaurabh Misra, Advocate`;
     window.open('https://wa.me/' + waOf(x.m) + '?text=' + encodeURIComponent(txt), '_blank');
