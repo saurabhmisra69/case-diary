@@ -13,6 +13,9 @@ function initialsOf(name) {
   let ini = first.length === 1 ? (people.length > 1 && lastWord && lastWord !== first[0] ? first[0][0] + lastWord[0] : first[0].slice(0, 3)) : first.map(w => w[0]).join('');
   return ini.toUpperCase().slice(0, 6);
 }
+const sameClient = (a, b) => { const k = clientKey(a); return !!k && k === clientKey(b); };
+/* the code this client already has in his other matters ('' if none, or if they disagree) */
+function codeOfClient(name, exceptId) { const cs = [...new Set(live().filter(x => x.id !== exceptId && x.clientCode && sameClient(x.clients, name)).map(x => x.clientCode))]; return cs.length === 1 ? cs[0] : ''; }
 const ccNum = code => { const m = String(code || '').match(CC_RX); return m ? +m[1] : 0; };
 function ccNext() { return Math.max(+(S.data?.meta || {})['seq:C'] || 0, ...live().map(m => ccNum(m.clientCode)), 0) + 1; }
 const ccFmt = (n, ini) => 'C' + String(n).padStart(3, '0') + '-' + ini;
@@ -31,8 +34,7 @@ function ccGroups() {
 }
 /* a new client elsewhere in the app (first bill, receipt or letter) gets the next number too */
 function suggestCodeNew(m) {
-  const same = live().find(x => x.id !== m.id && x.clientCode && clientKey(x.clients) === clientKey(m.clients));
-  return same ? same.clientCode : ccFmt(ccNext(), initialsOf(m.clients || m.title));
+  return codeOfClient(m.clients, m.id) || ccFmt(ccNext(), initialsOf(m.clients || m.title));
 }
 
 function sheetCodes(filter) {
@@ -102,7 +104,7 @@ function changeClient(m, back) {
     <p class="hint" style="margin:0">Pick an existing client to put this matter with their other matters, or type a new name (e.g. Sana Rizvi).</p>
     <button class="save" type="submit">Save</button><button type="button" class="linkbtn" data-ch="back">‹ Back</button></form>`);
   $('#ch_form').onsubmit = e => { e.preventDefault(); const v = $('#ch_n').value.trim(); if (!v || v === m.clients) return back();
-    change(() => { logChange(m, 'Client: ' + (m.clients || '—') + ' → ' + v); m.clients = v; const same = live().find(x => x.id !== m.id && x.clientCode && clientKey(x.clients) === clientKey(v)); m.clientCode = same ? same.clientCode : ((m.letters || []).length ? m.clientCode : ''); touch(m); });
+    change(() => { logChange(m, 'Client: ' + (m.clients || '—') + ' → ' + v); m.clients = v; const cc = codeOfClient(v, m.id); m.clientCode = (m.letters || []).length ? m.clientCode : cc; touch(m); });
     toast('Client: ' + v); back(); };
   $('#sheet-root').onclick = e => { if (e.target.closest('[data-ch]')) back(); };
 }

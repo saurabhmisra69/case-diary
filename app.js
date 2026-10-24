@@ -586,7 +586,7 @@ function sheetEdit(m) {
     <datalist id="courts">${[...new Set(live().map(x => x.court).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('')}</datalist>
     <div class="two"><div class="field"><label for="f_type">Type</label><select class="in" id="f_type" name="type"><option value=""></option>${opt(TYPES, m.type)}</select></div>${fld('caseNo', 'Case no.', m.caseNo, 'text', 'placeholder="e.g. 8027/2026"')}</div>
     ${fld('cnr', 'CNR no.', m.cnr, 'text', 'placeholder="16 characters, e.g. UPHC020344252026" style="text-transform:uppercase;font-family:var(--mono);letter-spacing:.03em" autocapitalize="characters" spellcheck="false"')}
-    <div class="two">${fld('filingNo', 'Filing no.', m.filingNo)}<div class="field"><label>Client code</label><div class="in" style="display:flex;align-items:center;justify-content:space-between;font-family:var(--mono)">${esc(m.clientCode || '—')}<button type="button" class="linkbtn" data-act="${isNew ? 'codes' : 'setcode'}" data-id="${m.id || ''}">${m.clientCode ? 'Change' : 'Set'}</button></div></div></div>
+    <div class="two">${fld('filingNo', 'Filing no.', m.filingNo)}<div class="field"><label for="f_cc">Client code</label><select class="in" id="f_cc" name="ccpick" style="font-family:var(--mono)"></select><small id="f_ccnote" style="color:var(--muted);font-size:12px"></small></div></div>
     <div class="two">${fld('crimeNo', 'Crime / FIR no.', m.crimeNo)}${fld('ps', 'Police station', m.ps)}</div>
     ${fld('sections', 'Under section(s)', m.sections)}
     <div class="two"><div class="field"><label for="f_nature">Nature</label><select class="in" id="f_nature" name="nature">${opt(['Criminal', 'Civil', 'Other'], m.nature)}</select></div><div class="field"><label for="f_status">Status</label><select class="in" id="f_status" name="status">${opt(statusList(m), m.status)}</select></div></div>
@@ -603,6 +603,25 @@ function sheetEdit(m) {
     <button class="save" type="submit">${isNew ? 'Add matter' : 'Save changes'}</button>
     ${isNew ? '' : `<button class="ghost" type="button" data-act="del" data-id="${m.id}" style="color:var(--red)">Remove this matter</button>`}
   </form>`);
+  // client code follows the client's name: his existing code is chosen by itself; the advocate can pick another
+  const ccLetters = (m.letters || []).length && m.clientCode;
+  const ccDraw = () => { const sel = $('#f_cc'); if (!sel) return; const name = $('#f_clients').value, prev = sel.value;
+    const his = typeof codeOfClient === 'function' ? codeOfClient(name, m.id) : '', opts = [];
+    if (ccLetters) opts.push([m.clientCode, m.clientCode + ' (letters issued — stays)']);
+    else {
+      const own = m.clientCode || '', sameAsBefore = !isNew && !!clientKey(name) && clientKey(m.clients) === clientKey(name);
+      const keepOwn = own && own !== his && (sameAsBefore || sameClientCode(own, name));
+      if (his) opts.push([his, his + ' — ' + clientName(name) + '’s code']);
+      if (keepOwn) opts.push([own, own + (his ? ' (this matter’s present code)' : '')]);
+      if (!his && !keepOwn) { opts.push(['', 'Set later']); if (clientKey(name)) opts.push(['@new', 'New client code — ask me the initials']); }
+      if (own && !keepOwn && own !== his) opts.push([own, own + ' (keep the old one)']);
+    }
+    sel.innerHTML = opts.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
+    if (opts.some(o => o[0] === prev) && sel.dataset.touched) sel.value = prev;
+    $('#f_ccnote').textContent = ccLetters ? '' : his ? 'Same client as in other matters' : clientKey(name) ? 'New client' : '';
+  };
+  const sameClientCode = (code, name) => live().some(x => x.id !== m.id && x.clientCode === code && sameClient(x.clients, name));
+  ccDraw(); $('#f_clients').addEventListener('input', ccDraw); $('#f_cc').addEventListener('change', e => { e.target.dataset.touched = '1'; });
   $('#mform').onsubmit = async e => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries());
@@ -612,6 +631,7 @@ function sheetEdit(m) {
     if (!fd.title) fd.title = fd.clients;
     if (fd.cnr) fd.cnr = fd.cnr.toUpperCase().replace(/\s+/g, '');
     delete fd.clientCode;   // set in Client codes
+    const ccPick = fd.ccpick || ''; delete fd.ccpick;
     const aka = (fd.aka || '').split(/[,;]/).map(x => x.trim()).filter(Boolean); delete fd.aka;   // kept per client, not per matter
     const akaHad = typeof aliasesOf === 'function' ? aliasesOf(fd.clients) : [];
     if (isNew) aka.unshift(...akaHad);   // a new matter only adds names; it never drops names saved earlier
@@ -621,10 +641,11 @@ function sheetEdit(m) {
     if (isNew) {
       const rec = touch({ id: uid(), n: nextNumber(fd.year), hearings: [], created: todayIso(), ...fd });
       rec.no = rec.year + '/' + rec.n;
-      { const same = live().filter(x => x.clientCode && clientKey(x.clients) === clientKey(rec.clients)), cs = [...new Set(same.map(x => x.clientCode))]; if (cs.length === 1) rec.clientCode = cs[0]; }   // an existing client keeps his code
+      if (ccPick && ccPick !== '@new') rec.clientCode = ccPick;   // an existing client keeps his code
       if (rec.nextDate) rec.calPending = true;
       change(d => { d.matters.push(rec); if (akaChanged) setAliases(d, rec.clients, aka); });
       closeSheet(); toast('Matter ' + mref(rec) + ' added');
+      if (ccPick === '@new' && clientKey(rec.clients) && typeof askCode === 'function') setTimeout(() => askCode(find(rec.id)), 300);
     } else {
       const old = find(m.id); const before = { caseNo: old.caseNo, type: old.type, court: old.court };
       change(() => {
@@ -633,10 +654,14 @@ function sheetEdit(m) {
         if (fd.nextDate !== old.nextDate) logListing(old, old.nextDate, fd.nextDate, 'date changed in Edit');
         if (fd.lastDate && fd.lastDate !== old.lastDate) logPast(old, fd.lastDate, 'last date entered in Edit');
         if (old.nextDate !== fd.nextDate || old.status !== fd.status || old.purpose !== fd.purpose || old.court !== fd.court) old.calPending = true;
-        Object.assign(old, fd); touch(old);
+        Object.assign(old, fd);
+        if (!ccLetters && ccPick !== '@new' && ccPick !== (old.clientCode || '')) { logChange(old, 'Client code: ' + (old.clientCode || '—') + ' → ' + (ccPick || '—')); old.clientCode = ccPick; }
+        if (!ccLetters && ccPick === '@new' && old.clientCode && !sameClientCode(old.clientCode, old.clients)) { logChange(old, 'Client code: ' + old.clientCode + ' → — (new code to be given)'); old.clientCode = ''; }
+        touch(old);
         if (akaChanged) setAliases(S.data, old.clients, aka);
       });
       closeSheet(); toast('Saved'); if (typeof afterEdit === 'function') afterEdit(old, before);
+      if (!ccLetters && ccPick === '@new' && clientKey(old.clients) && typeof askCode === 'function') setTimeout(() => askCode(find(old.id)), 300);
     }
   };
 }

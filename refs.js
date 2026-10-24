@@ -29,8 +29,9 @@ function bumpLetterNo(code, year, n) { change(d => { d.meta = d.meta || {}; cons
 /* ask for the client code once, when a matter first needs one */
 function askCode(m, then) {
   if (typeof suggestCodeNew === 'function') {
-    const same = live().find(x => x.id !== m.id && x.clientCode && clientKey(x.clients) === clientKey(m.clients));
-    if (same && !m.clientCode) { change(() => { m.clientCode = same.clientCode; logChange(m, 'Client code: ' + same.clientCode + ' (same client)'); touch(m); }); return then ? then() : (closeSheet(), toast('Client code ' + same.clientCode), render()); }
+    if (!clientKey(m.clients)) { toast('First enter who the client is'); return changeClient(m, () => askCode(find(m.id) || m, then)); }
+    const sameCode = codeOfClient(m.clients, m.id);
+    if (sameCode && m.clientCode !== sameCode && !(m.letters || []).length) { change(() => { logChange(m, 'Client code: ' + (m.clientCode || '—') + ' → ' + sameCode + ' (same client)'); m.clientCode = sameCode; touch(m); }); return then ? then() : (closeSheet(), toast('Client code ' + sameCode), render()); }
     const code = m.clientCode || suggestCodeNew(m), pre = ccPre(code), ini = code.replace(/^C\d{3,4}-/, '');
     if (m.clientCode && !pre) return then ? then() : closeSheet();
     const locked = m.clientCode && ccLocked({ code: m.clientCode, ms: live().filter(x => x.clientCode === m.clientCode) });
@@ -40,7 +41,7 @@ function askCode(m, then) {
       <form id="cc_form"><div style="display:flex;gap:6px;align-items:center"><span class="ccpre">${esc(pre)}</span><input class="in" id="cc_in" value="${esc(ini)}" maxlength="6" style="flex:1;font-family:var(--mono);text-transform:uppercase" autocapitalize="characters" spellcheck="false" required aria-label="Initials"></div>
       <button class="save" type="submit" style="margin-top:12px">Save</button><button type="button" class="linkbtn" data-act="codes" style="margin-top:8px">All client codes</button></form>`);
     $('#cc_form').onsubmit = e => { e.preventDefault(); const i2 = iniClean($('#cc_in').value); if (!i2) return toast('Enter the initials');
-      const c = (pre || ccFmt(ccNext(), '')) + i2, grp = live().filter(x => clientKey(x.clients) === clientKey(m.clients));
+      const c = (pre || ccFmt(ccNext(), '')) + i2, grp = live().filter(x => x.id === m.id || sameClient(x.clients, m.clients));
       change(d => { d.meta = d.meta || {}; d.meta['seq:C'] = Math.max(+d.meta['seq:C'] || 0, ccNum(c)); grp.forEach(x => { if (x.clientCode !== c) { logChange(x, 'Client code: ' + (x.clientCode || '—') + ' → ' + c); x.clientCode = c; touch(x); } }); });
       then ? then() : (closeSheet(), render()); };
     return;
