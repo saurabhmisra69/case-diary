@@ -359,3 +359,9 @@ html.locked #app,html.locked #sheet-root{visibility:hidden}
 .act-text{font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:1.6;background:var(--card,#fff);border:1px solid var(--line,#ddd);border-radius:10px;padding:12px 14px;max-height:55vh;overflow:auto}
 mark{background:#FFE58A;color:inherit;padding:0 1px}
 .ccpre{font-family:var(--mono);font-weight:700;background:var(--hc-soft);color:var(--hc);border-radius:8px;padding:10px 8px;white-space:nowrap}
+/* stage of a matter */
+.stagebar{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:4px 0 2px;font-size:12px}
+.stg{padding:4px 8px;border-radius:999px;background:var(--line,#e6e1d6);color:var(--muted);font-weight:600;white-space:nowrap}
+.stg.done{background:var(--dc-soft);color:var(--dc-ink)}
+.stg.on{background:var(--brand-deep,#1B2A4A);color:#fff}
+.stg-sep{color:var(--muted);font-size:11px}

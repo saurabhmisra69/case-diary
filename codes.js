@@ -24,7 +24,7 @@ const iniClean = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').sl
 const ccPre = code => (String(code || '').match(/^C\d{3,4}-/) || [''])[0];
 function ccLocked(gr) { const c = gr.code; return !!c && c !== 'MIXED' && (gr.ms.some(m => (m.letters || []).some(l => String(l.no).includes('/' + c + '/'))) || !!(S.data?.meta?.codeFixed || {})[c]); }
 function ccGroups() {
-  const gs = clientGroups().filter(g => g.key !== '(no client name)');
+  const gs = clientGroups().filter(g => g.key !== '(no client name)' && g.ms.length);
   const age = g => Math.min(...g.ms.map(m => (m.year || 9999) * 100000 + (m.n || 0)));
   gs.sort((a, b) => age(a) - age(b));
   const codeOf = g => { const cs = [...new Set(g.ms.map(m => m.clientCode).filter(Boolean))]; return cs.length === 1 ? cs[0] : cs.length > 1 ? 'MIXED' : ''; };

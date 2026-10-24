@@ -110,5 +110,5 @@ async function sheetShare(m, what) {
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act="share"],[data-act="shareclient"]'); if (!el) return;
   if (el.dataset.act === 'share') { const m = find(el.dataset.id); if (m) sheetShare(m, el.dataset.w); }
-  else { const gr = clientGroups().find(x => x.key === el.dataset.k); if (gr) sheetShare(gr.ms.slice().sort((a, b) => (b.u || 0) - (a.u || 0))[0], el.dataset.w); }
+  else { const gr = clientGroups().find(x => x.key === el.dataset.k); if (gr && !gr.ms.length) return toast('Start a consultation first — sharing works from his matters'); if (gr) sheetShare(gr.ms.slice().sort((a, b) => (b.u || 0) - (a.u || 0))[0], el.dataset.w); }
 });

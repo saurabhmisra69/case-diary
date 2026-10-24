@@ -85,14 +85,15 @@ function clientGroups() {
     const gr = map.get(k); gr.ms.push(m); if (m.phone && !gr.phone) gr.phone = m.phone;
     if (baseKey(m.clients) === k && !gr.main) { gr.main = true; gr.name = clientName(m.clients); }
   }
-  for (const gr of map.values()) gr.aka = aliasesOf(gr.ms[0].clients);
+  for (const [k, c] of Object.entries(S.data?.meta?.clientList || {})) { const kk = clientKey(c.name) || k; if (!map.has(kk)) map.set(kk, { key: kk, name: c.name, ms: [], phone: '', newClient: true }); }
+  for (const gr of map.values()) { gr.aka = aliasesOf(gr.name); if (!gr.phone && typeof clientInfo === 'function') gr.phone = (S.data?.meta?.clientInfo || {})[gr.key]?.phone || ''; }
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 const sortName = n => String(n || '').replace(/^\s*((dr|smt|shri|sri|sh|mr|mrs|ms|m\/s|messrs|km|kumari|late|the)\.?\s+)+/i, '');   // Dr. Kanav Jain sorts under K
 VIEWS.clients = function () {
   const q = (S.cq || '').toLowerCase();
-  const gs = clientGroups().map(gr => Object.assign(gr, { live: gr.ms.some(m => isOpen(m)) })).sort((a, b) => (b.live - a.live) || ((a.key === '(no client name)') - (b.key === '(no client name)')) || sortName(a.name).localeCompare(sortName(b.name), 'en', { sensitivity: 'base' })).filter(gr => !q || gr.name.toLowerCase().includes(q) || gr.aka.some(a => a.toLowerCase().includes(q)) || gr.ms.some(m => matches(m, q)));
-  return pageHead('Clients', `<label class="search">${I.search}<input type="search" placeholder="Search clients" data-act="cq" value="${esc(S.cq || '')}"></label>`) + `
+  const gs = clientGroups().map(gr => Object.assign(gr, { live: !gr.ms.length || gr.ms.some(m => isOpen(m)) })).sort((a, b) => (b.live - a.live) || ((a.key === '(no client name)') - (b.key === '(no client name)')) || sortName(a.name).localeCompare(sortName(b.name), 'en', { sensitivity: 'base' })).filter(gr => !q || gr.name.toLowerCase().includes(q) || gr.aka.some(a => a.toLowerCase().includes(q)) || gr.ms.some(m => matches(m, q)));
+  return pageHead('Clients', `<button class="act primary" data-act="newclient" style="min-height:42px;margin:0 0 8px;width:100%">+ New client</button><label class="search">${I.search}<input type="search" placeholder="Search clients" data-act="cq" value="${esc(S.cq || '')}"></label>`) + `
   <main><div class="list">
     <div class="h2"><span class="sub">${gs.length} client${gs.length === 1 ? '' : 's'}</span></div>
     ${gs.length ? gs.map((gr, i) => {
@@ -102,7 +103,7 @@ VIEWS.clients = function () {
       const due = gr.ms.reduce((s, m) => s + feeDue(m), 0);
       const init = gr.name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
       return head + `<button class="card row" data-act="client" data-k="${esc(gr.key)}"><span class="avatar">${esc(init || '?')}</span>
-        <span class="m-col"><span class="m-title">${esc(gr.name)}</span>${gr.aka.length ? `<span class="m-meta">also ${esc(gr.aka.join(', '))}</span>` : ''}<span class="m-meta">${pend.length} pending · ${gr.ms.length - pend.length} closed${next ? ' · next ' + dmy(next) : ''}</span></span>
+        <span class="m-col"><span class="m-title">${esc(gr.name)}</span>${gr.aka.length ? `<span class="m-meta">also ${esc(gr.aka.join(', '))}</span>` : ''}<span class="m-meta">${!gr.ms.length ? 'New client · no matter yet · ' : ''}${pend.length} pending · ${gr.ms.length - pend.length} closed${next ? ' · next ' + dmy(next) : ''}</span></span>
         <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:${due ? 'var(--saffron-ink)' : 'var(--muted)'}">${due ? rupees(due) : ''}</span></button>`;
     }).join('') : '<div class="card empty">No clients yet. They appear here as you add matters.</div>'}
   </div></main>`;
@@ -120,18 +121,18 @@ function clientInfo(name) {
 function sheetClient(k) {
   const gr = clientGroups().find(x => x.key === k); if (!gr) return;
   const due = gr.ms.reduce((s, m) => s + feeDue(m), 0), recd = gr.ms.reduce((s, m) => s + num(m.feeReceived), 0);
-  const ci = clientInfo(gr.ms[0].clients), wa = phoneDigits(ci.whatsapp || ci.phone || gr.phone);
+  const ci = clientInfo(gr.name), wa = phoneDigits(ci.whatsapp || ci.phone || gr.phone);
   const r = (l, v) => v ? `<span>${l}</span><b>${v}</b>` : '';
   openSheet(`<div class="s-head"><div><small style="color:var(--hc)">Client${gr.ms.find(m => m.clientCode) ? ' · ' + esc(gr.ms.find(m => m.clientCode).clientCode) : ''}</small><h1>${esc(gr.name)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <div class="kv">${r('Also known as', esc(gr.aka.join(', ')))}${r('Mobile', ci.phone ? `<a href="tel:${esc(ci.phone)}">${esc(ci.phone)}</a>` : '')}${r('WhatsApp', ci.whatsapp ? esc(ci.whatsapp) : '')}${r('Email', ci.email ? `<a href="mailto:${esc(ci.email)}">${esc(ci.email)}</a>` : '')}${r('Alternate' + (ci.altName ? ' (' + esc(ci.altName) + ')' : ''), ci.altPhone ? `<a href="tel:${esc(ci.altPhone)}">${esc(ci.altPhone)}</a>` : '')}${r('Address', esc(ci.address || '').replace(/\n/g, '<br>'))}${r('PAN / GSTIN', esc(ci.pan || ''))}${r('Notes', esc(ci.notes || ''))}<span>Matters</span><b>${gr.ms.length}</b><span>Fees received</span><b>${rupees(recd)}</b><span>Fees pending</span><b style="color:${due ? 'var(--saffron-ink)' : 'inherit'}">${rupees(due)}</b></div>
-    <button class="ghost" data-act="ciedit" data-k="${esc(gr.key)}" style="margin-top:8px">Edit client details</button>
+    <div class="two" style="margin-top:8px"><button class="ghost" data-act="ciedit" data-k="${esc(gr.key)}" style="margin:0">Edit client details</button><button class="act primary" data-act="consult" data-k="${esc(gr.key)}" style="min-height:44px">${gr.ms.length ? '+ New consultation' : 'Start consultation'}</button></div>
     <div class="two" style="margin-top:10px">${wa ? `<a class="act wa" style="min-height:48px" href="https://wa.me/${wa}" target="_blank" rel="noopener">${I.wa}WhatsApp ${esc(gr.name.split(' ')[0])}</a>` : '<span></span>'}<button class="act blue" data-act="shareclient" data-k="${esc(gr.key)}" style="min-height:48px">Share…</button></div>
     <div class="chips" style="margin-top:8px"><button class="chip" data-act="shareclient" data-k="${esc(gr.key)}" data-w="update">Matter update</button><button class="chip" data-act="shareclient" data-k="${esc(gr.key)}" data-w="doc">Document</button>${due ? `<button class="chip" data-act="shareclient" data-k="${esc(gr.key)}" data-w="fee">Fee reminder</button>` : ''}<button class="chip" data-act="shareclient" data-k="${esc(gr.key)}" data-w="card">Contact card</button></div>
     <div class="grp"><span class="lbl">Matters</span><div class="list">${gr.ms.sort((a, b) => (b.year - a.year) || (b.n - a.n)).map(m => `<button class="card row" data-act="open" data-id="${m.id}" style="box-shadow:none;border:2px solid var(--line)"><div class="item sm" style="background:${forumOf(m).c}"><small>REF.</small><b>${esc(mrefBox(m))}</b></div><span class="m-col"><span class="m-title">${esc(m.title)}</span><span class="m-meta">${esc([m.court, metaLine(m)].filter(Boolean).join(' · '))}</span></span><span style="font-size:12px;font-weight:700;color:var(--muted)">${m.nextDate ? dmy(m.nextDate) : esc(shortSt(m.status))}</span></button>`).join('')}</div></div>`);
 }
 function sheetClientEdit(k) {
   const gr = clientGroups().find(x => x.key === k); if (!gr) return;
-  const ci = clientInfo(gr.ms[0].clients);
+  const ci = clientInfo(gr.name);
   const f = (id, label, type, ph) => `<div class="field"><label for="ce_${id}">${label}</label><input class="in" id="ce_${id}" name="${id}" type="${type}" value="${esc(ci[id] || '')}" placeholder="${esc(ph)}"></div>`;
   openSheet(`<div class="s-head"><div><small style="color:var(--hc)">Client · ${gr.ms.length} matter${gr.ms.length > 1 ? 's' : ''}</small><h1>Edit client details</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <form id="ce_form" class="grp" style="gap:12px" autocomplete="off">
@@ -157,9 +158,10 @@ function sheetClientEdit(k) {
         const oldBase = baseKey(gr.name);
         gr.ms.forEach(m => { if (baseKey(m.clients) === oldBase) { const nv = String(m.clients).replace(/\s+/g, ' ').replace(gr.name, newName); logChange(m, 'Client: ' + m.clients + ' → ' + nv); m.clients = nv; touch(m); } else if (!aka.some(a => baseKey(a) === baseKey(m.clients))) aka.push(clientName(m.clients)); });
         newKey = baseKey(newName);
-        for (const store of ['aka', 'clientInfo']) if (d.meta[store] && d.meta[store][k] && newKey !== k) { d.meta[store] = Object.assign({}, d.meta[store], { [newKey]: d.meta[store][k] }); delete d.meta[store][k]; }
+        for (const store of ['aka', 'clientInfo', 'clientList']) if (d.meta[store] && d.meta[store][k] && newKey !== k) { d.meta[store] = Object.assign({}, d.meta[store], { [newKey]: d.meta[store][k] }); delete d.meta[store][k]; }
         if (baseKey(gr.name) !== newKey) aka.push(gr.name);
       }
+      if (d.meta.clientList && d.meta.clientList[newKey]) d.meta.clientList[newKey] = Object.assign({}, d.meta.clientList[newKey], { name: newName });
       setAliases(d, newName, aka.filter(a => baseKey(a) !== baseKey(newName)));
       const info = {}; for (const [id] of CI_FIELDS) if (fd[id]) info[id] = fd[id]; if (fd.address) info.address = fd.address; if (fd.notes) info.notes = fd.notes;
       d.meta.clientInfo = Object.assign({}, d.meta.clientInfo, { [newKey]: info });
