@@ -8,7 +8,7 @@ const BANK = { name: 'SAURABH MISRA', bank: 'State Bank of India', branch: 'High
 const SIG_KEY = 'cd.sigItem';
 const BILL_TERMS = [
   ['exp', 'Out-of-pocket expenses (court fee, stamps, affidavit, oath commissioner / notary, typing, photocopy, certified copies) are not included in this bill and shall be charged separately at actuals.'],
-  ['work', 'Drafting, case preparation and filing shall be taken up only after receipt of full payment of the agreed fee.'],
+  ['work', 'Preparation fee: 50% at engagement, balance 50% before filing. Filing shall be taken up only after full payment of the preparation fee.'],
   ['date', 'Date / appearance fee for each hearing shall be charged separately.'],
   ['scope', 'This fee is for the work / stage mentioned above only. Appeal, revision, review, execution, contempt, or any fresh application or proceeding shall be charged separately.'],
   ['out', 'Appearance outside Lucknow, with travel and stay, shall be charged separately.'],
