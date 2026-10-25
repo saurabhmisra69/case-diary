@@ -19,7 +19,8 @@
       <p class="wc-firm">Saurabh Misra &amp; Associates – Chambers</p>
       <div class="wc-rule"><span></span><b>◆</b><span></span></div>
       <p class="wc-special">Specially designed, developed and customised<br>for <b>Saurabh Misra, Advocate</b></p>
-      <p class="wc-court">High Court of Judicature at Allahabad · Lucknow Bench</p>
+      <p class="wc-court"><span>High Court of Judicature at Allahabad</span><i class="wc-sep"> · </i><span>Lucknow Bench</span></p>
+      <p class="wc-by">by <b>Harsh Mishra</b> <span>(Senior Software Engineer)</span></p>
       <p class="wc-about">SM Chambers is now <em>26 program modules</em>, about <em>7,000 dense lines</em> (roughly 25,000–30,000 lines of ordinary code), refined over <em>145 releases</em>. It covers matters and stages, client engagement forms with Standard and Strategic plans, fees and date fees, bills and receipts with TDS, fee-plan and consultation posters, Word documents in English and Hindi, OneDrive and Outlook integration, Supreme Today, Bare Acts, juniors, conflict checks, backups and an app lock.</p>
       <p class="wc-tap"><span class="wc-pc">Click anywhere to enter</span><span class="wc-ph">Tap anywhere to enter</span></p>
     </div>
