@@ -542,3 +542,31 @@ function sheetFeePlans() {
   };
 }
 document.addEventListener('click', ev => { if (ev.target.closest('[data-act="feeplans"]')) sheetFeePlans(); });
+
+/* ---------- More › Vakalatnama: the advocate's own blank vakalatnama (Word) ---------- */
+const VAK_FILE = ['forms/Vakalatnama_General.docx', 'Vakalatnama_General.docx'];
+async function vakBlob() { const r = await fetch(VAK_FILE[0]); if (!r.ok) throw new Error('file not found'); return r.blob(); }
+function sheetVakalat() {
+  openSheet(`<div class="s-head"><div><small>More</small><h1>Vakalatnama</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    <p class="hint" style="margin:0">Your blank vakalatnama (Sri Saurabh Misra, Enroll No. UP-8083/2007, AOR No. B/S-0533/2012), corrected wording. Its contents are part and parcel of the engagement form (Clause 9).</p>
+    <div class="efsec"><div class="efwait"><div><b>Vakalatnama (General)</b><small>Word (.docx) · 1 page</small></div>
+      <div class="efwbtn"><button type="button" class="act blue" data-vk="word">Open in Word</button><button type="button" class="act" style="background:var(--chip)" data-vk="share">Share</button><button type="button" class="act" style="background:var(--chip)" data-vk="dl">Download</button></div></div></div>
+    <p class="hint">Open in Word saves a fresh blank copy (named with today's date) in OneDrive › SM Chambers data › Forms, ready to fill in and print.</p>`);
+  $('#sheet-root').onclick = async ev => {
+    const b = ev.target.closest('[data-vk]'); if (!b) return;
+    const t = b.textContent; b.textContent = 'Preparing…';
+    try {
+      const blob = await vakBlob(), file = new File([blob], VAK_FILE[1], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      if (b.dataset.vk === 'share' && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: 'Vakalatnama' }); } catch (er) {} }
+      else if (b.dataset.vk === 'word') {
+        let dir; try { dir = await getItem(drivePath(DIARY_DIR + '/Forms')); } catch (er) { dir = await makeFolder((await getItem(drivePath(DIARY_DIR))).id, 'Forms'); }
+        const nm = 'Vakalatnama ' + dmy(todayIso()) + '.docx';   // a fresh blank each time; the master stays clean
+        const it = await uploadFile(dir.id, new File([blob], nm, { type: file.type }), nm);
+        await openNative(it.id && it.parentReference ? it : await getItem(it.id || drivePath(DIARY_DIR + '/Forms/' + nm)));
+      }
+      else { const x = document.createElement('a'); x.href = URL.createObjectURL(blob); x.download = VAK_FILE[1]; document.body.appendChild(x); x.click(); x.remove(); toast('Saved to Downloads'); }
+    } catch (er) { toast('Could not open the vakalatnama: ' + er.message, 5000); }
+    b.textContent = t;
+  };
+}
+document.addEventListener('click', ev => { if (ev.target.closest('[data-act="vakalat"]')) sheetVakalat(); });
