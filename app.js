@@ -604,6 +604,7 @@ function sheetEdit(m) {
   <form id="mform" class="grp" style="gap:14px" autocomplete="off">
     <div class="two">${fld('year', 'Year (for numbering)', m.year, 'number', 'min="1990" max="2100" required')}<div class="field"><label for="f_forum">Forum</label><select class="in" id="f_forum" name="forum">${fopt}</select></div></div>
     ${fld('clients', 'Client name(s)', m.clients, 'text', 'required list="clientnames" placeholder="e.g. Nikhil Agnihotri & Anr."')}<datalist id="clientnames">${(typeof clientGroups === 'function' ? clientGroups() : []).filter(g => g.key !== '(no client name)').map(g => `<option value="${esc(g.name)}">`).join('')}</datalist>
+    ${isNew ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-6px 0 2px;flex-wrap:wrap"><span class="hint" style="margin:0">Client has come for advice?</span><button class="act primary" type="submit" data-kind="consult" style="min-height:38px;padding:0 14px">Start as consultation</button></div>` : ''}
     ${fld('aka', 'Client also known as', (typeof aliasesOf === 'function' ? aliasesOf(m.clients) : []).join(', '), 'text', 'placeholder="other names of the same client, e.g. Anuj Kumar Gupta (separate with commas)"')}
     ${fld('title', 'Parties (title)', m.title, 'text', 'placeholder="e.g. Ritz Restaurant v. Ram Dular Pathak"')}
     ${fld('court', 'Court', m.court, 'text', 'list="courts" placeholder="e.g. High Court, Lucknow Bench · Court 7"')}
@@ -624,7 +625,7 @@ function sheetEdit(m) {
     ${fld('email', 'Client email', m.email, 'email', 'placeholder="for bills, receipts and updates" autocapitalize="off" spellcheck="false"')}
     <div class="two">${fld('altName', 'Alternate contact – name', m.altName, 'text', 'placeholder="e.g. son, pairokar"')}${fld('altPhone', 'Alternate mobile', m.altPhone, 'tel', 'placeholder="10-digit mobile"')}</div>
     <div class="field"><label for="f_notes">Notes</label><textarea class="in" id="f_notes" name="notes">${esc(m.notes || '')}</textarea></div>
-    <button class="save" type="submit">${isNew ? 'Add matter' : 'Save changes'}</button>
+    ${isNew ? `<div class="two"><button class="ghost" type="submit" data-kind="consult" style="margin:0;min-height:48px">Start as consultation</button><button class="save" type="submit" style="margin:0">Add matter</button></div><p class="hint" style="margin:4px 0 0"><b>Consultation</b>: client has come for advice; it moves on to fee, preparation and filing on the same matter. <b>Add matter</b>: a case already in court (or to be filed).</p>` : `<button class="save" type="submit">Save changes</button>`}
     ${isNew ? '' : `<button class="ghost" type="button" data-act="del" data-id="${m.id}" style="color:var(--red)">Remove this matter</button>`}
   </form>`);
   // client code follows the client's name: his existing code is chosen by itself; the advocate can pick another
@@ -663,6 +664,8 @@ function sheetEdit(m) {
   $('#mform').onsubmit = async e => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries());
+    const asConsult = isNew && e.submitter && e.submitter.dataset.kind === 'consult';
+    if (asConsult) { fd.forum = 'Advisory'; fd.status = 'Instructions received'; fd.stage = 'consult'; if (!fd.title) fd.title = clientName(fd.clients) + ' – consultation'; }
     if (fd.status !== 'Decided') fd.outcome = '';
     for (const k in fd) fd[k] = String(fd[k]).trim();
     fd.year = parseInt(fd.year, 10) || y;
@@ -684,7 +687,9 @@ function sheetEdit(m) {
       if (allot !== 'self') rec.allot = allot;
       if (rec.nextDate) rec.calPending = true;
       change(d => { d.matters.push(rec); if (akaChanged) setAliases(d, rec.clients, aka); });
-      closeSheet(); toast('Matter ' + mref(rec) + ' added');
+      if (asConsult) change(() => logChange(rec, 'Stage: Consultation (client came ' + dmy(todayIso()) + ')'));
+      closeSheet(); toast((asConsult ? 'Consultation opened: ' : 'Matter ') + mref(rec) + (asConsult ? '' : ' added'));
+      if (asConsult && typeof openMatter === 'function') openMatter(rec.id);
       if (newJunior && typeof sheetNewJunior === 'function') setTimeout(() => sheetNewJunior(find(rec.id)), 300);
       if (ccPick === '@new' && clientKey(rec.clients) && typeof askCode === 'function') setTimeout(() => askCode(find(rec.id)), 300);
     } else {
