@@ -293,6 +293,23 @@ function sheetEngage(m, rec) {
 }
 
 /* ---------- signed / cancel ---------- */
+const efBack = m => window.__efFromMore ? sheetEngagePick() : sheetFees(m);
+async function efUploadSigned(m, e, file, on) {
+  if (!m.folderId) throw new Error('Link the matter folder first, then add the signed copy');
+  const dir = await feeFolder(m, true), ext = (file.name.match(/\.[a-z0-9]+$/i) || ['.jpg'])[0].toLowerCase();
+  const fileName = cleanName('Engagement Form SIGNED ' + dmy(on)) + ext, fileId = (await uploadFile(dir.id, file, fileName)).id;
+  change(() => { const was = e.state === 'Signed'; e.state = 'Signed'; e.signedOn = on; e.signedFileId = fileId; e.signedFileName = fileName;
+    logChange(m, (was ? 'Engagement form signed copy updated' : 'Engagement form signed (' + dmy(on) + ')') + ' · copy saved'); touch(m); });
+}
+async function efShareAgain(m, e) {
+  let blob = null, name = e.fileName || 'Engagement Form.docx';
+  try { if (e.fileId) { const r = await g('/me/drive/items/' + e.fileId + '/content?format=pdf'); if (r.ok) { blob = await r.blob(); name = name.replace(/\.docx$/i, '.pdf'); } } } catch (er) {}
+  if (!blob) { const r = await makeEngageDoc(m, e); blob = r.blob; name = r.name; if (r.itemId) change(() => { e.fileId = r.itemId; e.fileName = r.name; touch(m); }); }
+  const type = /\.pdf$/i.test(name) ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  const files = [new File([blob], name, { type })];
+  if (navigator.canShare && navigator.canShare({ files })) { try { await navigator.share({ files, title: name }); return; } catch (er) { return; } }
+  const x = document.createElement('a'); x.href = URL.createObjectURL(blob); x.download = name; document.body.appendChild(x); x.click(); x.remove(); toast('Saved to Downloads');
+}
 function sheetEngageMark(m, id, what) {
   const e = (m.engage || []).find(x => x.id === id); if (!e) return;
   if (what === 'signed') {
@@ -304,21 +321,18 @@ function sheetEngageMark(m, id, what) {
         <p class="hint" id="efs_pick" style="margin:6px 0 0">${e.signedFileId ? 'Saved: ' + esc(e.signedFileName || 'signed copy') : 'Saved in the fees folder' + (FEE_DIR_NAME[m.id] ? ' (' + esc(FEE_DIR_NAME[m.id]) + ')' : '') + '. Keep the paper original in the client file.'}</p></div>
       <button class="save" type="submit">${e.state === 'Signed' ? 'Save' : 'Mark signed'}</button><button type="button" class="linkbtn" data-efm="back">‹ Back</button></form>`);
     $('#efs_file').onchange = ev => { st.file = ev.target.files[0] || null; $('#efs_pick').textContent = st.file ? 'Ready to save: ' + st.file.name : ''; };
-    $('#sheet-root').onclick = ev => { if (ev.target.closest('[data-efm="back"]')) sheetFees(m); };
+    $('#sheet-root').onclick = ev => { if (ev.target.closest('[data-efm="back"]')) efBack(m); };
     $('#efs').onsubmit = async ev => {
       ev.preventDefault();
       const on = $('#efs_on').value || todayIso();
-      let fileId = '', fileName = '';
+      let saved = false;
       if (st.file) {
-        if (!m.folderId) return toast('Link the matter folder first, then add the signed copy');
         openSheet(`<div class="s-head"><div><small>${esc(mref(m))}</small><h1>Saving signed copy…</h1></div></div>`);
-        try { const dir = await feeFolder(m, true), ext = (st.file.name.match(/\.[a-z0-9]+$/i) || ['.jpg'])[0].toLowerCase();
-          fileName = cleanName('Engagement Form SIGNED ' + dmy(on)) + ext; fileId = (await uploadFile(dir.id, st.file, fileName)).id; }
-        catch (er) { toast('Could not save the signed copy: ' + er.message); }
+        try { await efUploadSigned(m, e, st.file, on); saved = true; } catch (er) { toast('Could not save the signed copy: ' + er.message, 5000); }
       }
-      change(() => { const was = e.state === 'Signed'; e.state = 'Signed'; e.signedOn = on; if (fileId) { e.signedFileId = fileId; e.signedFileName = fileName; }
-        logChange(m, (was ? 'Engagement form signed copy updated' : 'Engagement form signed (' + dmy(on) + ')') + (fileId ? ' · copy saved' : '')); touch(m); });
-      toast(fileId ? 'Signed copy saved' : 'Marked signed'); sheetFees(m);
+      if (!saved) change(() => { e.state = 'Signed'; e.signedOn = on; logChange(m, 'Engagement form signed (' + dmy(on) + ')'); touch(m); });
+      const fileId = saved;
+      toast(fileId ? 'Signed copy saved' : 'Marked signed'); efBack(m);
     };
     return;
   }
@@ -339,7 +353,7 @@ function sheetEngageMark(m, id, what) {
   const ne = () => { const show = /did not engage/i.test($('#efc_why').value); $('#efc_ne').style.display = show ? '' : 'none'; if (show) $('#efc_new').checked = false; };
   $('#efc_why').oninput = ne;
   $('#sheet-root').onclick = ev => {
-    if (ev.target.closest('[data-efm="back"]')) return sheetFees(m);
+    if (ev.target.closest('[data-efm="back"]')) return efBack(m);
     const r = ev.target.closest('[data-efr]'); if (r) { $('#efc_why').value = r.dataset.efr; document.querySelectorAll('[data-efr]').forEach(c => c.classList.toggle('on', c === r)); ne(); return; }
     const pd = ev.target.closest('[data-efpd]'); if (pd) { st.paid = pd.dataset.efpd === 'paid'; document.querySelectorAll('[data-efpd]').forEach(c => c.classList.toggle('on', c === pd)); $('#efc_modew').style.display = st.paid ? '' : 'none'; return; }
     const md = ev.target.closest('[data-efmd]'); if (md) { st.mode = md.dataset.efmd; document.querySelectorAll('[data-efmd]').forEach(c => c.classList.toggle('on', c === md)); }
@@ -367,25 +381,43 @@ function sheetEngageMark(m, id, what) {
     });
     if (mk) { openSheet(`<div class="s-head"><div><small>${esc(mref(m))}</small><h1>Making cancelled copy…</h1></div></div>`); try { await makeEngageDoc(m, e); } catch (er) { toast('Could not make the cancelled copy: ' + er.message); } }
     toast(noEngage ? 'Recorded: client did not engage' + (cf ? ' · consultation fee ' + (st.paid ? 'paid' : 'not paid') : '') : 'Engagement form cancelled', 4000);
-    if (again) return sheetEngage(m); sheetFees(m);
+    if (again) return sheetEngage(m); efBack(m);
   };
 }
 
 /* ---------- More › Engagement form: pick a matter, or a new client (client page → consultation → form) ---------- */
 function sheetEngagePick() {
+  window.__efFromMore = false;
   const ms = live().slice().sort((a, b) => (b.u || 0) - (a.u || 0));
+  const waiting = ms.flatMap(m => (m.engage || []).filter(e => e.state === 'Made').map(e => [m, e])).sort((x, y) => (x[1].date || '').localeCompare(y[1].date || ''));
   const ini = m => esc(String((typeof clientName === 'function' ? clientName(m.clients) : m.clients) || m.title || '?').replace(/^(M\/s\.?|Smt\.?|Shri|Sri|Dr\.?|Mr\.?|Mrs\.?)\s+/i, '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase());
   const row = m => `<button class="frow" data-efpick="${m.id}"><span class="ficon" style="background:var(--hc-soft);color:var(--hc)">${ini(m)}</span><span class="fname">${esc(m.title || m.clients || '')}<small>${esc(mref(m))}${m.clients ? ' · ' + esc(typeof clientName === 'function' ? clientName(m.clients) : m.clients) : ''}${efLive(m).length ? ' · form ' + (efLive(m).some(e => e.state === 'Signed') ? 'signed' : 'made') : ''}</small></span></button>`;
   const draw = q => { const k = String(q || '').toLowerCase().trim(); const hit = (k ? ms.filter(m => [m.title, m.clients, mref(m), m.caseNo].join(' ').toLowerCase().includes(k)) : ms).slice(0, 30);
     $('#efpk_list').innerHTML = hit.map(row).join('') || '<p class="empty">No matter found.</p>'; };
   openSheet(`<div class="s-head"><div><small>More</small><h1>Engagement form</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    ${waiting.length ? `<div class="efsec" style="border-color:var(--saffron)"><span class="lbl" style="color:var(--saffron-ink)">Waiting for signature (${waiting.length})</span>
+      ${waiting.map(([m, e]) => { const d = Math.max(0, Math.round((new Date(todayIso()) - new Date(e.date)) / 864e5)); return `<div class="efwait">
+        <div><b>${esc((typeof clientName === 'function' ? clientName(m.clients) : m.clients) || m.title || '')}</b><small>${esc(mref(m))} · ${e.plan === 'OTHER' ? 'Other plan ' + rupees(e.fee) : 'Plan ' + e.plan}${e.lang === 'hi' ? ' · हिंदी' : ''} · made ${dmy(e.date)} · ${d ? d + ' day' + (d > 1 ? 's' : '') + ' pending' : 'today'}</small></div>
+        <div class="efwbtn"><label class="act blue">Upload signed copy<input type="file" accept="image/*,.pdf,application/pdf" data-efup="${m.id}|${e.id}" hidden></label><button type="button" class="act" style="background:var(--chip)" data-efw="share" data-v="${m.id}|${e.id}">Share again</button><button type="button" class="act" style="background:var(--chip);color:var(--red)" data-efw="ne" data-v="${m.id}|${e.id}">Did not engage</button></div></div>`; }).join('')}</div>` : ''}
     <button class="save" data-efnew="1" style="width:100%">+ New client – not in the app yet</button>
     <p class="hint" style="margin:6px 0 12px">Fill the client's details once; his consultation matter opens with its reference, then the form.</p>
     <span class="lbl">Or pick an existing matter</span>
     <label class="search" style="border:2px solid var(--line)">${I.search}<input type="search" id="efpk_q" placeholder="Search name, matter, ref."></label>
     <div class="flist" id="efpk_list"></div>`);
   draw(''); $('#efpk_q').oninput = ev => draw(ev.target.value);
-  $('#sheet-root').onclick = ev => {
+  const pair = v => { const [mi, ei] = String(v).split('|'), m = find(mi); return [m, m && (m.engage || []).find(x => x.id === ei)]; };
+  $('#sheet-root').onchange = async ev => {
+    const inp = ev.target.closest('[data-efup]'); if (!inp || !inp.files[0]) return;
+    const [m, e] = pair(inp.dataset.efup); if (!m || !e) return;
+    openSheet(`<div class="s-head"><div><small>${esc(mref(m))}</small><h1>Saving signed copy…</h1></div></div>`);
+    try { await efUploadSigned(m, e, inp.files[0], todayIso()); toast('Signed copy saved · ' + mref(m), 4000); } catch (er) { toast('Could not save: ' + er.message, 5000); }
+    sheetEngagePick();
+  };
+  $('#sheet-root').onclick = async ev => {
+    const w = ev.target.closest('[data-efw]');
+    if (w) { const [m, e] = pair(w.dataset.v); if (!m || !e) return;
+      if (w.dataset.efw === 'ne') { window.__efFromMore = true; return sheetEngageMark(m, e.id, 'void'); }
+      w.textContent = 'Preparing…'; try { await efShareAgain(m, e); } catch (er) { toast('Could not share: ' + er.message); } w.textContent = 'Share again'; return; }
     if (ev.target.closest('[data-efnew]')) { window.__efNext = Date.now(); return sheetNewClient(); }
     const b = ev.target.closest('[data-efpick]'); if (b) { const m = find(b.dataset.efpick); if (m) sheetEngage(m); }
   };

@@ -379,3 +379,9 @@ mark{background:#FFE58A;color:inherit;padding:0 1px}
 .efplan.on small,.efplan.on em{color:#E9D9A6}
 .efseg{align-self:flex-start}
 .field label small{font-weight:500;text-transform:none;letter-spacing:0}
+.efwait{display:flex;flex-direction:column;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+.efwait:last-child{border-bottom:0;padding-bottom:0}
+.efwait b{display:block;font-size:15px}
+.efwait small{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.efwbtn{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:6px}
+.efwbtn .act{min-height:40px;font-size:12px;padding:4px 6px;text-align:center;cursor:pointer}
