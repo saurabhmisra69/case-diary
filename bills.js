@@ -11,7 +11,7 @@ const BILL_TERMS = [
   ['work', 'Preparation fee: 50% at engagement, balance 50% before filing. Filing shall be taken up only after full payment of the preparation fee.'],
   ['date', 'Date / appearance fee for each hearing shall be charged separately.'],
   ['scope', 'This fee is for the work / stage mentioned above only. Appeal, revision, review, execution, contempt, or any fresh application or proceeding shall be charged separately.'],
-  ['out', 'Appearance outside Lucknow, with travel and stay, shall be charged separately.'],
+  ['out', 'Appearance outside Lucknow: appearance fee {OUT} per day, travel {TRAVEL} and stay {STAY}, payable in advance in addition to the fee.'],
   ['only', 'Payment shall be made only in favour of Saurabh Misra. No payment to any junior, clerk or other person is valid unless a receipt is issued by the undersigned.'],
   ['refund', 'Fee once paid is not refundable after the work has been commenced.'],
   ['result', 'The fee is for professional services and does not depend on the outcome of the case. No assurance as to the result is given or implied.'],
@@ -165,7 +165,7 @@ async function makeBillDoc(m, b, withSig) {
     tbl(D, rows, [900, 6126, 2000], { head: true, right: [2], boldLast: true }),
     PB(D, 'Amount payable: ₹' + num(b.total).toLocaleString('en-IN') + '/- (Rupees ' + inWords(b.total) + ' only)', { before: 80, bold: true }),
     ...(b.note ? [PB(D, b.note)] : []),
-    ...(() => { const ts = [...(b.terms || []).map(k => (BILL_TERMS.find(x => x[0] === k) || [])[1]).filter(Boolean).map(t => t.replace('within 7 days', 'within ' + (b.dueDays || 7) + ' days')), ...String(b.extraTerms || '').split('\n').map(s => s.trim()).filter(Boolean)];
+    ...(() => { const ts = [...(b.terms || []).map(k => (BILL_TERMS.find(x => x[0] === k) || [])[1]).filter(Boolean).map(t => t.replace('within 7 days', 'within ' + (b.dueDays || 7) + ' days')).map(t => typeof efFillOut === 'function' ? efFillOut(m, t) : t), ...String(b.extraTerms || '').split('\n').map(s => s.trim()).filter(Boolean)];
       return ts.length ? [PB(D, 'Terms:', { bold: true, size: 18, before: 120, after: 40 }), ...ts.map((t, i) => PB(D, (i + 1) + '. ' + t, { size: 18, after: 30 }))] : []; })(),
     PB(D, 'PAYMENT DETAILS', { bold: true, before: 160, after: 60 }),
     PB(D, 'All payments shall be made only in favour of "Saurabh Misra" by NEFT, RTGS, UPI or cheque.', { after: 80 }),
@@ -240,7 +240,7 @@ function sheetBill(m, bill, replaces) {
         ${(() => { if (typeof unbilledDates !== 'function') return ''; const inBill = new Set(st.items.flatMap(x => x.dates || [])), left = unbilledDates(m).filter(d => !inBill.has(d)); return left.length ? `<button type="button" class="ghost" data-bx="dates">+ Date fees not yet billed (${left.length} date${left.length > 1 ? 's' : ''}, ${rupees(left.length * dateFeeRate(m))})</button>` : ''; })()}
         <div class="picked"><b>Total ${rupees(tot)}</b><span>Rupees ${esc(inWords(tot))} only</span></div>
         <span class="lbl">Terms (printed under the total)</span>
-        <div class="terms">${BILL_TERMS.map(([k, t]) => `<label class="term"><input type="checkbox" data-bt="${k}" ${st.terms.includes(k) ? 'checked' : ''}><span>${esc(k === 'due' ? t.replace('7', st.dueDays) : t)}${k === 'due' ? ` <input class="in" data-bd="1" inputmode="numeric" value="${st.dueDays}" style="width:56px;min-height:32px;padding:2px 6px;display:inline-block"> days` : ''}</span></label>`).join('')}</div>
+        <div class="terms">${BILL_TERMS.map(([k, t]) => `<label class="term"><input type="checkbox" data-bt="${k}" ${st.terms.includes(k) ? 'checked' : ''}><span>${esc(k === 'due' ? t.replace('7', st.dueDays) : typeof efFillOut === 'function' ? efFillOut(m, t) : t)}${k === 'due' ? ` <input class="in" data-bd="1" inputmode="numeric" value="${st.dueDays}" style="width:56px;min-height:32px;padding:2px 6px;display:inline-block"> days` : ''}</span></label>`).join('')}</div>
         <div class="field"><label for="b_extra">YOUR OWN TERMS (ONE PER LINE)</label><textarea class="in" id="b_extra" rows="2">${esc(st.extra)}</textarea></div>
         <button type="button" class="linkbtn" data-bx="deft">Save these terms as my default for new bills</button>
         <div class="field"><label for="b_note">NOTE (OPTIONAL)</label><input class="in" id="b_note" name="note" value="${esc(bill ? bill.note || '' : replaces ? 'Issued in place of cancelled Bill No. ' + replaces.no + ' dated ' + dmy(replaces.date) + '.' : '')}" placeholder="e.g. First of four quarterly instalments"></div>

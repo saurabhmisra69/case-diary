@@ -37,7 +37,7 @@ function sheetStage(m, to) {
   const recd = num(m.feeReceived), agreed = num(m.feeAgreed), due = feeDue(m);
   const feeLine = `<div class="kv"><span>Fees agreed</span><b>${agreed ? rupees(agreed) : '—'}</b><span>Received</span><b>${rupees(recd)}</b><span>Balance</span><b style="color:${due ? 'var(--saffron-ink)' : 'inherit'}">${rupees(due)}</b></div>`;
   if (to === 'fee') {
-    openSheet(head('Fee received?', 'Record the payment so the receipt, TDS and the CA register are right — then move on.') + feeLine + `
+    openSheet(head('Fee received?', 'Record the payment so the receipt, TDS and the CA register are right — then move on.') + feeLine + (typeof engageReminder === 'function' ? engageReminder(m) : '') + `
       <div class="grp" style="gap:8px;margin-top:12px"><button class="save" data-sg="pay">+ Record the payment</button>
       ${recd ? `<button class="ghost" data-sg="go">Fee is received — move to “Fee received”</button>` : `<button class="ghost" data-sg="go">Move on without recording a payment</button>`}
       <button class="linkbtn" data-sg="back">‹ Back</button></div>`);

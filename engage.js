@@ -1,0 +1,353 @@
+/* SM Chambers — Client Engagement Form.
+   Made from the matter's Fees page before work starts: Plan 55K (Standard), Plan 75K (Strategic) or any other plan
+   (own fee, scope starting from the Standard plan and edited to the actual work). English or Hindi (Mangal).
+   A Word file on the letterhead, saved in the matter's fees folder, printed and signed by the client and the advocate.
+   The chosen plan sets the matter's professional fee and date fee. Forms are cancelled, never deleted. */
+'use strict';
+
+const EF_PLANS = {
+  '55K': { fee: 55000, date: 1000 },
+  '75K': { fee: 75000, date: 1500 },
+};
+
+/* ---------- Hindi amount in words ---------- */
+const HI_0_99 = ('शून्य एक दो तीन चार पाँच छह सात आठ नौ दस ग्यारह बारह तेरह चौदह पंद्रह सोलह सत्रह अठारह उन्नीस ' +
+  'बीस इक्कीस बाईस तेईस चौबीस पच्चीस छब्बीस सत्ताईस अट्ठाईस उनतीस तीस इकतीस बत्तीस तैंतीस चौंतीस पैंतीस छत्तीस सैंतीस अड़तीस उनतालीस ' +
+  'चालीस इकतालीस बयालीस तैंतालीस चवालीस पैंतालीस छियालीस सैंतालीस अड़तालीस उनचास पचास इक्यावन बावन तिरपन चौवन पचपन छप्पन सत्तावन अट्ठावन उनसठ ' +
+  'साठ इकसठ बासठ तिरसठ चौंसठ पैंसठ छियासठ सड़सठ अड़सठ उनहत्तर सत्तर इकहत्तर बहत्तर तिहत्तर चौहत्तर पचहत्तर छिहत्तर सतहत्तर अठहत्तर उन्यासी ' +
+  'अस्सी इक्यासी बयासी तिरासी चौरासी पचासी छियासी सत्तासी अट्ठासी नवासी नब्बे इक्यानवे बानवे तिरानवे चौरानवे पचानवे छियानवे सत्तानवे अट्ठानवे निन्यानवे').split(' ');
+function inWordsHi(n) {
+  n = Math.round(+n || 0); if (!n) return 'शून्य';
+  const parts = [], cr = Math.floor(n / 1e7); n %= 1e7; const lk = Math.floor(n / 1e5); n %= 1e5; const th = Math.floor(n / 1000); n %= 1000; const h = Math.floor(n / 100); n %= 100;
+  if (cr) parts.push(inWordsHi(cr) + ' करोड़'); if (lk) parts.push(HI_0_99[lk] + ' लाख'); if (th) parts.push(HI_0_99[th] + ' हज़ार'); if (h) parts.push(HI_0_99[h] + ' सौ'); if (n) parts.push(HI_0_99[n]);
+  return parts.join(' ');
+}
+const efNum = v => { const s = String(v ?? '').replace(/[,₹\s]/g, '').replace(/\/-$/, ''); return /^\d+$/.test(s) ? +s : null; };
+const efAmt = (n, hi) => '₹' + Number(n).toLocaleString('en-IN') + '/- (' + (hi ? 'रुपये ' + inWordsHi(n) + ' मात्र' : 'Rupees ' + inWords(n) + ' only') + ')';
+const efBlank = '₹ ____________';
+/* an outstation entry: a number prints with words; text prints as typed; blank prints a line to fill by hand */
+const efOut = (v, hi) => { const n = efNum(v); return n ? efAmt(n, hi) : String(v || '').trim() || efBlank; };
+
+/* ---------- wording ---------- */
+const EF_TEXT = {
+  en: {
+    title: 'CLIENT ENGAGEMENT FORM', ref: 'Ref. No.', date: 'Date',
+    h1: 'Client and matter', rows: ['Name of client', 'Address', 'Phone / e-mail', 'Matter / case', 'Hon\'ble Court / forum', 'Opposite party'],
+    h2: 'Plan chosen',
+    p55: 'STANDARD LITIGATION', p75: 'STRATEGIC LITIGATION', pOther: 'OTHER PLAN', code: 'Plan',
+    perCase: 'per case', perDate: 'per date / appearance', t55: 'Essential preparation • Regular case', t75: 'Deep preparation • Priority case', tOther: 'Scope as agreed (Clause 3)',
+    h3: 'What the plan covers', std: 'Standard Litigation (Plan 55K)', strat: 'Strategic Litigation (Plan 75K)', other: 'Other plan — scope of work agreed',
+    notIncl: 'Not included: ',
+    stdList: ['Drafting on the facts as stated by the client.', 'Legal research limited to the relevant statutory provisions.', 'Evidence prepared during trial, based on the facts stated by the client.'],
+    stdNot: 'fact-to-evidence analysis; rulings and citations; written Legal Opinion; written note on expected objections; review of strategy.',
+    stratList: ['Facts built on strategy. Every fact linked to the evidence on record, in writing, before filing.', 'Rulings and citations from a licensed legal research database.', 'Written, reasoned Legal Opinion Note.',
+      'Objections of the other side identified. Written replies prepared in advance and kept on the case file.', 'Examination-in-chief and evidence prepared before filing, built on strategy and fact-to-evidence analysis. Reviewed before trial.',
+      'Strategy-led drafting. Sequence of proceedings planned. Strategy reviewed after every significant order or development.', 'Update after every hearing. Call before every major decision.'],
+    otherNote: 'Only the work listed above is included in this plan.',
+    framework: 'Work and sequence of stages depend on the nature of the case and the applicable procedure.',
+    h4: 'Appearance before the Hon\'ble Court (all plans)',
+    appear: 'Every date will be attended by an advocate of the chamber. Final arguments and key hearings (admission, interim relief and evidence) will be argued by Advocate Saurabh Misra personally.',
+    h5: 'Payment terms (all plans)',
+    pay: ['Preparation fee: 50% at engagement. Balance 50% before filing.', 'The matter will be filed only after full payment of the preparation fee.', 'Date / appearance fee is payable for each date, in advance.',
+      'Payment shall be made only in favour of Saurabh Misra. No payment to any junior, clerk or other person is valid unless a receipt is issued by the undersigned.'],
+    h6: 'Outstation appearance (outside Lucknow)',
+    outRows: ['Appearance fee (per day)', 'Travel', 'Stay'], outNote: 'Outstation charges are payable in advance, in addition to the plan fee.',
+    h7: 'Not included in any plan',
+    excl: ['Out-of-pocket expenses: court fee, stamps, affidavit, oath commissioner / notary, typing, photocopy and certified copies. These are charged separately at actuals.', 'Commissioner / expert fees.',
+      'Appeal, revision, review, execution, contempt, or any fresh application or proceeding. These are charged separately.'],
+    h8: 'General terms',
+    gen: ['Fees are uniform for all clients and are not negotiated. Only the scope of work can be changed.', 'The fee is for professional services and does not depend on the outcome of the case. No assurance as to the result is given or implied.',
+      'Fee once paid is not refundable after the work has commenced.', 'The client shall provide documents, information and instructions in time. Any delay caused by their non-supply shall not be attributable to the counsel.',
+      'Further work may be kept in abeyance until the dues are cleared.', 'Subject to Lucknow jurisdiction.'],
+    h9: 'Client\'s declaration',
+    dec1: 'I have read and understood the plans, the fee and the terms above. I have chosen the plan ticked in Clause 2 of my own free will.',
+    decStd: 'I opt for essential preparation. I accept that in-depth evidence analysis, researched rulings and advance preparation are not part of this plan.',
+    decOther: 'I accept that only the work listed in Clause 3 is included in this plan.',
+    dec2: 'I agree to pay the fee as per the payment terms above.',
+    sClient: 'Signature of Client', sName: 'Name', sDate: 'Date', adv: 'SAURABH MISRA', advT: 'Advocate',
+    cancelled: 'CANCELLED',
+  },
+  hi: {
+    title: 'मुवक्किल अनुबंध प्रपत्र', ref: 'संदर्भ सं.', date: 'दिनांक',
+    h1: 'मुवक्किल एवं मामले का विवरण', rows: ['मुवक्किल का नाम', 'पता', 'मोबाइल / ई-मेल', 'मामला / वाद', 'माननीय न्यायालय / मंच', 'विपक्षी पक्ष'],
+    h2: 'चुनी गई योजना',
+    p55: 'मानक मुकदमेबाज़ी', p75: 'रणनीतिक मुकदमेबाज़ी', pOther: 'अन्य योजना', code: 'प्लान',
+    perCase: 'प्रति मामला', perDate: 'प्रति तारीख / उपस्थिति', t55: 'आवश्यक तैयारी • सामान्य मामला', t75: 'गहन तैयारी • प्राथमिकता मामला', tOther: 'सहमत कार्यक्षेत्र (खंड 3)',
+    h3: 'योजना में सम्मिलित कार्य', std: 'मानक मुकदमेबाज़ी (प्लान 55K)', strat: 'रणनीतिक मुकदमेबाज़ी (प्लान 75K)', other: 'अन्य योजना — सहमत कार्यक्षेत्र',
+    notIncl: 'सम्मिलित नहीं: ',
+    stdList: ['मुवक्किल द्वारा बताए गए तथ्यों के आधार पर प्रारूपण।', 'कानूनी शोध संबंधित वैधानिक प्रावधानों तक सीमित।', 'साक्ष्य की तैयारी विचारण के दौरान, मुवक्किल द्वारा बताए गए तथ्यों के आधार पर।'],
+    stdNot: 'तथ्य-से-साक्ष्य विश्लेषण; नज़ीरें एवं उद्धरण; लिखित विधिक राय; संभावित आपत्तियों का लिखित नोट; रणनीति की समीक्षा।',
+    stratList: ['रणनीति पर आधारित तथ्य। प्रत्येक तथ्य अभिलेख पर उपलब्ध साक्ष्य से जोड़ा जाता है — लिखित रूप में, दाखिले से पहले।', 'लाइसेंस प्राप्त विधिक शोध डेटाबेस से नज़ीरें एवं उद्धरण।', 'लिखित एवं तर्कसंगत विधिक राय-पत्र।',
+      'विपक्ष की संभावित आपत्तियों की पहचान। उनके लिखित उत्तर पहले से तैयार कर केस फ़ाइल में रखे जाते हैं।', 'मुख्य परीक्षा एवं साक्ष्य की तैयारी दाखिले से पहले, रणनीति एवं तथ्य-से-साक्ष्य विश्लेषण के आधार पर। विचारण से पहले समीक्षा।',
+      'रणनीति-आधारित प्रारूपण। कार्यवाही के क्रम की योजना। प्रत्येक महत्वपूर्ण आदेश या घटनाक्रम के बाद रणनीति की समीक्षा।', 'प्रत्येक सुनवाई के बाद सूचना। हर बड़े निर्णय से पहले फ़ोन।'],
+    otherNote: 'इस योजना में केवल ऊपर लिखा गया कार्य ही सम्मिलित है।',
+    framework: 'चरणों का कार्य एवं क्रम मामले की प्रकृति एवं लागू प्रक्रिया पर निर्भर करता है।',
+    h4: 'माननीय न्यायालय के समक्ष उपस्थिति (सभी योजनाएँ)',
+    appear: 'प्रत्येक तारीख पर चैंबर के एक अधिवक्ता उपस्थित रहेंगे। अंतिम बहस एवं महत्वपूर्ण सुनवाइयों (अंगीकरण, अंतरिम राहत एवं साक्ष्य) में बहस अधिवक्ता सौरभ मिश्रा स्वयं करेंगे।',
+    h5: 'भुगतान की शर्तें (सभी योजनाएँ)',
+    pay: ['तैयारी शुल्क: 50% नियुक्ति पर। शेष 50% दाखिले से पहले।', 'तैयारी शुल्क का पूर्ण भुगतान होने के बाद ही मामला दाखिल किया जाएगा।', 'तारीख / उपस्थिति शुल्क प्रत्येक तारीख के लिए अग्रिम देय है।',
+      'भुगतान केवल सौरभ मिश्रा के पक्ष में किया जाएगा। किसी जूनियर, मुंशी या अन्य व्यक्ति को किया गया भुगतान तब तक मान्य नहीं है, जब तक अधोहस्ताक्षरी द्वारा रसीद जारी न की जाए।'],
+    h6: 'बाहरी उपस्थिति (लखनऊ से बाहर)',
+    outRows: ['उपस्थिति शुल्क (प्रति दिन)', 'यात्रा', 'ठहरना'], outNote: 'बाहरी उपस्थिति का व्यय योजना शुल्क के अतिरिक्त, अग्रिम देय है।',
+    h7: 'किसी भी योजना में सम्मिलित नहीं',
+    excl: ['अपनी जेब से होने वाले व्यय: न्यायालय शुल्क, स्टाम्प, शपथपत्र, ओथ कमिश्नर / नोटरी, टाइपिंग, फोटोकॉपी एवं प्रमाणित प्रतियाँ। ये वास्तविक व्यय के अनुसार अलग से लिए जाएँगे।', 'कमिश्नर / विशेषज्ञ शुल्क।',
+      'अपील, निगरानी, पुनर्विलोकन, निष्पादन, अवमानना, अथवा कोई नया प्रार्थना पत्र या कार्यवाही। इनका शुल्क अलग से लिया जाएगा।'],
+    h8: 'सामान्य शर्तें',
+    gen: ['शुल्क सभी मुवक्किलों के लिए समान है और इस पर मोल-भाव नहीं होता। केवल कार्यक्षेत्र बदला जा सकता है।', 'शुल्क व्यावसायिक सेवा का है और मामले के परिणाम पर निर्भर नहीं है। परिणाम के विषय में कोई आश्वासन न दिया गया है, न निहित है।',
+      'कार्य प्रारंभ होने के बाद दिया गया शुल्क वापस नहीं होगा।', 'मुवक्किल दस्तावेज़, जानकारी एवं निर्देश समय पर देंगे। इनके न मिलने से हुई देरी के लिए अधिवक्ता उत्तरदायी नहीं होंगे।',
+      'बकाया चुकता होने तक आगे का कार्य रोका जा सकता है।', 'लखनऊ क्षेत्राधिकार के अधीन।'],
+    h9: 'मुवक्किल की घोषणा',
+    dec1: 'मैंने ऊपर लिखी योजनाएँ, शुल्क एवं शर्तें पढ़ और समझ ली हैं। मैंने खंड 2 में चिह्नित योजना अपनी स्वतंत्र इच्छा से चुनी है।',
+    decStd: 'मैं आवश्यक तैयारी चुनता / चुनती हूँ। मैं स्वीकार करता / करती हूँ कि गहन साक्ष्य विश्लेषण, शोधित नज़ीरें एवं अग्रिम तैयारी इस योजना का भाग नहीं हैं।',
+    decOther: 'मैं स्वीकार करता / करती हूँ कि इस योजना में केवल खंड 3 में लिखा गया कार्य ही सम्मिलित है।',
+    dec2: 'मैं ऊपर दी गई भुगतान की शर्तों के अनुसार शुल्क देने के लिए सहमत हूँ।',
+    sClient: 'मुवक्किल के हस्ताक्षर', sName: 'नाम', sDate: 'दिनांक', adv: 'सौरभ मिश्रा', advT: 'अधिवक्ता',
+    cancelled: 'निरस्त',
+  },
+};
+
+/* Standard plan's scope as editable lines, the starting point for "any other plan" */
+const efStdScope = hi => { const T = EF_TEXT[hi ? 'hi' : 'en']; return [...T.stdList, T.notIncl + T.stdNot].join('\n'); };
+
+/* ---------- the Word document (pure: needs only the docx library D and the form record e) ---------- */
+function efChildren(D, e, head) {
+  const hi = e.lang === 'hi', T = EF_TEXT[hi ? 'hi' : 'en'], F = hi ? 'Mangal' : 'Times New Roman', SZ = hi ? 21 : 22, W = 9026;
+  const run = (text, o = {}) => new D.TextRun({ text, font: F, size: o.size || SZ, bold: o.bold, italics: o.italics, color: o.color });
+  const para = (runs, o = {}) => new D.Paragraph({ children: Array.isArray(runs) ? runs : [run(runs, o)], alignment: o.align || D.AlignmentType.LEFT, keepNext: o.keepNext,
+    spacing: { before: o.before || 0, after: o.after ?? 80, line: hi ? 288 : 264 }, indent: o.indent, tabStops: o.tabs });
+  const heading = (n, t) => para([run(n + '. ' + (hi ? t : t.toUpperCase()), { bold: true, size: SZ + 1 })], { before: 150, after: 70, keepNext: true });
+  const item = (runs) => para(Array.isArray(runs) ? [run('•  '), ...runs] : [run('•  '), run(runs)], { indent: { left: 400, hanging: 260 }, after: 45 });
+  const thin = { style: D.BorderStyle.SINGLE, size: 4, color: '000000' }, borders = { top: thin, bottom: thin, left: thin, right: thin };
+  const cell = (children, w, shade) => new D.TableCell({ width: { size: w, type: D.WidthType.DXA }, borders, margins: { top: 60, bottom: 60, left: 100, right: 100 },
+    shading: shade ? { fill: 'EEEEEE', type: D.ShadingType.CLEAR, color: 'auto' } : undefined, children: Array.isArray(children) ? children : [para(children, { after: 0 })] });
+  const table = (widths, rows) => new D.Table({ width: { size: W, type: D.WidthType.DXA }, columnWidths: widths, rows: rows.map(r => new D.TableRow({ cantSplit: true, children: r })) });
+  const val = s => String(s || '').trim();
+  const lines = s => val(s).split('\n').map(x => x.trim()).filter(Boolean);
+  const blankLine = '____________________________________';
+
+  const kids = [...head];
+  kids.push(para([run(T.title, { bold: true, size: 30 })], { align: D.AlignmentType.CENTER, before: 60, after: 60 }));
+  kids.push(para([run(T.ref + ': ' + (e.ref || 'SM/________'), { bold: true }), run('\t' + T.date + ': ' + (e.date ? dmy(e.date) : '____________'), { bold: true })], { tabs: [{ type: D.TabStopType.RIGHT, position: W }], after: 120 }));
+  if (e.state === 'Cancelled') kids.push(para([run(T.cancelled + ' — ' + dmy(e.stateOn) + (e.reason ? ' — ' + e.reason : ''), { bold: true, size: 26, color: 'B00000' })], { align: D.AlignmentType.CENTER, after: 120 }));
+
+  // 1. client and matter
+  kids.push(heading(1, T.h1));
+  const det = [e.client, e.address, e.phone, e.matter, e.court, e.opp];
+  kids.push(table([2600, 6426], T.rows.map((r, i) => [cell([para([run(r, { bold: true })], { after: 0 })], 2600, true), cell(lines(det[i]).length ? lines(det[i]).map(l => para(l, { after: 0 })) : [para(blankLine, { after: 0 })], 6426)])));
+
+  // 2. plan chosen
+  kids.push(heading(2, T.h2));
+  const box = on => on ? '☑  ' : '☐  ';
+  const planCell = (key, name, fee, rate, tag) => {
+    const on = e.plan === key, w = 3008;
+    const feeTxt = fee ? efAmt(fee, hi) : efBlank, rateTxt = rate ? efAmt(rate, hi) : efBlank;
+    return cell([para([run(box(on), { size: 26 }), run(name, { bold: true })], { after: 30 }), para([run(key === 'OTHER' ? ' ' : T.code + ' ' + key, { bold: true, size: SZ - 2 })], { after: 50 }),
+      para([run(feeTxt, { bold: on }), run(' ' + T.perCase)], { after: 30 }), para([run('+ ' + rateTxt, { bold: on }), run(' ' + T.perDate)], { after: 30 }), para([run(tag, { italics: true, size: SZ - 2 })], { after: 0 })], w, on);
+  };
+  const oFee = e.plan === 'OTHER' ? num(e.fee) : 0, oRate = e.plan === 'OTHER' ? num(e.dateFee) : 0;
+  kids.push(table([3009, 3009, 3008], [[planCell('55K', T.p55, 55000, 1000, T.t55), planCell('75K', T.p75, 75000, 1500, T.t75), planCell('OTHER', T.pOther, oFee, oRate, T.tOther)]]));
+
+  // 3. what the plan covers
+  kids.push(heading(3, T.h3));
+  if (e.plan === 'OTHER') {
+    kids.push(para([run(T.other, { bold: true })], { after: 50, keepNext: true }));
+    lines(e.scope).forEach(l => kids.push(item(l)));
+    kids.push(para([run(T.otherNote, { italics: true })], { before: 40 }));
+  } else {
+    kids.push(para([run(T.std, { bold: true })], { after: 50, keepNext: true }));
+    T.stdList.forEach(l => kids.push(item(l)));
+    kids.push(item([run(T.notIncl, { bold: true }), run(T.stdNot)]));
+    kids.push(para([run(T.strat, { bold: true })], { before: 80, after: 50, keepNext: true }));
+    T.stratList.forEach(l => kids.push(item(l)));
+  }
+  kids.push(para([run(T.framework, { italics: true })], { before: 50 }));
+
+  // 4–9
+  kids.push(heading(4, T.h4)); kids.push(para(T.appear));
+  kids.push(heading(5, T.h5)); T.pay.forEach(l => kids.push(item(l)));
+  kids.push(heading(6, T.h6));
+  kids.push(table([3400, 5626], T.outRows.map((r, i) => [cell([para([run(r, { bold: true })], { after: 0 })], 3400, true), cell(efOut([e.outFee, e.travel, e.stay][i], hi), 5626)])));
+  kids.push(para([run(T.outNote, { italics: true })], { before: 60 }));
+  kids.push(heading(7, T.h7)); T.excl.forEach(l => kids.push(item(l)));
+  kids.push(heading(8, T.h8)); T.gen.forEach(l => kids.push(item(l)));
+  kids.push(heading(9, T.h9));
+  kids.push(para(T.dec1));
+  if (e.plan === '55K') kids.push(para(T.decStd));
+  if (e.plan === 'OTHER') kids.push(para(T.decOther));
+  kids.push(para(T.dec2));
+
+  const none = { style: D.BorderStyle.NONE, size: 0, color: 'FFFFFF' }, nb = { top: none, bottom: none, left: none, right: none };
+  const sCell = (rows, al) => new D.TableCell({ width: { size: 4513, type: D.WidthType.DXA }, borders: nb, children: rows.map((r, i) => para([run(r[0], { bold: r[1] })], { align: al, after: 40, before: i === 0 ? 560 : 0 })) });
+  kids.push(new D.Table({ width: { size: W, type: D.WidthType.DXA }, columnWidths: [4513, 4513], borders: { top: none, bottom: none, left: none, right: none, insideHorizontal: none, insideVertical: none }, rows: [new D.TableRow({ cantSplit: true, children: [
+    sCell([['______________________________'], [T.sClient, true], [T.sName + ': ' + (val(e.client).split('\n')[0] || '____________________')], [T.sDate + ': ____________________']], D.AlignmentType.LEFT),
+    sCell([['______________________________'], [T.adv, true], [T.advT], [T.sDate + ': ____________________']], D.AlignmentType.RIGHT)] })] }));
+  return kids;
+}
+
+async function makeEngageDoc(m, e) {
+  const D = window.docx; if (!D) throw new Error('Word library still loading, try again');
+  const kids = efChildren(D, e, letterhead(D));
+  const footer = new D.Footer({ children: [new D.Paragraph({ alignment: D.AlignmentType.CENTER, children: [new D.TextRun({ font: 'Times New Roman', size: 16, color: '808080', children: ['Page ', D.PageNumber.CURRENT, ' of ', D.PageNumber.TOTAL_PAGES] })] })] });
+  const doc = new D.Document({ creator: 'Saurabh Misra', styles: { default: { document: { run: { font: e.lang === 'hi' ? 'Mangal' : 'Times New Roman', size: 22 } } } },
+    sections: [{ properties: { page: pageFor(e.paper || 'A4', 'A4', { top: 900, bottom: 1080, left: 1440, right: 1440 }) }, footers: { default: footer }, children: kids }] });
+  const blob = await D.Packer.toBlob(doc);
+  const name = cleanName('Engagement Form ' + (e.plan === 'OTHER' ? 'Other plan' : 'Plan ' + e.plan) + (e.lang === 'hi' ? ' Hindi' : '') + ' ' + dmy(e.date) + (e.state === 'Cancelled' ? ' CANCELLED' : '')) + '.docx';
+  let itemId = '', where = '';
+  if (m.folderId) { try { const dir = await feeFolder(m, true); itemId = (await uploadFile(dir.id, new File([blob], name), name)).id; where = dir.name; } catch (er) {} }
+  return { blob, name, itemId, where };
+}
+
+/* ---------- the matter's plan sets its fees ---------- */
+function efApplyFees(m, e) {
+  const fee = e.plan === 'OTHER' ? num(e.fee) : EF_PLANS[e.plan].fee, rate = e.plan === 'OTHER' ? num(e.dateFee) : EF_PLANS[e.plan].date;
+  const label = 'Professional fee — ' + (e.plan === 'OTHER' ? 'other plan' : 'Plan ' + e.plan) + ' (engagement form)';
+  m.agreedParts = m.agreedParts || [];
+  const mine = m.agreedParts.find(p => p.ef), others = m.agreedParts.filter(p => !p.ef);
+  let note = '';
+  if (fee) {
+    if (mine) Object.assign(mine, { amount: fee, for: label, date: e.date });
+    else if (!others.length) m.agreedParts.push({ id: uid(), date: e.date, amount: fee, for: label, ef: true });
+    else note = 'Fees agreed already has entries; professional fee not changed';
+  }
+  if (rate && (!num(m.dateFee) || m.dateFeeByEF)) { m.dateFee = rate; m.dateFeeByEF = true; }
+  else if (rate && num(m.dateFee) !== rate) note = (note ? note + '; ' : '') + 'date fee already set at ' + rupees(m.dateFee) + ', not changed';
+  feesTotal(m);
+  return note;
+}
+const efLive = m => (m.engage || []).filter(x => x.state !== 'Cancelled');
+
+/* ---------- form sheet ---------- */
+function sheetEngage(m, rec) {
+  if (!m.clientCode) return askCode(m, () => sheetEngage(m, rec));
+  const prev = rec || efLive(m).slice(-1)[0];
+  const ci = typeof clientInfo === 'function' ? clientInfo(m.clients) : {};
+  const oppGuess = ((m.title || '').split(/\s+(?:v\.?|vs\.?|versus)\s+/i)[1] || '').trim();
+  const st = { plan: prev ? prev.plan : '75K', lang: prev ? prev.lang : 'en', apply: true,
+    scope: prev && prev.plan === 'OTHER' ? prev.scope : '', fee: prev ? prev.fee || '' : '', dateFee: prev ? prev.dateFee || '' : '' };
+  if (prev && prev.paper) PAPER_NOW.engage = prev.paper; else delete PAPER_NOW.engage;
+  const v0 = {
+    ef_client: prev ? prev.client : (m.clients || ''), ef_addr: prev ? prev.address : (ci.address || ''), ef_phone: prev ? prev.phone : [ci.phone || m.phone, ci.email || m.email].filter(Boolean).join(' / '),
+    ef_matter: prev ? prev.matter : [m.title, [m.type, m.caseNo].filter(Boolean).join(' ')].filter(Boolean).join(' — '), ef_court: prev ? prev.court : (m.court || ''), ef_opp: prev ? prev.opp : oppGuess,
+    ef_date: todayIso(), ef_out: prev ? prev.outFee || '' : '', ef_travel: prev ? prev.travel || '' : '', ef_stay: prev ? prev.stay || '' : '' };
+  const keep = () => { const v = {}; document.querySelectorAll('#efform [id^="ef_"]').forEach(el => { v[el.id] = el.value; }); st.apply = $('#ef_apply')?.checked ?? st.apply; if (st.plan === 'OTHER') { st.scope = v.ef_scope ?? st.scope; st.fee = v.ef_fee ?? st.fee; st.dateFee = v.ef_dfee ?? st.dateFee; } return v; };
+  const restore = v => Object.entries(v).forEach(([id, val]) => { const el = $('#' + id); if (el && val !== undefined) el.value = val; });
+  const chip = (k, label, cur, attr) => `<button type="button" class="chip ${cur === k ? 'on' : ''}" data-${attr}="${k}">${label}</button>`;
+  const draw = () => {
+    if (st.plan === 'OTHER' && !st.scope) st.scope = efStdScope(st.lang === 'hi');
+    const f = (id, label, ph, ta) => `<div class="field"><label for="${id}">${label}</label>${ta ? `<textarea class="in" id="${id}" rows="${ta}" placeholder="${esc(ph || '')}"></textarea>` : `<input class="in" id="${id}" placeholder="${esc(ph || '')}">`}</div>`;
+    openSheet(`<div class="s-head"><div><small style="color:var(--saffron-ink)">${esc(matterRef(m))} · engagement form</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+      <form id="efform" class="grp" style="gap:12px">
+        <div class="field"><label>PLAN</label><div class="chips">${chip('55K', 'Plan 55K · Standard', st.plan, 'efp')}${chip('75K', 'Plan 75K · Strategic', st.plan, 'efp')}${chip('OTHER', 'Any other plan', st.plan, 'efp')}</div>
+          <p class="hint" style="margin:6px 0 0">${st.plan === '55K' ? '₹55,000 per case + ₹1,000 per date' : st.plan === '75K' ? '₹75,000 per case + ₹1,500 per date' : 'Enter the fee, and edit the scope to the actual work.'}</p></div>
+        ${st.plan === 'OTHER' ? `<div class="two"><div class="field"><label for="ef_fee">FEE PER CASE (₹)</label><input class="in" id="ef_fee" inputmode="numeric" placeholder="e.g. 25000"></div><div class="field"><label for="ef_dfee">DATE FEE (₹ PER DATE)</label><input class="in" id="ef_dfee" inputmode="numeric" placeholder="e.g. 1000"></div></div>
+          <div class="field"><label for="ef_scope">SCOPE OF WORK (ONE PER LINE — STARTS FROM THE STANDARD PLAN)</label><textarea class="in" id="ef_scope" rows="6"></textarea></div>
+          <button type="button" class="linkbtn" data-efx="std">Reset scope to the Standard plan</button>` : ''}
+        <div class="field"><label>LANGUAGE</label><div class="chips">${chip('en', 'English', st.lang, 'efl')}${chip('hi', 'हिंदी', st.lang, 'efl')}</div></div>
+        ${f('ef_client', 'CLIENT NAME')}${f('ef_addr', 'ADDRESS', '', 2)}${f('ef_phone', 'PHONE / E-MAIL')}
+        ${f('ef_matter', 'MATTER / CASE')}${f('ef_court', 'HON\'BLE COURT / FORUM', 'e.g. High Court, Lucknow Bench')}${f('ef_opp', 'OPPOSITE PARTY')}
+        <span class="lbl">Outstation (outside Lucknow) — leave blank to fill by hand</span>
+        <div class="two">${f('ef_out', 'APPEARANCE FEE PER DAY (₹)', 'blank')}${f('ef_travel', 'TRAVEL', 'blank, ₹ or e.g. At actuals, AC 2-tier')}</div>
+        ${f('ef_stay', 'STAY', 'blank, ₹ or e.g. At actuals')}
+        <div class="field"><label for="ef_date">DATE</label><input class="in" type="date" id="ef_date"></div>
+        ${paperSwitch('engage')}
+        <div class="toggles"><label><span>Set this plan's fee and date fee on the matter</span><input type="checkbox" id="ef_apply" ${st.apply ? 'checked' : ''}></label></div>
+        <button class="save" type="submit">${rec ? 'Save and remake form' : 'Make engagement form'}</button>
+        <button type="button" class="linkbtn" data-efx="back">‹ Back to Fees &amp; payments</button>
+      </form>`);
+    restore(Object.assign({}, v0, { ef_scope: st.scope, ef_fee: st.fee, ef_dfee: st.dateFee }));
+    $('#efform').onsubmit = submit;
+  };
+  async function submit(ev) {
+    ev.preventDefault();
+    const v = keep();
+    if (st.plan === 'OTHER' && !num(v.ef_fee)) return toast('Enter the fee for the other plan');
+    if (st.plan === 'OTHER' && !String(v.ef_scope || '').trim()) return toast('Write the scope of work');
+    const e = rec || { id: uid() };
+    Object.assign(e, { plan: st.plan, lang: st.lang, paper: paperOf('engage'), date: v.ef_date || todayIso(), ref: matterRef(m),
+      client: v.ef_client.trim(), address: v.ef_addr.trim(), phone: v.ef_phone.trim(), matter: v.ef_matter.trim(), court: v.ef_court.trim(), opp: v.ef_opp.trim(),
+      outFee: v.ef_out.trim(), travel: v.ef_travel.trim(), stay: v.ef_stay.trim(),
+      fee: st.plan === 'OTHER' ? num(v.ef_fee) : EF_PLANS[st.plan].fee, dateFee: st.plan === 'OTHER' ? num(v.ef_dfee) : EF_PLANS[st.plan].date, scope: st.plan === 'OTHER' ? v.ef_scope.trim() : '' });
+    if (!e.state) e.state = 'Made';
+    let note = '';
+    change(() => { freezeRef(m); m.engage = m.engage || []; if (!rec) m.engage.push(e);
+      if (st.apply) note = efApplyFees(m, e);
+      logChange(m, 'Engagement form ' + (rec ? 'remade' : 'made') + ': ' + (e.plan === 'OTHER' ? 'other plan ' + rupees(e.fee) : 'Plan ' + e.plan) + (e.lang === 'hi' ? ' (Hindi)' : '')); touch(m); });
+    if (note) toast(note, 5000);
+    openSheet(`<div class="s-head"><div><small>${esc(mref(m))}</small><h1>Making engagement form…</h1></div></div>`);
+    try { const r = await makeEngageDoc(m, e); if (r.itemId) change(() => { e.fileId = r.itemId; e.fileName = r.name; touch(m); }); docReady(m, r, 'Engagement form'); }
+    catch (er) { toast(er.message); sheetFees(m); }
+  }
+  draw();
+  $('#sheet-root').onclick = ev => {
+    const b = ev.target.closest('[data-efp],[data-efl],[data-efx]'); if (!b) return;
+    const v = keep();
+    if (b.dataset.efx === 'back') return sheetFees(m);
+    if (b.dataset.efx === 'std') { st.scope = efStdScope(st.lang === 'hi'); }
+    if (b.dataset.efp) { const was = st.plan; st.plan = b.dataset.efp; if (st.plan === 'OTHER' && was !== 'OTHER' && !st.scope) st.scope = efStdScope(st.lang === 'hi'); }
+    if (b.dataset.efl) { const was = st.lang; st.lang = b.dataset.efl; if (st.plan === 'OTHER' && was !== st.lang && st.scope === efStdScope(was === 'hi')) st.scope = efStdScope(st.lang === 'hi'); }
+    Object.assign(v0, v); draw();
+  };
+}
+
+/* ---------- signed / cancel ---------- */
+function sheetEngageMark(m, id, what) {
+  const e = (m.engage || []).find(x => x.id === id); if (!e) return;
+  if (what === 'signed') {
+    openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · engagement form</small><h1>Mark as signed</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+      <form id="efs" class="grp" style="gap:12px"><div class="field"><label for="efs_on">SIGNED ON</label><input class="in" type="date" id="efs_on" value="${todayIso()}"></div>
+      <p class="hint">Tip: keep a photo or scan of the signed form in the fees folder${FEE_DIR_NAME[m.id] ? ' (' + esc(FEE_DIR_NAME[m.id]) + ')' : ''}.</p>
+      <button class="save" type="submit">Mark signed</button><button type="button" class="linkbtn" data-efm="back">‹ Back</button></form>`);
+    $('#sheet-root').onclick = ev => { if (ev.target.closest('[data-efm="back"]')) sheetFees(m); };
+    $('#efs').onsubmit = ev => { ev.preventDefault(); change(() => { e.state = 'Signed'; e.signedOn = $('#efs_on').value || todayIso(); logChange(m, 'Engagement form signed (' + dmy(e.signedOn) + ')'); touch(m); }); toast('Marked signed'); sheetFees(m); };
+    return;
+  }
+  openSheet(`<div class="s-head"><div><small style="color:var(--red)">${esc(mref(m))} · engagement form</small><h1>Cancel form</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    <p class="hint">The form stays on record, marked CANCELLED. Nothing is deleted.</p>
+    <form id="efc" class="grp" style="gap:12px"><div class="field"><label for="efc_on">DATE</label><input class="in" type="date" id="efc_on" value="${todayIso()}"></div>
+    <div class="field"><label for="efc_why">REASON</label><input class="in" id="efc_why" required list="efc_l" placeholder="e.g. Client changed plan"><datalist id="efc_l"><option value="Client changed plan"><option value="Wrong details"><option value="Client did not engage"></datalist></div>
+    <div class="toggles"><label><span>Make a copy marked CANCELLED in the fees folder</span><input type="checkbox" id="efc_doc" checked></label></div>
+    <div class="toggles"><label><span>Then make a fresh form</span><input type="checkbox" id="efc_new"></label></div>
+    <button class="save" type="submit" style="background:var(--red)">Cancel form</button><button type="button" class="linkbtn" data-efm="back">‹ Back</button></form>`);
+  $('#sheet-root').onclick = ev => { if (ev.target.closest('[data-efm="back"]')) sheetFees(m); };
+  $('#efc').onsubmit = async ev => {
+    ev.preventDefault();
+    const why = $('#efc_why').value.trim(), on = $('#efc_on').value || todayIso(), mk = $('#efc_doc').checked, again = $('#efc_new').checked;
+    change(() => { e.state = 'Cancelled'; e.stateOn = on; e.reason = why; logChange(m, 'Engagement form cancelled: ' + why); touch(m); });
+    if (mk) { openSheet(`<div class="s-head"><div><small>${esc(mref(m))}</small><h1>Making cancelled copy…</h1></div></div>`); try { await makeEngageDoc(m, e); } catch (er) { toast('Could not make the cancelled copy: ' + er.message); } }
+    toast('Engagement form cancelled');
+    if (again) return sheetEngage(m); sheetFees(m);
+  };
+}
+
+/* ---------- the list shown on the Fees page, and the reminder at "Fee received" ---------- */
+function engageSection(m) {
+  const list = (m.engage || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  if (!list.length) return '';
+  return `<div class="grp" style="margin-top:10px"><span class="lbl">Engagement forms</span><div class="hist">${list.map(e => { const cx = e.state === 'Cancelled';
+    return `<div><b>${dmy(e.date)}</b><span${cx ? ' class="voided"' : ''}><b style="font-family:inherit">${e.plan === 'OTHER' ? 'Other plan ' + rupees(e.fee) : 'Plan ' + e.plan}</b>${e.lang === 'hi' ? ' · हिंदी' : ''} · ${cx ? `<b class="voidtag">CANCELLED</b> ${dmy(e.stateOn)}${e.reason ? ' · ' + esc(e.reason) : ''}` : e.state === 'Signed' ? `<span style="color:var(--dc-ink)">signed ${dmy(e.signedOn)}</span>` : '<span style="color:var(--red)">not yet signed</span>'}
+      ${cx ? '' : `<button class="linkbtn" data-act="efopen" data-id="${m.id}" data-e="${e.id}">Open / edit</button>${e.state !== 'Signed' ? ` <button class="linkbtn" data-act="efsign" data-id="${m.id}" data-e="${e.id}">Mark signed</button>` : ''} <button class="linkbtn" data-act="efvoid" data-id="${m.id}" data-e="${e.id}" style="color:var(--red)">Cancel</button>`}</span></div>`; }).join('')}</div></div>`;
+}
+function engageReminder(m) {
+  const live = efLive(m), signed = live.some(e => e.state === 'Signed');
+  if (signed) return '';
+  return `<div class="card" style="background:var(--saffron-soft);box-shadow:none;padding:12px 14px;margin-top:10px"><b style="color:var(--saffron-ink)">${live.length ? 'Engagement form not yet marked signed' : 'No engagement form yet'}</b><br>
+    <span style="font-size:14px">Get the client's signature on the plan and fee before work starts.</span><br>
+    <button class="linkbtn" data-act="${live.length ? 'efsign' : 'engage'}" data-id="${m.id}"${live.length ? ` data-e="${live[live.length - 1].id}"` : ''} style="margin-top:4px">${live.length ? 'Mark it signed' : 'Make the engagement form'}</button></div>`;
+}
+document.addEventListener('click', ev => {
+  const el = ev.target.closest('[data-act="engage"],[data-act="efopen"],[data-act="efsign"],[data-act="efvoid"]'); if (!el) return;
+  const m = find(el.dataset.id); if (!m) return;
+  const a = el.dataset.act, e = (m.engage || []).find(x => x.id === el.dataset.e);
+  if (a === 'engage') sheetEngage(m);
+  else if (a === 'efopen' && e) sheetEngage(m, e);
+  else if (a === 'efsign' && e) sheetEngageMark(m, e.id, 'signed');
+  else if (a === 'efvoid' && e) sheetEngageMark(m, e.id, 'void');
+});
+
+/* bill term "out": the outstation amounts come from the matter's latest engagement form, else blanks to fill by hand */
+function efFillOut(m, t) {
+  if (!/\{OUT\}|\{TRAVEL\}|\{STAY\}/.test(t)) return t;
+  const e = efLive(m).slice(-1)[0] || {};
+  const f = v => { const n = efNum(v); return n ? '₹' + n.toLocaleString('en-IN') + '/-' : String(v || '').trim() || '₹ ________'; };
+  return t.replace('{OUT}', f(e.outFee)).replace('{TRAVEL}', f(e.travel)).replace('{STAY}', f(e.stay));
+}

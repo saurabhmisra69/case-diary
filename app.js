@@ -3,7 +3,7 @@
    Code only in this repository; all case data lives in the user's own OneDrive. */
 'use strict';
 
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.9.0';
 const CLIENT_ID = 'df289e5d-2a3c-4280-b4be-b440bfe8ea8b';
 const SCOPES = ['User.Read', 'Files.ReadWrite', 'Calendars.ReadWrite'];
 const DIARY_DIR = 'Case Diary';

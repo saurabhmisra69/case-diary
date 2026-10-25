@@ -5,8 +5,8 @@
 'use strict';
 
 const PAPER_SIZES = { A4: { w: 11906, h: 16838, label: 'A4' }, Legal: { w: 12240, h: 20160, label: 'Legal' } };
-const PAPER_DEF = { draft: 'Legal', letter: 'Legal', bill: 'A4', receipt: 'A4', cover: 'Legal', causelist: 'Legal' };
-const PAPER_KIND = { draft: 'Drafts & applications', letter: 'Letters & notices', bill: 'Bills', receipt: 'Receipts', cover: 'File cover', causelist: 'Cause list' };
+const PAPER_DEF = { draft: 'Legal', letter: 'Legal', bill: 'A4', receipt: 'A4', engage: 'A4', cover: 'Legal', causelist: 'Legal' };
+const PAPER_KIND = { draft: 'Drafts & applications', letter: 'Letters & notices', bill: 'Bills', receipt: 'Receipts', engage: 'Engagement forms', cover: 'File cover', causelist: 'Cause list' };
 const PAPER_NOW = {};   // this document only
 const paperDefault = kind => ((S.data && S.data.meta && S.data.meta.paper) || {})[kind] || PAPER_DEF[kind] || 'Legal';
 const paperOf = kind => PAPER_NOW[kind] || paperDefault(kind);
