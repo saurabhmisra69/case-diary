@@ -237,20 +237,23 @@ function sheetEngage(m, rec) {
     const f = (id, label, ph, ta) => `<div class="field"><label for="${id}">${label}</label>${ta ? `<textarea class="in" id="${id}" rows="${ta}" placeholder="${esc(ph || '')}"></textarea>` : `<input class="in" id="${id}" placeholder="${esc(ph || '')}">`}</div>`;
     openSheet(`<div class="s-head"><div><small style="color:var(--saffron-ink)">${esc(matterRef(m))} · engagement form</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
       <form id="efform" class="grp" style="gap:12px">
-        <div class="field"><label>PLAN</label><div class="chips">${chip('55K', 'Plan 55K · Standard', st.plan, 'efp')}${chip('75K', 'Plan 75K · Strategic', st.plan, 'efp')}${chip('OTHER', 'Any other plan', st.plan, 'efp')}</div>
-          <p class="hint" style="margin:6px 0 0">${st.plan === '55K' ? '₹55,000 per case + ₹1,000 per date' : st.plan === '75K' ? '₹75,000 per case + ₹1,500 per date' : 'Enter the fee, and edit the scope to the actual work.'}</p></div>
-        ${st.plan === 'OTHER' ? `<div class="two"><div class="field"><label for="ef_fee">FEE PER CASE (₹)</label><input class="in" id="ef_fee" inputmode="numeric" placeholder="e.g. 25000"></div><div class="field"><label for="ef_dfee">DATE FEE (₹ PER DATE)</label><input class="in" id="ef_dfee" inputmode="numeric" placeholder="e.g. 1000"></div></div>
-          <div class="field"><label for="ef_scope">SCOPE OF WORK (ONE PER LINE — STARTS FROM THE STANDARD PLAN)</label><textarea class="in" id="ef_scope" rows="6"></textarea></div>
-          <button type="button" class="linkbtn" data-efx="std">Reset scope to the Standard plan</button>` : ''}
-        <div class="field"><label>LANGUAGE</label><div class="chips">${chip('en', 'English', st.lang, 'efl')}${chip('hi', 'हिंदी', st.lang, 'efl')}</div></div>
-        ${f('ef_client', 'CLIENT NAME')}${f('ef_addr', 'ADDRESS', '', 2)}${f('ef_phone', 'PHONE / E-MAIL')}
-        ${f('ef_matter', 'MATTER / CASE')}${f('ef_court', 'HON\'BLE COURT / FORUM', 'e.g. High Court, Lucknow Bench')}${f('ef_opp', 'OPPOSITE PARTY')}
-        <span class="lbl">Outstation (outside Lucknow) — leave blank to fill by hand</span>
-        <div class="two">${f('ef_out', 'APPEARANCE FEE PER DAY (₹)', 'blank')}${f('ef_travel', 'TRAVEL', 'blank, ₹ or e.g. At actuals, AC 2-tier')}</div>
-        ${f('ef_stay', 'STAY', 'blank, ₹ or e.g. At actuals')}
-        <div class="field"><label for="ef_date">DATE</label><input class="in" type="date" id="ef_date"></div>
-        ${paperSwitch('engage')}
-        <div class="toggles"><label><span>Set this plan's fee and date fee on the matter</span><input type="checkbox" id="ef_apply" ${st.apply ? 'checked' : ''}></label></div>
+        <div class="efsec"><span class="lbl">1 · Plan</span>
+          <div class="efplans">${[['55K', 'Standard', '₹55,000', '+ ₹1,000 / date'], ['75K', 'Strategic', '₹75,000', '+ ₹1,500 / date'], ['OTHER', 'Any other plan', 'Your fee', 'Scope as agreed']].map(([k, n, f1, f2]) =>
+            `<button type="button" class="efplan ${st.plan === k ? 'on' : ''}" data-efp="${k}"><small>${k === 'OTHER' ? 'Other' : 'Plan ' + k}</small><b>${n}</b><span>${f1}</span><em>${f2}</em></button>`).join('')}</div>
+          ${st.plan === 'OTHER' ? `<div class="two"><div class="field"><label for="ef_fee">FEE PER CASE (₹)</label><input class="in" id="ef_fee" inputmode="numeric" placeholder="e.g. 25000"></div><div class="field"><label for="ef_dfee">DATE FEE PER DATE (₹)</label><input class="in" id="ef_dfee" inputmode="numeric" placeholder="e.g. 1000"></div></div>
+            <div class="field"><label for="ef_scope">SCOPE OF WORK <small>(one item per line — starts from the Standard plan)</small></label><textarea class="in" id="ef_scope" rows="9"></textarea></div>
+            <button type="button" class="linkbtn" data-efx="std">Reset scope to the Standard plan</button>` : ''}
+          <div class="field"><label>LANGUAGE OF THE FORM</label><div class="seg efseg">${[['en', 'English'], ['hi', 'हिंदी']].map(([k, n]) => `<button type="button" class="${st.lang === k ? 'on' : ''}" data-efl="${k}">${n}</button>`).join('')}</div></div></div>
+        <div class="efsec"><span class="lbl">2 · Client and matter</span>
+          ${f('ef_client', 'CLIENT NAME')}${f('ef_addr', 'ADDRESS', '', 2)}${f('ef_phone', 'PHONE / E-MAIL')}
+          ${f('ef_matter', 'MATTER / CASE', '', 2)}${f('ef_court', 'HON\'BLE COURT / FORUM', 'e.g. High Court, Lucknow Bench')}${f('ef_opp', 'OPPOSITE PARTY')}</div>
+        <div class="efsec"><span class="lbl">3 · Outstation (outside Lucknow)</span>
+          <p class="hint" style="margin:0">Type an amount (e.g. 5000) or words (e.g. At actuals). Leave blank to fill by hand on the printout.</p>
+          ${f('ef_out', 'APPEARANCE FEE PER DAY (₹)', 'e.g. 5000')}${f('ef_travel', 'TRAVEL', 'e.g. At actuals, AC 2-tier')}${f('ef_stay', 'STAY', 'e.g. At actuals')}</div>
+        <div class="efsec"><span class="lbl">4 · Print</span>
+          <div class="field"><label for="ef_date">DATE ON THE FORM</label><input class="in" type="date" id="ef_date"></div>
+          ${paperSwitch('engage')}
+          <div class="toggles"><label><span>Set this plan's fee and date fee on the matter</span><input type="checkbox" id="ef_apply" ${st.apply ? 'checked' : ''}></label></div></div>
         <button class="save" type="submit">${rec ? 'Save and remake form' : 'Make engagement form'}</button>
         <button type="button" class="linkbtn" data-efx="back">‹ Back to Fees &amp; payments</button>
       </form>`);
@@ -371,14 +374,15 @@ function sheetEngageMark(m, id, what) {
 /* ---------- More › Engagement form: pick a matter, or a new client (client page → consultation → form) ---------- */
 function sheetEngagePick() {
   const ms = live().slice().sort((a, b) => (b.u || 0) - (a.u || 0));
-  const row = m => `<button class="frow" data-efpick="${m.id}"><span class="fname">${esc(m.title || m.clients || '')}<small>${esc(mref(m))}${m.clients ? ' · ' + esc(typeof clientName === 'function' ? clientName(m.clients) : m.clients) : ''}${efLive(m).length ? ' · form ' + (efLive(m).some(e => e.state === 'Signed') ? 'signed' : 'made') : ''}</small></span></button>`;
+  const ini = m => esc(String((typeof clientName === 'function' ? clientName(m.clients) : m.clients) || m.title || '?').replace(/^(M\/s\.?|Smt\.?|Shri|Sri|Dr\.?|Mr\.?|Mrs\.?)\s+/i, '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase());
+  const row = m => `<button class="frow" data-efpick="${m.id}"><span class="ficon" style="background:var(--hc-soft);color:var(--hc)">${ini(m)}</span><span class="fname">${esc(m.title || m.clients || '')}<small>${esc(mref(m))}${m.clients ? ' · ' + esc(typeof clientName === 'function' ? clientName(m.clients) : m.clients) : ''}${efLive(m).length ? ' · form ' + (efLive(m).some(e => e.state === 'Signed') ? 'signed' : 'made') : ''}</small></span></button>`;
   const draw = q => { const k = String(q || '').toLowerCase().trim(); const hit = (k ? ms.filter(m => [m.title, m.clients, mref(m), m.caseNo].join(' ').toLowerCase().includes(k)) : ms).slice(0, 30);
     $('#efpk_list').innerHTML = hit.map(row).join('') || '<p class="empty">No matter found.</p>'; };
   openSheet(`<div class="s-head"><div><small>More</small><h1>Engagement form</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <button class="save" data-efnew="1" style="width:100%">+ New client – not in the app yet</button>
     <p class="hint" style="margin:6px 0 12px">Fill the client's details once; his consultation matter opens with its reference, then the form.</p>
     <span class="lbl">Or pick an existing matter</span>
-    <label class="search">${I.search}<input type="search" id="efpk_q" placeholder="Search name, matter, ref."></label>
+    <label class="search" style="border:2px solid var(--line)">${I.search}<input type="search" id="efpk_q" placeholder="Search name, matter, ref."></label>
     <div class="flist" id="efpk_list"></div>`);
   draw(''); $('#efpk_q').oninput = ev => draw(ev.target.value);
   $('#sheet-root').onclick = ev => {

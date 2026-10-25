@@ -365,3 +365,17 @@ mark{background:#FFE58A;color:inherit;padding:0 1px}
 .stg.done{background:var(--dc-soft);color:var(--dc-ink)}
 .stg.on{background:var(--brand-deep,#1B2A4A);color:#fff}
 .stg-sep{color:var(--muted);font-size:11px}
+
+/* engagement form */
+.efsec{display:flex;flex-direction:column;gap:12px;padding:14px;border:1.5px solid var(--line);border-radius:8px;background:#fff}
+.efsec>.lbl{color:var(--hc);font-size:13px}
+.efplans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.efplan{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:2px solid var(--line);border-radius:8px;background:#fff;padding:10px;min-height:96px;cursor:pointer;font:inherit;color:var(--ink)}
+.efplan small{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.efplan b{font-size:14px;line-height:1.2}
+.efplan span{font-size:15px;font-weight:700;margin-top:auto}
+.efplan em{font-style:normal;font-size:11px;color:var(--muted)}
+.efplan.on{border-color:var(--hc);background:var(--hc);color:#fff}
+.efplan.on small,.efplan.on em{color:#E9D9A6}
+.efseg{align-self:flex-start}
+.field label small{font-weight:500;text-transform:none;letter-spacing:0}
