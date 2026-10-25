@@ -560,7 +560,7 @@ function viewMore() {
     <button data-act="library">Judgment library <small>your own judgments, searchable</small></button>
     <button data-act="templates">My templates <small>made from your past drafts</small></button>
     <button data-act="efmore">Engagement form <small>plan, fee and terms, for the client to sign</small></button>
-    <button data-act="feeplans">Fee plans – take-home copy <small>poster PDF, English and Hindi, A4 black and white</small></button>
+    <button data-act="feeplans">Fee plans &amp; consultation <small>take-home poster PDFs, English and Hindi, A4 black and white</small></button>
     <button data-act="conflict">Conflict check <small>before taking a new matter</small></button>
     <button data-act="paper">Paper size <small>A4 or Legal for each kind of document</small></button>
     <button data-act="tab" data-tab="limit">Limitation calculator <small>last date to file</small></button>

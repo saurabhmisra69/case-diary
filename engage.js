@@ -483,14 +483,16 @@ function efFillOut(m, t) {
 }
 
 /* ---------- More › Fee plans: the take-home poster (A4, black and white), English and Hindi ---------- */
-const FEE_PLAN_PDF = { en: ['posters/Fee_Plans_English_A4.pdf', 'Fee Plans – Saurabh Misra & Associates (English).pdf'], hi: ['posters/Fee_Plans_Hindi_A4.pdf', 'Fee Plans – Saurabh Misra & Associates (Hindi).pdf'] };
+const FEE_PLAN_PDF = { en: ['posters/Fee_Plans_English_A4.pdf', 'Fee Plans – Saurabh Misra & Associates (English).pdf'], hi: ['posters/Fee_Plans_Hindi_A4.pdf', 'Fee Plans – Saurabh Misra & Associates (Hindi).pdf'],
+  cen: ['posters/Consultation_English_A4.pdf', 'Consultation – Saurabh Misra & Associates (English).pdf'], chi: ['posters/Consultation_Hindi_A4.pdf', 'Consultation – Saurabh Misra & Associates (Hindi).pdf'] };
 async function feePlanBlob(k) { const r = await fetch(FEE_PLAN_PDF[k][0]); if (!r.ok) throw new Error('file not found'); return r.blob(); }
 function sheetFeePlans() {
-  const row = (k, label) => `<div class="efwait"><div><b>${label}</b><small>A4 landscape · black and white · 2 pages</small></div>
+  const row = (k, label, info) => `<div class="efwait"><div><b>${label}</b><small>${info || 'A4 landscape · black and white · 2 pages'}</small></div>
     <div class="efwbtn"><button type="button" class="act blue" data-fp="share" data-k="${k}">Share (WhatsApp)</button><button type="button" class="act" style="background:var(--chip)" data-fp="open" data-k="${k}">Open / print</button><button type="button" class="act" style="background:var(--chip)" data-fp="dl" data-k="${k}">Download</button></div></div>`;
-  openSheet(`<div class="s-head"><div><small>More</small><h1>Fee plans – take-home copy</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
-    <p class="hint" style="margin:0">The same two sheets as on your wall, sized for home printers. Share only with clients who have consulted you.</p>
-    <div class="efsec">${row('en', 'English')}${row('hi', 'हिंदी')}</div>`);
+  openSheet(`<div class="s-head"><div><small>More</small><h1>Fee plans &amp; consultation</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    <p class="hint" style="margin:0">Take-home copies of your wall posters, sized for home printers. Share only with clients who have consulted you.</p>
+    <div class="efsec"><span class="lbl">Litigation fee plans</span>${row('en', 'English')}${row('hi', 'हिंदी')}</div>
+    <div class="efsec"><span class="lbl">Consultation – oral ₹5,500 · written ₹11,000</span>${row('cen', 'English', 'A4 portrait · black and white · 1 page')}${row('chi', 'हिंदी', 'A4 portrait · black and white · 1 page')}</div>`);
   $('#sheet-root').onclick = async ev => {
     const b = ev.target.closest('[data-fp]'); if (!b) return;
     const k = b.dataset.k, name = FEE_PLAN_PDF[k][1], t = b.textContent; b.textContent = 'Preparing…';
