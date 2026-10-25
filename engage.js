@@ -227,7 +227,7 @@ function sheetEngage(m, rec) {
   if (prev && prev.paper) PAPER_NOW.engage = prev.paper; else delete PAPER_NOW.engage;
   const v0 = {
     ef_client: prev ? prev.client : (m.clients || ''), ef_addr: prev ? prev.address : (ci.address || ''), ef_phone: prev ? prev.phone : [ci.phone || m.phone, ci.email || m.email].filter(Boolean).join(' / '),
-    ef_matter: prev ? prev.matter : [m.title, [m.type, m.caseNo].filter(Boolean).join(' ')].filter(Boolean).join(' — '), ef_court: prev ? prev.court : (m.court || ''), ef_opp: prev ? prev.opp : oppGuess,
+    ef_matter: prev ? prev.matter : (m.stage === 'consult' && / – consultation$/.test(m.title || '') ? '' : m.stage === 'consult' ? (m.notes || '') : [m.title, [m.type, m.caseNo].filter(Boolean).join(' ')].filter(Boolean).join(' — ')), ef_court: prev ? prev.court : (m.court || ''), ef_opp: prev ? prev.opp : oppGuess,
     ef_date: todayIso(), ef_out: prev ? prev.outFee || '' : '', ef_travel: prev ? prev.travel || '' : '', ef_stay: prev ? prev.stay || '' : '' };
   const keep = () => { const v = {}; document.querySelectorAll('#efform [id^="ef_"]').forEach(el => { v[el.id] = el.value; }); st.apply = $('#ef_apply')?.checked ?? st.apply; if (st.plan === 'OTHER') { st.scope = v.ef_scope ?? st.scope; st.fee = v.ef_fee ?? st.fee; st.dateFee = v.ef_dfee ?? st.dateFee; } return v; };
   const restore = v => Object.entries(v).forEach(([id, val]) => { const el = $('#' + id); if (el && val !== undefined) el.value = val; });
@@ -246,7 +246,7 @@ function sheetEngage(m, rec) {
           <div class="field"><label>LANGUAGE OF THE FORM</label><div class="seg efseg">${[['en', 'English'], ['hi', 'हिंदी']].map(([k, n]) => `<button type="button" class="${st.lang === k ? 'on' : ''}" data-efl="${k}">${n}</button>`).join('')}</div></div></div>
         <div class="efsec"><span class="lbl">2 · Client and matter</span>
           ${f('ef_client', 'CLIENT NAME')}${f('ef_addr', 'ADDRESS', '', 2)}${f('ef_phone', 'PHONE / E-MAIL')}
-          ${f('ef_matter', 'MATTER / CASE', '', 2)}${f('ef_court', 'HON\'BLE COURT / FORUM', 'e.g. High Court, Lucknow Bench')}${f('ef_opp', 'OPPOSITE PARTY')}</div>
+          ${f('ef_matter', 'MATTER / CASE', 'e.g. Bail application – FIR 286/2026, P.S. Vibhuti Khand', 2)}${f('ef_court', 'HON\'BLE COURT / FORUM', 'e.g. High Court, Lucknow Bench')}${f('ef_opp', 'OPPOSITE PARTY')}</div>
         <div class="efsec"><span class="lbl">3 · Outstation (outside Lucknow)</span>
           <p class="hint" style="margin:0">Type an amount (e.g. 5000) or words (e.g. At actuals). Leave blank to fill by hand on the printout.</p>
           ${f('ef_out', 'APPEARANCE FEE PER DAY (₹)', 'e.g. 5000')}${f('ef_travel', 'TRAVEL', 'e.g. At actuals, AC 2-tier')}${f('ef_stay', 'STAY', 'e.g. At actuals')}</div>
@@ -273,6 +273,7 @@ function sheetEngage(m, rec) {
     if (!e.state) e.state = 'Made';
     let note = '';
     change(() => { freezeRef(m); m.engage = m.engage || []; if (!rec) m.engage.push(e);
+      if (m.stage === 'consult' && / – consultation$/.test(m.title || '') && e.matter) m.title = (typeof clientName === 'function' ? clientName(m.clients) : m.clients) + ' – ' + e.matter.split('\n')[0];
       if (st.apply) note = efApplyFees(m, e);
       logChange(m, 'Engagement form ' + (rec ? 'remade' : 'made') + ': ' + (e.plan === 'OTHER' ? 'other plan ' + rupees(e.fee) : 'Plan ' + e.plan) + (e.lang === 'hi' ? ' (Hindi)' : '')); touch(m); });
     if (note) toast(note, 5000);
@@ -399,9 +400,12 @@ function sheetEngagePick() {
       ${waiting.map(([m, e]) => { const d = Math.max(0, Math.round((new Date(todayIso()) - new Date(e.date)) / 864e5)); return `<div class="efwait">
         <div><b>${esc((typeof clientName === 'function' ? clientName(m.clients) : m.clients) || m.title || '')}</b><small>${esc(mref(m))} · ${e.plan === 'OTHER' ? 'Other plan ' + rupees(e.fee) : 'Plan ' + e.plan}${e.lang === 'hi' ? ' · हिंदी' : ''} · made ${dmy(e.date)} · ${d ? d + ' day' + (d > 1 ? 's' : '') + ' pending' : 'today'}</small></div>
         <div class="efwbtn"><label class="act blue">Upload signed copy<input type="file" accept="image/*,.pdf,application/pdf" data-efup="${m.id}|${e.id}" hidden></label><button type="button" class="act" style="background:var(--chip)" data-efw="share" data-v="${m.id}|${e.id}">Share again</button><button type="button" class="act" style="background:var(--chip);color:var(--red)" data-efw="ne" data-v="${m.id}|${e.id}">Did not engage</button></div></div>`; }).join('')}</div>` : ''}
-    <button class="save" data-efnew="1" style="width:100%">+ New client – not in the app yet</button>
-    <p class="hint" style="margin:6px 0 12px">Fill the client's details once; his consultation matter opens with its reference, then the form.</p>
-    <span class="lbl">Or pick an existing matter</span>
+    <div class="grp" style="gap:8px">
+      <button class="save" data-efnew="1" style="width:100%">1 · New client – not in the app yet</button>
+      <p class="hint" style="margin:0 0 4px">Fill his details once; a consultation matter opens with its reference, then the form.</p>
+      <button class="ghost" data-efcl="1" style="width:100%;border-color:var(--hc);color:var(--hc)">2 · Existing client – new matter</button>
+      <p class="hint" style="margin:0 0 4px">Pick the client; a fresh consultation matter opens with his saved details. Matter / case is left blank for the new case.</p></div>
+    <span class="lbl">3 · Existing matter <small style="text-transform:none;letter-spacing:0;font-weight:500">(form for a case already in the app)</small></span>
     <label class="search" style="border:2px solid var(--line)">${I.search}<input type="search" id="efpk_q" placeholder="Search name, matter, ref."></label>
     <div class="flist" id="efpk_list"></div>`);
   draw(''); $('#efpk_q').oninput = ev => draw(ev.target.value);
@@ -419,7 +423,27 @@ function sheetEngagePick() {
       if (w.dataset.efw === 'ne') { window.__efFromMore = true; return sheetEngageMark(m, e.id, 'void'); }
       w.textContent = 'Preparing…'; try { await efShareAgain(m, e); } catch (er) { toast('Could not share: ' + er.message); } w.textContent = 'Share again'; return; }
     if (ev.target.closest('[data-efnew]')) { window.__efNext = Date.now(); return sheetNewClient(); }
+    if (ev.target.closest('[data-efcl]')) return sheetEngageClient();
     const b = ev.target.closest('[data-efpick]'); if (b) { const m = find(b.dataset.efpick); if (m) sheetEngage(m); }
+  };
+}
+/* 2 · existing client, new matter: pick the client, open a fresh consultation, then the form */
+function sheetEngageClient() {
+  const gs = clientGroups().filter(g => g.key !== '(no client name)').sort((a, b) => a.name.localeCompare(b.name));
+  const ini = n => esc(String(n || '?').replace(/^(M\/s\.?|Smt\.?|Shri|Sri|Dr\.?|Mr\.?|Mrs\.?)\s+/i, '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase());
+  const row = g => `<button class="frow" data-efcg="${esc(g.key)}"><span class="ficon" style="background:var(--hc-soft);color:var(--hc)">${ini(g.name)}</span><span class="fname">${esc(g.name)}<small>${g.ms.length} matter${g.ms.length === 1 ? '' : 's'}${g.phone ? ' · ' + esc(g.phone) : ''}</small></span></button>`;
+  openSheet(`<div class="s-head"><div><small>Engagement form</small><h1>Existing client – new matter</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    <label class="search" style="border:2px solid var(--line)">${I.search}<input type="search" id="efcl_q" placeholder="Search client"></label>
+    <div class="flist" id="efcl_list"></div><button class="linkbtn" data-efcb="1">‹ Back</button>`);
+  const draw = q => { const k = String(q || '').toLowerCase().trim(); const hit = k ? gs.filter(g => (g.name + ' ' + (g.phone || '')).toLowerCase().includes(k)) : gs;
+    $('#efcl_list').innerHTML = hit.slice(0, 60).map(row).join('') || '<p class="empty">No client found. Use “New client” instead.</p>'; };
+  draw(''); $('#efcl_q').oninput = ev => draw(ev.target.value);
+  $('#sheet-root').onclick = ev => {
+    if (ev.target.closest('[data-efcb]')) return sheetEngagePick();
+    const b = ev.target.closest('[data-efcg]'); if (!b) return;
+    const g = gs.find(x => x.key === b.dataset.efcg); if (!g) return;
+    if (!confirm('Open a new consultation matter for ' + g.name + ' and make his engagement form?')) return;
+    window.__efNext = Date.now(); startConsultation(g.name, '');
   };
 }
 document.addEventListener('click', ev => { if (ev.target.closest('[data-act="efmore"]')) sheetEngagePick(); });
