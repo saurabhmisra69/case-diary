@@ -35,8 +35,8 @@ const EF_TEXT = {
     h1: 'Client and matter', rows: ['Name of client', 'Address', 'Phone / e-mail', 'Matter / case', 'Hon\'ble Court / forum', 'Opposite party'],
     h2: 'Plan chosen',
     p55: 'STANDARD LITIGATION', p75: 'STRATEGIC LITIGATION', pOther: 'OTHER PLAN', code: 'Plan',
-    perCase: 'per case', perDate: 'per date / appearance', t55: 'Essential preparation • Regular case', t75: 'Deep preparation • Priority case', tOther: 'Scope as agreed (Clause 3)',
-    h3: 'What the plan covers', std: 'Standard Litigation (Plan 55K)', strat: 'Strategic Litigation (Plan 75K)', other: 'Other plan — scope of work agreed',
+    perCase: 'per case', perDate: 'per date / appearance', t55: 'Essential preparation • Regular case', t75: 'Deep preparation • Priority case', tOther: 'Work as in the Standard plan (Clause 3)',
+    h3: 'What the plan covers', std: 'Standard Litigation (Plan 55K)', strat: 'Strategic Litigation (Plan 75K)', other: 'Other plan — work as in the Standard plan (Plan 55K)',
     notIncl: 'Not included: ',
     stdList: ['Drafting on the facts as stated by the client.', 'Legal research limited to the relevant statutory provisions.', 'Evidence prepared during trial, based on the facts stated by the client.'],
     stdNot: 'fact-to-evidence analysis; rulings and citations; written Legal Opinion; written note on expected objections; review of strategy.',
@@ -84,8 +84,8 @@ const EF_TEXT = {
     h1: 'मुवक्किल एवं मामले का विवरण', rows: ['मुवक्किल का नाम', 'पता', 'मोबाइल / ई-मेल', 'मामला / वाद', 'माननीय न्यायालय / मंच', 'विपक्षी पक्ष'],
     h2: 'चुनी गई योजना',
     p55: 'मानक मुकदमेबाज़ी', p75: 'रणनीतिक मुकदमेबाज़ी', pOther: 'अन्य योजना', code: 'प्लान',
-    perCase: 'प्रति मामला', perDate: 'प्रति तारीख / उपस्थिति', t55: 'आवश्यक तैयारी • सामान्य मामला', t75: 'गहन तैयारी • प्राथमिकता मामला', tOther: 'सहमत कार्य (खंड 3)',
-    h3: 'योजना में सम्मिलित कार्य', std: 'मानक मुकदमेबाज़ी (प्लान 55K)', strat: 'रणनीतिक मुकदमेबाज़ी (प्लान 75K)', other: 'अन्य योजना — सहमत कार्य',
+    perCase: 'प्रति मामला', perDate: 'प्रति तारीख / उपस्थिति', t55: 'आवश्यक तैयारी • सामान्य मामला', t75: 'गहन तैयारी • प्राथमिकता मामला', tOther: 'मानक योजना के समान कार्य (खंड 3)',
+    h3: 'योजना में सम्मिलित कार्य', std: 'मानक मुकदमेबाज़ी (प्लान 55K)', strat: 'रणनीतिक मुकदमेबाज़ी (प्लान 75K)', other: 'अन्य योजना — मानक योजना (प्लान 55K) के समान कार्य',
     notIncl: 'सम्मिलित नहीं: ',
     stdList: ['मुवक्किल द्वारा बताए गए तथ्यों के आधार पर प्रारूपण।', 'कानूनी शोध संबंधित वैधानिक प्रावधानों तक सीमित।', 'साक्ष्य की तैयारी विचारण के दौरान, मुवक्किल द्वारा बताए गए तथ्यों के आधार पर।'],
     stdNot: 'तथ्य-से-साक्ष्य विश्लेषण; नज़ीरें एवं उद्धरण; लिखित विधिक राय; संभावित आपत्तियों का लिखित नोट; रणनीति की समीक्षा।',
@@ -196,11 +196,12 @@ function efChildren(D, e, head) {
     kids.push(para([run(T.outNote, { italics: true })], { before: 60 }));
   }
   kids.push(heading(7, T.h7)); T.excl.forEach(l => kids.push(item(l)));
-  kids.push(heading(8, T.hc)); T.commit.forEach(l => kids.push(item(l)));
-  kids.push(heading(9, T.h8)); T.gen.forEach(l => kids.push(item(l)));
-  kids.push(heading(10, T.h9));
+  const other = e.plan === 'OTHER';   // Other plan: no commitments clause, signed by the client only
+  if (!other) { kids.push(heading(8, T.hc)); T.commit.forEach(l => kids.push(item(l))); }
+  kids.push(heading(other ? 8 : 9, T.h8)); T.gen.forEach(l => kids.push(item(l)));
+  kids.push(heading(other ? 9 : 10, T.h9));
   kids.push(para(T.dec1));
-  kids.push(para(T.decCommit));
+  if (!other) kids.push(para(T.decCommit));
   if (e.plan === '55K') kids.push(para(T.decStd));
   if (e.plan === 'OTHER') kids.push(para(T.decOther));
   kids.push(para(T.dec2));
@@ -209,7 +210,7 @@ function efChildren(D, e, head) {
   const sCell = (rows, al) => new D.TableCell({ width: { size: 4513, type: D.WidthType.DXA }, borders: nb, children: rows.map((r, i) => para([run(r[0], { bold: r[1] })], { align: al, after: 40, before: i === 0 ? 560 : 0 })) });
   kids.push(new D.Table({ width: { size: W, type: D.WidthType.DXA }, columnWidths: [4513, 4513], borders: { top: none, bottom: none, left: none, right: none, insideHorizontal: none, insideVertical: none }, rows: [new D.TableRow({ cantSplit: true, children: [
     sCell([['______________________________'], [T.sClient, true], [T.sName + ': ' + (val(e.client).split('\n')[0] || '____________________')], [T.sDate + ': ____________________']], D.AlignmentType.LEFT),
-    sCell([['______________________________'], [T.adv, true], [T.advT], [T.sDate + ': ____________________']], D.AlignmentType.RIGHT)] })] }));
+    other ? sCell([[' ']], D.AlignmentType.RIGHT) : sCell([['______________________________'], [T.adv, true], [T.advT], [T.sDate + ': ____________________']], D.AlignmentType.RIGHT)] })] }));
   return kids;
 }
 
@@ -268,11 +269,11 @@ function sheetEngage(m, rec) {
     openSheet(`<div class="s-head"><div><small style="color:var(--saffron-ink)">${esc(matterRef(m))} · engagement form</small><h1>${esc(m.title || m.clients)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
       <form id="efform" class="grp" style="gap:12px">
         <div class="efsec"><span class="lbl">1 · Plan</span>
-          <div class="efplans">${[['55K', 'Standard', '₹55,000', '+ ₹1,000 / date'], ['75K', 'Strategic', '₹75,000', '+ ₹1,500 / date'], ['OTHER', 'Any other plan', 'Your fee', 'Scope as agreed']].map(([k, n, f1, f2]) =>
+          <div class="efplans">${[['55K', 'Standard', '₹55,000', '+ ₹1,000 / date'], ['75K', 'Strategic', '₹75,000', '+ ₹1,500 / date'], ['OTHER', 'Any other plan', 'Your fee', 'Standard work']].map(([k, n, f1, f2]) =>
             `<button type="button" class="efplan ${st.plan === k ? 'on' : ''}" data-efp="${k}"><small>${k === 'OTHER' ? 'Other' : 'Plan ' + k}</small><b>${n}</b><span>${f1}</span><em>${f2}</em></button>`).join('')}</div>
           ${st.plan === 'OTHER' ? `<div class="two"><div class="field"><label for="ef_fee">FEE PER CASE (₹)</label><input class="in" id="ef_fee" inputmode="numeric" placeholder="e.g. 25000"></div><div class="field"><label for="ef_dfee">DATE FEE PER DATE (₹)</label><input class="in" id="ef_dfee" inputmode="numeric" placeholder="e.g. 1000"></div></div>
-            <div class="field"><label for="ef_scope">SCOPE OF WORK <small>(one item per line — starts from the Standard plan)</small></label><textarea class="in" id="ef_scope" rows="9"></textarea></div>
-            <button type="button" class="linkbtn" data-efx="std">Reset scope to the Standard plan</button>` : ''}
+            <div class="field"><label>WORK INCLUDED <small>(same as the Standard plan · fixed)</small></label><ul class="hint" style="margin:4px 0 0;padding-left:18px">${efStdScope(st.lang === 'hi').split('\n').map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>
+            <p class="hint" style="margin:0">The form for this plan leaves out Clause 8 (Our commitments) and is signed by the client only.</p>` : ''}
           <div class="field"><label>LANGUAGE OF THE FORM</label><div class="seg efseg">${[['en', 'English'], ['hi', 'हिंदी']].map(([k, n]) => `<button type="button" class="${st.lang === k ? 'on' : ''}" data-efl="${k}">${n}</button>`).join('')}</div></div></div>
         <div class="efsec"><span class="lbl">2 · Client and matter</span>
           ${f('ef_client', 'CLIENT NAME')}${f('ef_addr', 'ADDRESS', '', 2)}${f('ef_phone', 'PHONE / E-MAIL')}
@@ -295,12 +296,11 @@ function sheetEngage(m, rec) {
     ev.preventDefault();
     const v = keep();
     if (st.plan === 'OTHER' && !num(v.ef_fee)) return toast('Enter the fee for the other plan');
-    if (st.plan === 'OTHER' && !String(v.ef_scope || '').trim()) return toast('Write the scope of work');
     const e = rec || { id: uid() };
     Object.assign(e, { plan: st.plan, lang: st.lang, paper: paperOf('engage'), date: v.ef_date || todayIso(), ref: matterRef(m),
       client: v.ef_client.trim(), address: v.ef_addr.trim(), phone: v.ef_phone.trim(), matter: v.ef_matter.trim(), court: v.ef_court.trim(), opp: v.ef_opp.trim(),
       outApplies: st.out, outFee: st.out ? (v.ef_out ?? v0.ef_out ?? '').trim() : '', travel: st.out ? (v.ef_travel ?? v0.ef_travel ?? '').trim() : '', stay: st.out ? (v.ef_stay ?? v0.ef_stay ?? '').trim() : '',
-      fee: st.plan === 'OTHER' ? num(v.ef_fee) : EF_PLANS[st.plan].fee, dateFee: st.plan === 'OTHER' ? num(v.ef_dfee) : EF_PLANS[st.plan].date, scope: st.plan === 'OTHER' ? v.ef_scope.trim() : '' });
+      fee: st.plan === 'OTHER' ? num(v.ef_fee) : EF_PLANS[st.plan].fee, dateFee: st.plan === 'OTHER' ? num(v.ef_dfee) : EF_PLANS[st.plan].date, scope: st.plan === 'OTHER' ? efStdScope(st.lang === 'hi') : '' });   // Other plan: the Standard plan's work, fixed
     if (!e.state) e.state = 'Made';
     let note = '';
     change(() => { freezeRef(m); m.engage = m.engage || []; if (!rec) m.engage.push(e);
