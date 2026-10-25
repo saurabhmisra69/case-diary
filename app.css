@@ -385,3 +385,52 @@ mark{background:#FFE58A;color:inherit;padding:0 1px}
 .efwait small{display:block;font-size:12px;color:var(--muted);margin-top:2px}
 .efwbtn{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:6px}
 .efwbtn .act{min-height:40px;font-size:12px;padding:4px 6px;text-align:center;cursor:pointer}
+
+/* ===== Welcome page ===== */
+html.welcoming,html.welcoming body{overflow:hidden}
+#welcome{position:fixed;inset:0;z-index:10000;cursor:pointer;color:#F3E6C4;overflow-y:auto;-webkit-tap-highlight-color:transparent;outline:none;
+  background:radial-gradient(ellipse at 50% 35%,#13305E 0%,#0A1F42 45%,#051329 100%);display:flex;align-items:center;justify-content:center;
+  padding:max(28px,env(safe-area-inset-top)) 22px max(28px,env(safe-area-inset-bottom));transition:opacity .55s ease,transform .55s ease}
+#welcome.wc-out{opacity:0;transform:scale(1.03);pointer-events:none}
+#welcome::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.08;
+  background:repeating-linear-gradient(45deg,#D4AF37 0 1px,transparent 1px 14px),repeating-linear-gradient(-45deg,#D4AF37 0 1px,transparent 1px 14px)}
+.wc-frame{position:fixed;inset:10px;border:1px solid rgba(212,175,55,.55);pointer-events:none}
+.wc-frame::after{content:"";position:absolute;inset:6px;border:1px solid rgba(212,175,55,.25)}
+.wc-frame i{position:absolute;width:12px;height:12px;background:#D4AF37;transform:rotate(45deg);box-shadow:0 0 10px rgba(212,175,55,.6)}
+.wc-frame .tl{top:-6px;left:-6px}.wc-frame .tr{top:-6px;right:-6px}.wc-frame .bl{bottom:-6px;left:-6px}.wc-frame .br{bottom:-6px;right:-6px}
+.wc-in{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;max-width:560px;width:100%;margin:auto}
+.wc-emblem{position:relative;width:min(56vw,250px,34vh);aspect-ratio:1;border-radius:6px;overflow:hidden;flex:none;
+  box-shadow:0 0 0 1px rgba(212,175,55,.7),0 0 0 6px rgba(5,19,41,.9),0 0 0 7px rgba(212,175,55,.35),0 18px 50px rgba(0,0,0,.55),0 0 60px rgba(212,175,55,.18);
+  animation:wcRise 1s cubic-bezier(.2,.8,.2,1) both}
+.wc-emblem img{width:100%;height:100%;display:block}
+.wc-shine{position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,240,190,.38) 50%,transparent 65%);transform:translateX(-120%);animation:wcShine 4.5s 1.1s ease-in-out infinite}
+.wc-text{display:flex;flex-direction:column;align-items:center;gap:8px}
+.wc-text>*{animation:wcFade .9s ease both}
+.wc-title{margin:0;font-family:Cinzel,"Source Serif 4",Georgia,serif;font-weight:700;font-size:clamp(34px,9vw,58px);letter-spacing:.08em;line-height:1.05;text-transform:uppercase;
+  background:linear-gradient(180deg,#FFF3C8 0%,#E9C766 40%,#C1932F 70%,#F1D98C 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));animation-delay:.25s}
+.wc-firm{margin:0;font-family:"Source Serif 4",Georgia,serif;font-size:clamp(14px,3.6vw,18px);color:#E8D8AE;letter-spacing:.04em;animation-delay:.4s}
+.wc-rule{display:flex;align-items:center;gap:10px;width:min(320px,80%);color:#D4AF37;font-size:11px;animation-delay:.5s}
+.wc-rule span{flex:1;height:1px;background:linear-gradient(90deg,transparent,#D4AF37,transparent)}
+.wc-special{margin:2px 0 0;font-family:"Cormorant Garamond","Source Serif 4",Georgia,serif;font-style:italic;font-weight:500;font-size:clamp(18px,4.8vw,25px);line-height:1.3;color:#F7EBC8;animation-delay:.65s}
+.wc-special b{font-weight:700;color:#F0CF6A;font-style:italic}
+.wc-court{margin:0;font-family:"IBM Plex Sans",sans-serif;font-size:clamp(10.5px,2.6vw,12.5px);letter-spacing:.14em;text-transform:uppercase;color:#C9B37A;animation-delay:.8s}
+.wc-about{margin:8px 0 0;padding:14px 16px;font-family:"Source Serif 4",Georgia,serif;font-size:clamp(13px,3.4vw,15px);line-height:1.6;color:#E3DCCB;text-align:left;
+  background:linear-gradient(180deg,rgba(19,48,94,.55),rgba(5,19,41,.55));border:1px solid rgba(212,175,55,.35);border-radius:6px;box-shadow:inset 0 1px 0 rgba(255,235,170,.08);animation-delay:.95s}
+.wc-about em{font-style:normal;font-weight:700;color:#F0CF6A}
+.wc-tap{margin:10px 0 0;font-family:"IBM Plex Sans",sans-serif;font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#D4AF37;animation:wcFade .9s 1.2s both,wcPulse 2.4s 2.1s ease-in-out infinite}
+.wc-pc{display:none}
+@media (hover:hover) and (pointer:fine){.wc-pc{display:inline}.wc-ph{display:none}}
+@media (min-width:900px) and (min-height:520px){
+  .wc-in{flex-direction:row;max-width:1100px;gap:56px;text-align:left;align-items:center}
+  .wc-emblem{width:min(40vw,440px,70vh)}
+  .wc-text{align-items:flex-start;flex:1}
+  .wc-rule{width:300px}
+  .wc-title{font-size:clamp(44px,4.6vw,66px)}
+  .wc-about{text-align:justify;hyphens:auto}
+}
+@keyframes wcRise{from{opacity:0;transform:translateY(16px) scale(.94)}to{opacity:1;transform:none}}
+@keyframes wcFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes wcShine{0%{transform:translateX(-120%)}35%,100%{transform:translateX(120%)}}
+@keyframes wcPulse{0%,100%{opacity:1}50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){#welcome *,#welcome{animation:none!important;transition:none!important}}
