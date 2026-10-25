@@ -226,7 +226,7 @@ function sheetBill(m, bill, replaces) {
   if (bill && bill.paper) PAPER_NOW.bill = bill.paper; else delete PAPER_NOW.bill;
   const isNew = !bill, d0 = todayIso(), src = bill || replaces;
   const st = { items: src ? src.items.map(x => ({ ...x })) : (typeof defaultBillItems === 'function' ? defaultBillItems(m) : [{ d: 'Professional fee for ' + (m.type ? m.type + ' ' : '') + (m.caseNo || 'the above matter'), amt: feeDue(m) || '' }]), sig: true,
-    terms: src && src.terms ? src.terms.slice() : defaultTerms(), extra: src ? src.extraTerms || '' : (S.data?.meta?.billTermsExtra || ''), dueDays: (src && src.dueDays) || (S.data?.meta?.billDueDays) || 7 };
+    terms: src && src.terms ? src.terms.slice() : (() => { const t = defaultTerms().slice(), oa = typeof efOutApplies === 'function' ? efOutApplies(m) : null; if (oa === false) return t.filter(k => k !== 'out'); if (oa === true && !t.includes('out')) t.push('out'); return t; })(), extra: src ? src.extraTerms || '' : (S.data?.meta?.billTermsExtra || ''), dueDays: (src && src.dueDays) || (S.data?.meta?.billDueDays) || 7 };
   if (bill && bill.state === 'Cancelled') { toast('This bill is cancelled; make a fresh bill instead'); return sheetBill(m, null, bill); }
   const draw = () => {
     const tot = st.items.reduce((s, x) => s + num(x.amt), 0);

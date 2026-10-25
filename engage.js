@@ -166,8 +166,11 @@ function efChildren(D, e, head) {
   kids.push(heading(4, T.h4)); kids.push(para(T.appear));
   kids.push(heading(5, T.h5)); T.pay.forEach(l => kids.push(item(l)));
   kids.push(heading(6, T.h6));
-  kids.push(table([3400, 5626], T.outRows.map((r, i) => [cell([para([run(r, { bold: true })], { after: 0 })], 3400, true), cell(efOut([e.outFee, e.travel, e.stay][i], hi), 5626)])));
-  kids.push(para([run(T.outNote, { italics: true })], { before: 60 }));
+  if (e.outApplies === false) kids.push(para(hi ? 'इस मामले में लागू नहीं।' : 'Not applicable in this matter.'));
+  else {
+    kids.push(table([3400, 5626], T.outRows.map((r, i) => [cell([para([run(r, { bold: true })], { after: 0 })], 3400, true), cell(efOut([e.outFee, e.travel, e.stay][i], hi), 5626)])));
+    kids.push(para([run(T.outNote, { italics: true })], { before: 60 }));
+  }
   kids.push(heading(7, T.h7)); T.excl.forEach(l => kids.push(item(l)));
   kids.push(heading(8, T.h8)); T.gen.forEach(l => kids.push(item(l)));
   kids.push(heading(9, T.h9));
@@ -223,6 +226,7 @@ function sheetEngage(m, rec) {
   const ci = typeof clientInfo === 'function' ? clientInfo(m.clients) : {};
   const oppGuess = ((m.title || '').split(/\s+(?:v\.?|vs\.?|versus)\s+/i)[1] || '').trim();
   const st = { plan: prev ? prev.plan : '75K', lang: prev ? prev.lang : 'en', apply: true,
+    out: prev ? (prev.outApplies != null ? !!prev.outApplies : !!(prev.outFee || prev.travel || prev.stay)) : false,   // outstation appearance applies in this case?
     scope: prev && prev.plan === 'OTHER' ? prev.scope : '', fee: prev ? prev.fee || '' : '', dateFee: prev ? prev.dateFee || '' : '' };
   if (prev && prev.paper) PAPER_NOW.engage = prev.paper; else delete PAPER_NOW.engage;
   const v0 = {
@@ -248,8 +252,9 @@ function sheetEngage(m, rec) {
           ${f('ef_client', 'CLIENT NAME')}${f('ef_addr', 'ADDRESS', '', 2)}${f('ef_phone', 'PHONE / E-MAIL')}
           ${f('ef_matter', 'MATTER / CASE', 'e.g. Bail application – FIR 286/2026, P.S. Vibhuti Khand', 2)}${f('ef_court', 'HON\'BLE COURT / FORUM', 'e.g. High Court, Lucknow Bench')}${f('ef_opp', 'OPPOSITE PARTY')}</div>
         <div class="efsec"><span class="lbl">3 · Outstation (outside Lucknow)</span>
-          <p class="hint" style="margin:0">Type an amount (e.g. 5000) or words (e.g. At actuals). Leave blank to fill by hand on the printout.</p>
-          ${f('ef_out', 'APPEARANCE FEE PER DAY (₹)', 'e.g. 5000')}${f('ef_travel', 'TRAVEL', 'e.g. At actuals, AC 2-tier')}${f('ef_stay', 'STAY', 'e.g. At actuals')}</div>
+          <div class="toggles"><label><span>Outstation appearance applies in this case</span><input type="checkbox" id="efo_yes" data-efx="out" ${st.out ? 'checked' : ''}></label></div>
+          ${st.out ? `<p class="hint" style="margin:0">Type an amount (e.g. 5000) or words (e.g. At actuals). Leave blank to fill by hand on the printout.</p>
+          ${f('ef_out', 'APPEARANCE FEE PER DAY (₹)', 'e.g. 5000')}${f('ef_travel', 'TRAVEL', 'e.g. At actuals, AC 2-tier')}${f('ef_stay', 'STAY', 'e.g. At actuals')}` : '<p class="hint" style="margin:0">Not applicable — the form will say so, and bills will leave out the outstation term.</p>'}</div>
         <div class="efsec"><span class="lbl">4 · Print</span>
           <div class="field"><label for="ef_date">DATE ON THE FORM</label><input class="in" type="date" id="ef_date"></div>
           ${paperSwitch('engage')}
@@ -268,7 +273,7 @@ function sheetEngage(m, rec) {
     const e = rec || { id: uid() };
     Object.assign(e, { plan: st.plan, lang: st.lang, paper: paperOf('engage'), date: v.ef_date || todayIso(), ref: matterRef(m),
       client: v.ef_client.trim(), address: v.ef_addr.trim(), phone: v.ef_phone.trim(), matter: v.ef_matter.trim(), court: v.ef_court.trim(), opp: v.ef_opp.trim(),
-      outFee: v.ef_out.trim(), travel: v.ef_travel.trim(), stay: v.ef_stay.trim(),
+      outApplies: st.out, outFee: st.out ? (v.ef_out ?? v0.ef_out ?? '').trim() : '', travel: st.out ? (v.ef_travel ?? v0.ef_travel ?? '').trim() : '', stay: st.out ? (v.ef_stay ?? v0.ef_stay ?? '').trim() : '',
       fee: st.plan === 'OTHER' ? num(v.ef_fee) : EF_PLANS[st.plan].fee, dateFee: st.plan === 'OTHER' ? num(v.ef_dfee) : EF_PLANS[st.plan].date, scope: st.plan === 'OTHER' ? v.ef_scope.trim() : '' });
     if (!e.state) e.state = 'Made';
     let note = '';
@@ -287,6 +292,7 @@ function sheetEngage(m, rec) {
     const v = keep();
     if (b.dataset.efx === 'back') return sheetFees(m);
     if (b.dataset.efx === 'std') { st.scope = efStdScope(st.lang === 'hi'); }
+    if (b.dataset.efx === 'out') { st.out = b.checked; }
     if (b.dataset.efp) { const was = st.plan; st.plan = b.dataset.efp; if (st.plan === 'OTHER' && was !== 'OTHER' && !st.scope) st.scope = efStdScope(st.lang === 'hi'); }
     if (b.dataset.efl) { const was = st.lang; st.lang = b.dataset.efl; if (st.plan === 'OTHER' && was !== st.lang && st.scope === efStdScope(was === 'hi')) st.scope = efStdScope(st.lang === 'hi'); }
     Object.assign(v0, v); draw();
@@ -474,6 +480,8 @@ document.addEventListener('click', ev => {
   else if (a === 'efview' && e && e.signedFileId) getItem(e.signedFileId).then(openNative).catch(() => toast('Signed copy not found in OneDrive'));
 });
 
+/* does outstation appearance apply in this matter? (latest engagement form; old forms: if any amount was written) */
+const efOutApplies = m => { const e = efLive(m).slice(-1)[0]; if (!e) return null; return e.outApplies != null ? !!e.outApplies : !!(e.outFee || e.travel || e.stay); };
 /* bill term "out": the outstation amounts come from the matter's latest engagement form, else blanks to fill by hand */
 function efFillOut(m, t) {
   if (!/\{OUT\}|\{TRAVEL\}|\{STAY\}/.test(t)) return t;
