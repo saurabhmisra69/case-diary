@@ -505,7 +505,11 @@ async function processInbox() {
               if (c.set && 'nextDate' in c.set && c.set.nextDate !== m.nextDate) logListing(m, m.nextDate, c.set.nextDate, c.from || 'updated automatically');
               if (c.set) logDiff(m, { ...m }, c.set, c.from || 'automatic update');
               if (c.set) Object.assign(m, c.set);
-              if (c.hearing) {
+              if (c.hearing && /^listed$/i.test(c.hearing.happened || '') && !c.hearing.next) {   // only a listing (cause list / eCourts): add it to the history; next date, item and "fixed for" stay as set
+                const h = c.hearing; m.hearings = m.hearings || [];
+                if (!m.hearings.some(x => x.date === h.date)) { m.hearings.push(h); m.hearings.sort((x, y) => (x.date || '').localeCompare(y.date || '')); }
+                if (h.date <= todayIso() && (!m.lastDate || h.date > m.lastDate)) m.lastDate = h.date;
+              } else if (c.hearing) {
                 const h = c.hearing; m.hearings = m.hearings || []; const ph = m.hearings.find(x => x.date === h.date && x.happened === 'Listed'); if (ph) Object.assign(ph, h); else m.hearings.push(h); m.hearings.sort((x, y) => (x.date || '').localeCompare(y.date || ''));
                 m.lastDate = h.date || m.lastDate;
                 if (/dispos|decided/i.test(h.happened || '')) { m.status = h.status || 'Decided'; if (h.outcome) m.outcome = h.outcome; m.nextDate = ''; m.purpose = ''; }
