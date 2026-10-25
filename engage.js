@@ -55,6 +55,16 @@ const EF_TEXT = {
     h7: 'Not included in any plan',
     excl: ['Out-of-pocket expenses: court fee, stamps, affidavit, oath commissioner / notary, typing, photocopy and certified copies. These are charged separately at actuals.', 'Commissioner / expert fees.',
       'Appeal, revision, review, execution, contempt, or any fresh application or proceeding. These are charged separately.'],
+    hc: 'Our commitments to you',
+    commit: ['Everything you tell us or give us will be kept confidential and used only for your case. It will not be disclosed except as your case or the law requires.',
+      'We will not act for the opposite party in this matter or in any connected matter.',
+      'No compromise, withdrawal, concession or statement will be made on your behalf without your express instructions.',
+      'Every payment will be acknowledged by a numbered receipt. Nothing outside this form will be charged without telling you in writing first.',
+      'You will receive a copy of every petition or application filed, and of every order passed, in your matter.',
+      'After every date you will be told the next date and what it is fixed for.',
+      'You may raise any concern about your matter directly with Advocate Saurabh Misra.',
+      'All work listed under your chosen plan will be done.'],
+    decCommit: 'I have also read the counsel\'s commitments in Clause 8.',
     h8: 'General terms',
     gen: ['Fees are uniform for all clients and are not negotiated. Only the scope of work can be changed.', 'The fee is for professional services and does not depend on the outcome of the case. No assurance as to the result is given or implied.',
       'Fee once paid is not refundable after the work has commenced.', 'The client shall provide documents, information and instructions in time. Any delay caused by their non-supply shall not be attributable to the counsel.',
@@ -92,6 +102,16 @@ const EF_TEXT = {
     h7: 'किसी भी योजना में सम्मिलित नहीं',
     excl: ['अपनी जेब से होने वाले व्यय: न्यायालय शुल्क, स्टाम्प, शपथपत्र, ओथ कमिश्नर / नोटरी, टाइपिंग, फोटोकॉपी एवं प्रमाणित प्रतियाँ। ये वास्तविक व्यय के अनुसार अलग से लिए जाएँगे।', 'कमिश्नर / विशेषज्ञ शुल्क।',
       'अपील, निगरानी, पुनर्विलोकन, निष्पादन, अवमानना, अथवा कोई नया प्रार्थना पत्र या कार्यवाही। इनका शुल्क अलग से लिया जाएगा।'],
+    hc: 'आपके प्रति हमारी प्रतिबद्धताएँ',
+    commit: ['आप द्वारा बताई गई या दी गई प्रत्येक जानकारी एवं दस्तावेज़ गोपनीय रखे जाएँगे और केवल आपके मामले में उपयोग किए जाएँगे। आपके मामले या कानून की आवश्यकता के अतिरिक्त इन्हें किसी को नहीं बताया जाएगा।',
+      'इस मामले अथवा इससे जुड़े किसी मामले में हम विपक्षी पक्ष की ओर से पैरवी नहीं करेंगे।',
+      'आपके स्पष्ट निर्देश के बिना आपकी ओर से कोई समझौता, वापसी, स्वीकारोक्ति या कथन नहीं किया जाएगा।',
+      'प्रत्येक भुगतान की क्रमांकित रसीद दी जाएगी। इस प्रपत्र के बाहर की कोई राशि आपको पहले लिखित में बताए बिना नहीं ली जाएगी।',
+      'आपके मामले में दाखिल प्रत्येक याचिका या प्रार्थना पत्र तथा पारित प्रत्येक आदेश की प्रति आपको दी जाएगी।',
+      'प्रत्येक तारीख के बाद आपको अगली तारीख और वह किस कार्य हेतु नियत है, बताया जाएगा।',
+      'अपने मामले से संबंधित कोई भी बात आप सीधे अधिवक्ता सौरभ मिश्रा से कह सकते हैं।',
+      'आपकी चुनी गई योजना में लिखा गया सम्पूर्ण कार्य किया जाएगा।'],
+    decCommit: 'मैंने खंड 8 में अधिवक्ता की प्रतिबद्धताएँ भी पढ़ ली हैं।',
     h8: 'सामान्य शर्तें',
     gen: ['शुल्क सभी मुवक्किलों के लिए समान है और इस पर मोल-भाव नहीं होता। शुल्क कम करना हो तो केवल काम कम किया जा सकता है।', 'शुल्क व्यावसायिक सेवा का है और मामले के परिणाम पर निर्भर नहीं है। परिणाम के विषय में कोई आश्वासन न दिया गया है, न निहित है।',
       'कार्य प्रारंभ होने के बाद दिया गया शुल्क वापस नहीं होगा।', 'मुवक्किल दस्तावेज़, जानकारी एवं निर्देश समय पर देंगे। इनके न मिलने से हुई देरी के लिए अधिवक्ता उत्तरदायी नहीं होंगे।',
@@ -172,9 +192,11 @@ function efChildren(D, e, head) {
     kids.push(para([run(T.outNote, { italics: true })], { before: 60 }));
   }
   kids.push(heading(7, T.h7)); T.excl.forEach(l => kids.push(item(l)));
-  kids.push(heading(8, T.h8)); T.gen.forEach(l => kids.push(item(l)));
-  kids.push(heading(9, T.h9));
+  kids.push(heading(8, T.hc)); T.commit.forEach(l => kids.push(item(l)));
+  kids.push(heading(9, T.h8)); T.gen.forEach(l => kids.push(item(l)));
+  kids.push(heading(10, T.h9));
   kids.push(para(T.dec1));
+  kids.push(para(T.decCommit));
   if (e.plan === '55K') kids.push(para(T.decStd));
   if (e.plan === 'OTHER') kids.push(para(T.decOther));
   kids.push(para(T.dec2));
