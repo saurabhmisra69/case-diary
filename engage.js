@@ -481,3 +481,28 @@ function efFillOut(m, t) {
   const f = v => { const n = efNum(v); return n ? '₹' + n.toLocaleString('en-IN') + '/-' : String(v || '').trim() || '₹ ________'; };
   return t.replace('{OUT}', f(e.outFee)).replace('{TRAVEL}', f(e.travel)).replace('{STAY}', f(e.stay));
 }
+
+/* ---------- More › Fee plans: the take-home poster (A4, black and white), English and Hindi ---------- */
+const FEE_PLAN_PDF = { en: ['posters/Fee_Plans_English_A4.pdf', 'Fee Plans – Saurabh Misra & Associates (English).pdf'], hi: ['posters/Fee_Plans_Hindi_A4.pdf', 'Fee Plans – Saurabh Misra & Associates (Hindi).pdf'] };
+async function feePlanBlob(k) { const r = await fetch(FEE_PLAN_PDF[k][0]); if (!r.ok) throw new Error('file not found'); return r.blob(); }
+function sheetFeePlans() {
+  const row = (k, label) => `<div class="efwait"><div><b>${label}</b><small>A4 landscape · black and white · 2 pages</small></div>
+    <div class="efwbtn"><button type="button" class="act blue" data-fp="share" data-k="${k}">Share (WhatsApp)</button><button type="button" class="act" style="background:var(--chip)" data-fp="open" data-k="${k}">Open / print</button><button type="button" class="act" style="background:var(--chip)" data-fp="dl" data-k="${k}">Download</button></div></div>`;
+  openSheet(`<div class="s-head"><div><small>More</small><h1>Fee plans – take-home copy</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    <p class="hint" style="margin:0">The same two sheets as on your wall, sized for home printers. Share only with clients who have consulted you.</p>
+    <div class="efsec">${row('en', 'English')}${row('hi', 'हिंदी')}</div>`);
+  $('#sheet-root').onclick = async ev => {
+    const b = ev.target.closest('[data-fp]'); if (!b) return;
+    const k = b.dataset.k, name = FEE_PLAN_PDF[k][1], t = b.textContent; b.textContent = 'Preparing…';
+    try {
+      if (b.dataset.fp === 'open') { window.open(FEE_PLAN_PDF[k][0], '_blank'); }
+      else {
+        const blob = await feePlanBlob(k), files = [new File([blob], name, { type: 'application/pdf' })];
+        if (b.dataset.fp === 'share' && navigator.canShare && navigator.canShare({ files })) { try { await navigator.share({ files, title: name }); } catch (er) {} }
+        else { const x = document.createElement('a'); x.href = URL.createObjectURL(blob); x.download = name; document.body.appendChild(x); x.click(); x.remove(); toast('Saved to Downloads'); }
+      }
+    } catch (er) { toast('Could not open the fee plan: ' + er.message); }
+    b.textContent = t;
+  };
+}
+document.addEventListener('click', ev => { if (ev.target.closest('[data-act="feeplans"]')) sheetFeePlans(); });
