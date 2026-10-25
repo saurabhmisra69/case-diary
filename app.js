@@ -3,7 +3,7 @@
    Code only in this repository; all case data lives in the user's own OneDrive. */
 'use strict';
 
-const APP_VERSION = '1.9.0';
+const APP_VERSION = '1.9.1';
 const CLIENT_ID = 'df289e5d-2a3c-4280-b4be-b440bfe8ea8b';
 const SCOPES = ['User.Read', 'Files.ReadWrite', 'Calendars.ReadWrite'];
 const DIARY_DIR = 'Case Diary';
@@ -25,7 +25,7 @@ const TYPES = ['Complaint','FIR','Writ','482','Bail','ABA','Revision','Appeal','
 const STATUSES = ['Not filed', 'Filed – under objection', 'Pending', 'Admitted', 'Part-heard', 'Reserved', 'Proceedings stayed', 'Adjourned sine die', 'Decided', 'Abated', 'Withdrawn', 'Dismissed in default', 'Infructuous', 'Returned', 'Transferred', 'Consigned to record', 'Dropped / Closed'];
 const OPEN_STATUSES = ['Not filed', 'Filed – under objection', 'Pending', 'Admitted', 'Part-heard', 'Reserved', 'Proceedings stayed', 'Adjourned sine die'];
 const OUTCOMES = ['In our favour', 'Against us', 'Partly in our favour', 'Disposed of with directions', 'Compromise / settled', 'Remanded'];
-const ADV_STATUSES = ['Instructions received', 'In progress', 'Draft / opinion sent', 'Legal notice sent – awaiting reply / instructions', 'Retainer – active', 'Retainer – on hold (payment awaited)', 'Advice given – completed', 'Closed – notice served its purpose', 'Retainer – expired / not renewed', 'Retainer – terminated', 'Dropped'];
+const ADV_STATUSES = ['Instructions received', 'In progress', 'Draft / opinion sent', 'Legal notice sent – awaiting reply / instructions', 'Retainer – active', 'Retainer – on hold (payment awaited)', 'Advice given – completed', 'Closed – notice served its purpose', 'Retainer – expired / not renewed', 'Retainer – terminated', 'Dropped', 'Closed – client did not engage'];
 const ADV_OPEN = ['Instructions received', 'In progress', 'Draft / opinion sent', 'Legal notice sent – awaiting reply / instructions', 'Retainer – active', 'Retainer – on hold (payment awaited)'];
 const SHORT_ST = { 'Filed – under objection': 'Objection', 'Proceedings stayed': 'Stayed', 'Adjourned sine die': 'Sine die', 'Dismissed in default': 'Dismissed (default)', 'Consigned to record': 'Consigned', 'Dropped / Closed': 'Dropped',
   'Instructions received': 'Instructions', 'Draft / opinion sent': 'Draft sent', 'Legal notice sent – awaiting reply / instructions': 'Notice sent', 'Retainer – active': 'Retainer', 'Retainer – on hold (payment awaited)': 'On hold', 'Advice given – completed': 'Advised', 'Closed – notice served its purpose': 'Notice done', 'Retainer – expired / not renewed': 'Expired', 'Retainer – terminated': 'Terminated' };
@@ -559,6 +559,7 @@ function viewMore() {
     <button data-act="acts">Bare Acts <small>official text, searchable, offline</small></button>
     <button data-act="library">Judgment library <small>your own judgments, searchable</small></button>
     <button data-act="templates">My templates <small>made from your past drafts</small></button>
+    <button data-act="efmore">Engagement form <small>plan, fee and terms, for the client to sign</small></button>
     <button data-act="conflict">Conflict check <small>before taking a new matter</small></button>
     <button data-act="paper">Paper size <small>A4 or Legal for each kind of document</small></button>
     <button data-act="tab" data-tab="limit">Limitation calculator <small>last date to file</small></button>

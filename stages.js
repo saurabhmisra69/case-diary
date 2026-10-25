@@ -123,7 +123,7 @@ function sheetNewClient() {
       for (const f of ['phone', 'whatsapp', 'email', 'altName', 'altPhone', 'address', 'pan', 'notes']) if (v(f)) info[f] = v(f);
       d.meta.clientInfo = Object.assign({}, d.meta.clientInfo, { [clientKey(name)]: info });
     });
-    if (!startConsult) { toast('Client saved: ' + name); return sheetClient(clientKey(name)); }
+    if (!startConsult) { window.__efNext = 0; toast('Client saved: ' + name); return sheetClient(clientKey(name)); }
     startConsultation(name, v('about'));
   };
   $('#nc_form').onsubmit = e => { e.preventDefault(); save(true); };
@@ -138,7 +138,9 @@ function startConsultation(name, about) {
   const cc = typeof codeOfClient === 'function' ? codeOfClient(name) : ''; if (cc) rec.clientCode = cc;
   rec.no = rec.year + '/' + rec.n;
   change(d => { d.matters.push(rec); logChange(rec, 'Stage: Consultation (client came ' + dmy(todayIso()) + ')'); });
-  toast('Consultation opened: ' + mref(rec)); openMatter(rec.id);
+  toast('Consultation opened: ' + mref(rec));
+  if (window.__efNext && Date.now() - window.__efNext < 900000 && typeof sheetEngage === 'function') { window.__efNext = 0; return sheetEngage(rec); }
+  openMatter(rec.id);
 }
 
 document.addEventListener('click', e => {

@@ -293,39 +293,108 @@ function sheetEngage(m, rec) {
 function sheetEngageMark(m, id, what) {
   const e = (m.engage || []).find(x => x.id === id); if (!e) return;
   if (what === 'signed') {
-    openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · engagement form</small><h1>Mark as signed</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
-      <form id="efs" class="grp" style="gap:12px"><div class="field"><label for="efs_on">SIGNED ON</label><input class="in" type="date" id="efs_on" value="${todayIso()}"></div>
-      <p class="hint">Tip: keep a photo or scan of the signed form in the fees folder${FEE_DIR_NAME[m.id] ? ' (' + esc(FEE_DIR_NAME[m.id]) + ')' : ''}.</p>
-      <button class="save" type="submit">Mark signed</button><button type="button" class="linkbtn" data-efm="back">‹ Back</button></form>`);
+    const st = { file: null };
+    openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · engagement form</small><h1>${e.state === 'Signed' ? 'Signed copy' : 'Mark as signed'}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+      <form id="efs" class="grp" style="gap:12px"><div class="field"><label for="efs_on">SIGNED ON</label><input class="in" type="date" id="efs_on" value="${esc(e.signedOn || todayIso())}"></div>
+      <div class="field"><label>PHOTO / SCAN OF THE SIGNED COPY</label>
+        <label class="ghost" style="display:block;text-align:center;cursor:pointer">${e.signedFileId ? 'Replace photo / scan' : '+ Add photo / scan'}<input type="file" id="efs_file" accept="image/*,.pdf,application/pdf" hidden></label>
+        <p class="hint" id="efs_pick" style="margin:6px 0 0">${e.signedFileId ? 'Saved: ' + esc(e.signedFileName || 'signed copy') : 'Saved in the fees folder' + (FEE_DIR_NAME[m.id] ? ' (' + esc(FEE_DIR_NAME[m.id]) + ')' : '') + '. Keep the paper original in the client file.'}</p></div>
+      <button class="save" type="submit">${e.state === 'Signed' ? 'Save' : 'Mark signed'}</button><button type="button" class="linkbtn" data-efm="back">‹ Back</button></form>`);
+    $('#efs_file').onchange = ev => { st.file = ev.target.files[0] || null; $('#efs_pick').textContent = st.file ? 'Ready to save: ' + st.file.name : ''; };
     $('#sheet-root').onclick = ev => { if (ev.target.closest('[data-efm="back"]')) sheetFees(m); };
-    $('#efs').onsubmit = ev => { ev.preventDefault(); change(() => { e.state = 'Signed'; e.signedOn = $('#efs_on').value || todayIso(); logChange(m, 'Engagement form signed (' + dmy(e.signedOn) + ')'); touch(m); }); toast('Marked signed'); sheetFees(m); };
+    $('#efs').onsubmit = async ev => {
+      ev.preventDefault();
+      const on = $('#efs_on').value || todayIso();
+      let fileId = '', fileName = '';
+      if (st.file) {
+        if (!m.folderId) return toast('Link the matter folder first, then add the signed copy');
+        openSheet(`<div class="s-head"><div><small>${esc(mref(m))}</small><h1>Saving signed copy…</h1></div></div>`);
+        try { const dir = await feeFolder(m, true), ext = (st.file.name.match(/\.[a-z0-9]+$/i) || ['.jpg'])[0].toLowerCase();
+          fileName = cleanName('Engagement Form SIGNED ' + dmy(on)) + ext; fileId = (await uploadFile(dir.id, st.file, fileName)).id; }
+        catch (er) { toast('Could not save the signed copy: ' + er.message); }
+      }
+      change(() => { const was = e.state === 'Signed'; e.state = 'Signed'; e.signedOn = on; if (fileId) { e.signedFileId = fileId; e.signedFileName = fileName; }
+        logChange(m, (was ? 'Engagement form signed copy updated' : 'Engagement form signed (' + dmy(on) + ')') + (fileId ? ' · copy saved' : '')); touch(m); });
+      toast(fileId ? 'Signed copy saved' : 'Marked signed'); sheetFees(m);
+    };
     return;
   }
   openSheet(`<div class="s-head"><div><small style="color:var(--red)">${esc(mref(m))} · engagement form</small><h1>Cancel form</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <p class="hint">The form stays on record, marked CANCELLED. Nothing is deleted.</p>
     <form id="efc" class="grp" style="gap:12px"><div class="field"><label for="efc_on">DATE</label><input class="in" type="date" id="efc_on" value="${todayIso()}"></div>
-    <div class="field"><label for="efc_why">REASON</label><input class="in" id="efc_why" required list="efc_l" placeholder="e.g. Client changed plan"><datalist id="efc_l"><option value="Client changed plan"><option value="Wrong details"><option value="Client did not engage"></datalist></div>
+    <div class="field"><label>REASON</label><div class="chips">${['Client did not engage', 'Client changed plan', 'Wrong details'].map((r, i) => `<button type="button" class="chip ${i === 0 ? 'on' : ''}" data-efr="${esc(r)}">${esc(r)}</button>`).join('')}</div>
+      <input class="in" id="efc_why" value="Client did not engage" style="margin-top:8px" required></div>
+    <div id="efc_ne" class="grp" style="gap:10px">
+      <div class="field"><label for="efc_cf">CONSULTATION FEE (₹)</label><input class="in" id="efc_cf" inputmode="numeric" placeholder="blank if none was charged"></div>
+      <div class="field"><label>CONSULTATION FEE</label><div class="chips"><button type="button" class="chip on" data-efpd="paid">Paid</button><button type="button" class="chip" data-efpd="unpaid">Not paid</button></div></div>
+      <div class="field" id="efc_modew"><label>MODE</label><div class="chips">${['Cash', 'UPI', 'Cheque', 'NEFT'].map((x, i) => `<button type="button" class="chip ${i === 1 ? 'on' : ''}" data-efmd="${x}">${x}</button>`).join('')}</div></div>
+      <div class="toggles"><label><span>Close the matter (client did not engage)</span><input type="checkbox" id="efc_close" checked></label></div></div>
     <div class="toggles"><label><span>Make a copy marked CANCELLED in the fees folder</span><input type="checkbox" id="efc_doc" checked></label></div>
     <div class="toggles"><label><span>Then make a fresh form</span><input type="checkbox" id="efc_new"></label></div>
     <button class="save" type="submit" style="background:var(--red)">Cancel form</button><button type="button" class="linkbtn" data-efm="back">‹ Back</button></form>`);
-  $('#sheet-root').onclick = ev => { if (ev.target.closest('[data-efm="back"]')) sheetFees(m); };
+  const st = { paid: true, mode: 'UPI' };
+  const ne = () => { const show = /did not engage/i.test($('#efc_why').value); $('#efc_ne').style.display = show ? '' : 'none'; if (show) $('#efc_new').checked = false; };
+  $('#efc_why').oninput = ne;
+  $('#sheet-root').onclick = ev => {
+    if (ev.target.closest('[data-efm="back"]')) return sheetFees(m);
+    const r = ev.target.closest('[data-efr]'); if (r) { $('#efc_why').value = r.dataset.efr; document.querySelectorAll('[data-efr]').forEach(c => c.classList.toggle('on', c === r)); ne(); return; }
+    const pd = ev.target.closest('[data-efpd]'); if (pd) { st.paid = pd.dataset.efpd === 'paid'; document.querySelectorAll('[data-efpd]').forEach(c => c.classList.toggle('on', c === pd)); $('#efc_modew').style.display = st.paid ? '' : 'none'; return; }
+    const md = ev.target.closest('[data-efmd]'); if (md) { st.mode = md.dataset.efmd; document.querySelectorAll('[data-efmd]').forEach(c => c.classList.toggle('on', c === md)); }
+  };
   $('#efc').onsubmit = async ev => {
     ev.preventDefault();
     const why = $('#efc_why').value.trim(), on = $('#efc_on').value || todayIso(), mk = $('#efc_doc').checked, again = $('#efc_new').checked;
-    change(() => { e.state = 'Cancelled'; e.stateOn = on; e.reason = why; logChange(m, 'Engagement form cancelled: ' + why); touch(m); });
+    const noEngage = /did not engage/i.test(why), cf = noEngage ? num($('#efc_cf').value) : 0, close = noEngage && $('#efc_close').checked;
+    change(() => {
+      e.state = 'Cancelled'; e.stateOn = on; e.reason = why;
+      if (noEngage) {
+        // the plan's fee was only proposed: take it off the fees agreed
+        m.agreedParts = (m.agreedParts || []).filter(p => !p.ef);
+        if (m.dateFeeByEF) { m.dateFee = ''; delete m.dateFeeByEF; }
+        if (cf) {
+          m.agreedParts.push({ id: uid(), date: on, amount: cf, for: 'Consultation fee' });
+          if (st.paid) { m.payments = m.payments || []; m.payments.push({ id: uid(), date: on, amount: cf, tds: 0, mode: st.mode, note: 'Consultation fee', billId: '', dateFee: 0 }); }
+        }
+        e.consult = { fee: cf, paid: cf ? st.paid : null, on };
+        if (close) { m.status = 'Closed – client did not engage'; }
+        feesTotal(m);
+      }
+      logChange(m, 'Engagement form cancelled: ' + why + (cf ? ' · consultation fee ' + rupees(cf) + (st.paid ? ' paid (' + st.mode + ')' : ' not paid') : '') + (close ? ' · matter closed' : ''));
+      touch(m);
+    });
     if (mk) { openSheet(`<div class="s-head"><div><small>${esc(mref(m))}</small><h1>Making cancelled copy…</h1></div></div>`); try { await makeEngageDoc(m, e); } catch (er) { toast('Could not make the cancelled copy: ' + er.message); } }
-    toast('Engagement form cancelled');
+    toast(noEngage ? 'Recorded: client did not engage' + (cf ? ' · consultation fee ' + (st.paid ? 'paid' : 'not paid') : '') : 'Engagement form cancelled', 4000);
     if (again) return sheetEngage(m); sheetFees(m);
   };
 }
+
+/* ---------- More › Engagement form: pick a matter, or a new client (client page → consultation → form) ---------- */
+function sheetEngagePick() {
+  const ms = live().slice().sort((a, b) => (b.u || 0) - (a.u || 0));
+  const row = m => `<button class="frow" data-efpick="${m.id}"><span class="fname">${esc(m.title || m.clients || '')}<small>${esc(mref(m))}${m.clients ? ' · ' + esc(typeof clientName === 'function' ? clientName(m.clients) : m.clients) : ''}${efLive(m).length ? ' · form ' + (efLive(m).some(e => e.state === 'Signed') ? 'signed' : 'made') : ''}</small></span></button>`;
+  const draw = q => { const k = String(q || '').toLowerCase().trim(); const hit = (k ? ms.filter(m => [m.title, m.clients, mref(m), m.caseNo].join(' ').toLowerCase().includes(k)) : ms).slice(0, 30);
+    $('#efpk_list').innerHTML = hit.map(row).join('') || '<p class="empty">No matter found.</p>'; };
+  openSheet(`<div class="s-head"><div><small>More</small><h1>Engagement form</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    <button class="save" data-efnew="1" style="width:100%">+ New client – not in the app yet</button>
+    <p class="hint" style="margin:6px 0 12px">Fill the client's details once; his consultation matter opens with its reference, then the form.</p>
+    <span class="lbl">Or pick an existing matter</span>
+    <label class="search">${I.search}<input type="search" id="efpk_q" placeholder="Search name, matter, ref."></label>
+    <div class="flist" id="efpk_list"></div>`);
+  draw(''); $('#efpk_q').oninput = ev => draw(ev.target.value);
+  $('#sheet-root').onclick = ev => {
+    if (ev.target.closest('[data-efnew]')) { window.__efNext = Date.now(); return sheetNewClient(); }
+    const b = ev.target.closest('[data-efpick]'); if (b) { const m = find(b.dataset.efpick); if (m) sheetEngage(m); }
+  };
+}
+document.addEventListener('click', ev => { if (ev.target.closest('[data-act="efmore"]')) sheetEngagePick(); });
 
 /* ---------- the list shown on the Fees page, and the reminder at "Fee received" ---------- */
 function engageSection(m) {
   const list = (m.engage || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   if (!list.length) return '';
   return `<div class="grp" style="margin-top:10px"><span class="lbl">Engagement forms</span><div class="hist">${list.map(e => { const cx = e.state === 'Cancelled';
-    return `<div><b>${dmy(e.date)}</b><span${cx ? ' class="voided"' : ''}><b style="font-family:inherit">${e.plan === 'OTHER' ? 'Other plan ' + rupees(e.fee) : 'Plan ' + e.plan}</b>${e.lang === 'hi' ? ' · हिंदी' : ''} · ${cx ? `<b class="voidtag">CANCELLED</b> ${dmy(e.stateOn)}${e.reason ? ' · ' + esc(e.reason) : ''}` : e.state === 'Signed' ? `<span style="color:var(--dc-ink)">signed ${dmy(e.signedOn)}</span>` : '<span style="color:var(--red)">not yet signed</span>'}
-      ${cx ? '' : `<button class="linkbtn" data-act="efopen" data-id="${m.id}" data-e="${e.id}">Open / edit</button>${e.state !== 'Signed' ? ` <button class="linkbtn" data-act="efsign" data-id="${m.id}" data-e="${e.id}">Mark signed</button>` : ''} <button class="linkbtn" data-act="efvoid" data-id="${m.id}" data-e="${e.id}" style="color:var(--red)">Cancel</button>`}</span></div>`; }).join('')}</div></div>`;
+    return `<div><b>${dmy(e.date)}</b><span${cx ? ' class="voided"' : ''}><b style="font-family:inherit">${e.plan === 'OTHER' ? 'Other plan ' + rupees(e.fee) : 'Plan ' + e.plan}</b>${e.lang === 'hi' ? ' · हिंदी' : ''} · ${cx ? `<b class="voidtag">CANCELLED</b> ${dmy(e.stateOn)}${e.reason ? ' · ' + esc(e.reason) : ''}${e.consult && e.consult.fee ? ' · consultation fee ' + rupees(e.consult.fee) + (e.consult.paid ? ' paid' : ' <b style="color:var(--red)">not paid</b>') : ''}` : e.state === 'Signed' ? `<span style="color:var(--dc-ink)">signed ${dmy(e.signedOn)}</span>` : '<span style="color:var(--red)">not yet signed</span>'}
+      ${cx ? '' : `<button class="linkbtn" data-act="efopen" data-id="${m.id}" data-e="${e.id}">Open / edit</button>${e.state !== 'Signed' ? ` <button class="linkbtn" data-act="efsign" data-id="${m.id}" data-e="${e.id}">Mark signed</button>` : e.signedFileId ? ` <button class="linkbtn" data-act="efview" data-id="${m.id}" data-e="${e.id}">View signed copy</button>` : ` <button class="linkbtn" data-act="efsign" data-id="${m.id}" data-e="${e.id}">Add signed copy</button>`} <button class="linkbtn" data-act="efvoid" data-id="${m.id}" data-e="${e.id}" style="color:var(--red)">Cancel</button>`}</span></div>`; }).join('')}</div></div>`;
 }
 function engageReminder(m) {
   const live = efLive(m), signed = live.some(e => e.state === 'Signed');
@@ -335,13 +404,14 @@ function engageReminder(m) {
     <button class="linkbtn" data-act="${live.length ? 'efsign' : 'engage'}" data-id="${m.id}"${live.length ? ` data-e="${live[live.length - 1].id}"` : ''} style="margin-top:4px">${live.length ? 'Mark it signed' : 'Make the engagement form'}</button></div>`;
 }
 document.addEventListener('click', ev => {
-  const el = ev.target.closest('[data-act="engage"],[data-act="efopen"],[data-act="efsign"],[data-act="efvoid"]'); if (!el) return;
+  const el = ev.target.closest('[data-act="engage"],[data-act="efopen"],[data-act="efsign"],[data-act="efvoid"],[data-act="efview"]'); if (!el) return;
   const m = find(el.dataset.id); if (!m) return;
   const a = el.dataset.act, e = (m.engage || []).find(x => x.id === el.dataset.e);
   if (a === 'engage') sheetEngage(m);
   else if (a === 'efopen' && e) sheetEngage(m, e);
   else if (a === 'efsign' && e) sheetEngageMark(m, e.id, 'signed');
   else if (a === 'efvoid' && e) sheetEngageMark(m, e.id, 'void');
+  else if (a === 'efview' && e && e.signedFileId) getItem(e.signedFileId).then(openNative).catch(() => toast('Signed copy not found in OneDrive'));
 });
 
 /* bill term "out": the outstation amounts come from the matter's latest engagement form, else blanks to fill by hand */
