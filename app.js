@@ -453,7 +453,7 @@ function viewHome() {
     <section class="tiles a-tiles">
       <button class="tile" style="background:var(--red-soft)" data-act="filter" data-f="deadline"><span style="color:var(--red-ink)">Deadlines</span><b style="color:var(--red-ink)">${deadlines.length}</b><span>${deadlines[0] ? esc(deadlines[0].deadlineFor || 'Due') + ' · ' + short(deadlines[0].deadline) : 'None this week'}</span></button>
       <button class="tile" style="background:var(--saffron-soft)" data-act="filter" data-f="fees"><span style="color:var(--saffron-ink)">Fees pending</span><b style="color:var(--saffron-ink)">${rupees(fees)}</b><span>${feeClients} matter${feeClients === 1 ? '' : 's'}</span></button>
-      <button class="tile" style="background:var(--hc-soft)" data-act="filter" data-f="need"><span style="color:var(--hc)">Need a date</span><b style="color:var(--hc)">${need.length}</b><span>Date passed or blank</span></button>
+      <button class="tile" style="background:var(--hc-soft)" data-act="filter" data-f="need"><span style="color:var(--hc)">Need a date</span><b style="color:var(--hc)">${need.length}</b><span>Date passed or blank${live().some(isUnlisted) ? ' · ' + live().filter(isUnlisted).length + ' unlisted' : ''}</span></button>
       <button class="tile" style="background:var(--dc-soft)" data-act="filter" data-f="pending"><span style="color:var(--dc-ink)">Pending matters</span><b style="color:var(--dc-ink)">${pending.length}</b><span>Including reserved</span></button>
       ${typeof allotTile === 'function' ? allotTile() : ''}
       <button class="tile wide" style="background:var(--hc-soft)" data-act="tab" data-tab="limit"><span style="color:var(--hc)">Limitation</span><b style="color:var(--hc);font-size:19px">Calculate last date</b><span>Appeal, revision, review, s.34, NI Act and more</span></button>
@@ -513,6 +513,7 @@ function viewMatters() {
   const tests = {
     pending: m => isOpen(m),
     need: needsDate,
+    unlisted: m => isUnlisted(m),
     deadline: m => m.deadline && !m.deadlineDone,
     fees: m => feeDue(m) > 0,
     HC: m => m.forum === 'HC', District: m => m.forum === 'District', Tribunal: m => m.forum === 'Tribunal', Consumer: m => m.forum === 'Consumer', Revenue: m => m.forum === 'Revenue', Advisory: m => m.forum === 'Advisory',
@@ -529,7 +530,7 @@ function viewMatters() {
   return `<header class="phead">
     <div class="top-row"><h1>Matters</h1><button id="syncbtn" class="sync" data-act="sync"></button></div>
     <label class="search">${I.search}<input type="search" placeholder="Search matters" data-act="q" value="${esc(S.q)}"></label>
-    <div class="filters">${/^al_/.test(f || '') ? chip(f, 'Allotted: ' + esc(f === 'al_self' ? 'Self' : jShort(juniors().find(j => j.id === f.slice(3))))) : ''}${chip('pending', 'Pending')}${chip('st_consult', 'Consultations')}${chip('st_tofile', 'To be filed')}${chip('st_filed', 'Filed – no date yet')}${chip('need', 'Need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory / Pre-litigation')}${live().some(m => dupsOf(m).length) ? chip('dups', '<span class="dupstar">★</span> Duplicates') : ''}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
+    <div class="filters">${/^al_/.test(f || '') ? chip(f, 'Allotted: ' + esc(f === 'al_self' ? 'Self' : jShort(juniors().find(j => j.id === f.slice(3))))) : ''}${chip('pending', 'Pending')}${live().some(isUnlisted) ? chip('unlisted', 'Unlisted (' + live().filter(isUnlisted).length + ')') : ''}${chip('st_consult', 'Consultations')}${chip('st_tofile', 'To be filed')}${chip('st_filed', 'Filed – no date yet')}${chip('need', 'Need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory / Pre-litigation')}${live().some(m => dupsOf(m).length) ? chip('dups', '<span class="dupstar">★</span> Duplicates') : ''}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
   </header>
   <main><div class="list">
     <div class="h2"><span class="sub">${ms.length} matter${ms.length === 1 ? '' : 's'}${S.stf ? ' · ' + esc(S.stf) + ' <button class="linkbtn" data-act="filter" data-f="' + f + '">clear</button>' : ''}</span><span><button class="linkbtn" data-act="allotted">Allotted</button> · <button class="linkbtn" data-act="cats">Categories</button>${(() => { const k = live().filter(x => !x.nature || x.nature === 'Other').length; return k ? ` · <button class="linkbtn" data-act="sortnature">Sort "Other" (${k})</button>` : ''; })()}</span></div>
@@ -705,6 +706,7 @@ function sheetEdit(m) {
         if (fd.nextDate !== old.nextDate) logListing(old, old.nextDate, fd.nextDate, 'date changed in Edit');
         if (fd.lastDate && fd.lastDate !== old.lastDate) logPast(old, fd.lastDate, 'last date entered in Edit');
         if (old.nextDate !== fd.nextDate || old.status !== fd.status || old.purpose !== fd.purpose || old.court !== fd.court) old.calPending = true;
+        if (fd.nextDate) old.unlisted = false;
         Object.assign(old, fd);
         if (allot !== (old.allot || 'self')) { logChange(old, 'Allotted to: ' + allotName(old) + ' → ' + (allot === 'self' ? 'Self' : jName(allot))); old.allot = allot === 'self' ? '' : allot; }
         if (!ccLetters && ccPick !== '@new' && ccPick !== (old.clientCode || '')) { logChange(old, 'Client code: ' + (old.clientCode || '—') + ' → ' + (ccPick || '—')); old.clientCode = ccPick; }
@@ -736,6 +738,7 @@ function sheetRecord(m, pre) {
     <div class="grp"><span class="lbl">Next date${R.happened === 'Reserved' ? ' (optional)' : ''}</span>
       <div class="quick">${quick.map(([l, d]) => `<button class="${R.next === d ? 'on' : ''}" data-r="next" data-v="${d}"><span>${l}</span><small>${short(d)}</small></button>`).join('')}
         <button class="${R.next && !quick.some(q => q[1] === R.next) ? 'on' : ''}"><span>Pick</span><small>${R.next && !quick.some(q => q[1] === R.next) ? short(R.next) : 'date'}</small><input type="date" data-r="pick" value="${R.next}" aria-label="Pick next date"></button></div>
+      ${R.happened !== 'Reserved' ? `<button class="linkbtn" data-r="unl" style="margin:6px 0 0;${R.unl ? 'font-weight:800;color:var(--red)' : ''}">${R.unl ? '✓ Next date not known – will be marked Unlisted' : 'Next date not known? Mark Unlisted'}</button>` : ''}
       ${R.next ? `<div class="picked"><b>${DOWL[parseIso(R.next).getDay()]}, ${dmy(R.next)}</b><span>${others ? others + ' other matter' + (others > 1 ? 's' : '') + ' that day' : 'No other matter that day'}</span></div>` : ''}
     </div>
     <div class="grp"><span class="lbl">Fixed for</span><div class="chips">${FIXED_FOR.map(x => `<button class="chip blue ${R.purpose === x ? 'on' : ''}" data-r="purpose" data-v="${x}" style="min-height:40px;font-size:13px">${x}</button>`).join('')}</div>
@@ -745,14 +748,15 @@ function sheetRecord(m, pre) {
       <label><span>Tell client on WhatsApp${waOf(m) ? '' : ' <small style="color:var(--muted)">(no WhatsApp no. saved)</small>'}</span><input type="checkbox" data-r="wa" ${R.wa ? 'checked' : ''} ${waOf(m) ? '' : 'disabled'}></label>
       <label><span>Remind me the evening before (Outlook)</span><input type="checkbox" data-r="cal" ${R.cal ? 'checked' : ''}></label>
     </div>
-    <button class="save" data-r="save" ${(!R.next && !closing && R.happened !== 'Reserved') ? 'disabled' : ''}>Save${R.next && !closing ? ' · next date ' + dmy(R.next) : ''}</button>`);
+    <button class="save" data-r="save" ${(!R.next && !closing && R.happened !== 'Reserved' && !R.unl) ? 'disabled' : ''}>Save${R.next && !closing ? ' · next date ' + dmy(R.next) : R.unl && !closing ? ' · Unlisted' : ''}</button>`);
   };
   draw();
   const root = $('#sheet-root');
   root.onclick = e => {
     const el = e.target.closest('[data-r]'); if (!el) return;
     const k = el.dataset.r;
-    if (k === 'happened' || k === 'next' || k === 'purpose') { R.note = $('#r_note')?.value || R.note; R[k] = el.dataset.v; if (k === 'happened' && el.dataset.v === 'Reserved') R.purpose = 'Judgment'; draw(); }
+    if (k === 'unl') { R.note = $('#r_note')?.value || R.note; R.unl = !R.unl; if (R.unl) R.next = ''; draw(); }
+    else if (k === 'happened' || k === 'next' || k === 'purpose') { R.note = $('#r_note')?.value || R.note; R[k] = el.dataset.v; if (k === 'next') R.unl = false; if (k === 'happened' && el.dataset.v === 'Reserved') R.purpose = 'Judgment'; draw(); }
     else if (k === 'pick') { try { el.showPicker(); } catch (_) {} }
     else if (k === 'speak') {
       R.note = $('#r_note')?.value || R.note;
@@ -774,7 +778,7 @@ function sheetRecord(m, pre) {
   };
   root.onchange = e => {
     const k = e.target.dataset?.r;
-    if (k === 'pick' && e.target.value) { R.note = $('#r_note')?.value || R.note; R.next = e.target.value; draw(); }
+    if (k === 'pick' && e.target.value) { R.note = $('#r_note')?.value || R.note; R.next = e.target.value; R.unl = false; draw(); }
     if (k === 'wa') R.wa = e.target.checked;
     if (k === 'cal') R.cal = e.target.checked;
   };
@@ -790,12 +794,12 @@ function sheetRecord(m, pre) {
       m.hearings.sort((x, y) => (x.date || '').localeCompare(y.date || ''));
       m.lastDate = heardOn;
       if (closing) { m.status = 'Decided'; m.nextDate = ''; m.purpose = ''; m.item = ''; }
-      else { m.nextDate = R.next; m.purpose = R.purpose; m.item = R.item || ''; m.status = R.happened === 'Reserved' ? 'Reserved' : 'Pending'; }
+      else { m.nextDate = R.next; m.purpose = R.purpose; m.item = R.item || ''; m.status = R.happened === 'Reserved' ? 'Reserved' : 'Pending'; m.unlisted = !R.next && !!R.unl; if (m.unlisted) m.unlistedSince = todayIso(); }
       if (R.cal || closing || m.eventId) m.calPending = true;
       touch(m);
     });
     closeSheet(); root.onclick = root.oninput = root.onchange = null;
-    toast(closing ? 'Recorded · matter marked Decided' : 'Saved · next date ' + dmy(R.next));
+    toast(closing ? 'Recorded · matter marked Decided' : R.next ? 'Saved · next date ' + dmy(R.next) : R.unl ? 'Saved · marked Unlisted' : 'Saved');
     if (R.deadline) change(() => { m.deadline = R.deadline; m.deadlineFor = R.deadlineFor || 'Direction in order'; m.deadlineDone = false; touch(m); });
     if (R.wa && waOf(m)) sendWa(m, R);
     if (typeof R.after === 'function') setTimeout(R.after, 350);
@@ -846,6 +850,7 @@ document.addEventListener('click', e => {
   if (a === 'filter') { S.filter = el.dataset.f; S.stf = el.dataset.st || ''; S.tab = 'matters'; closeSheet(); render(); return; }
   if (a === 'cats') { sheetCategories(); return; }
   if (a === 'sortnature') return sheetSortNature();
+  if (a === 'fixdate') return sheetFixDate(find(id));
   if (a === 'add') return sheetEdit(null);
   if (a === 'open') return openMatter(id);
   if (a === 'edit') return sheetEdit(find(id));

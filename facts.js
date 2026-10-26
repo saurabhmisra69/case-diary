@@ -45,7 +45,7 @@ function factsBlock(m, full) {
       <dt>U/S</dt><dd>${v(m.sections)}</dd>
       <dt>Police station</dt><dd>${v(m.ps)}</dd>
       <dt>Previous dates</dt><dd>${prevHtml}</dd>
-      <dt>Next date</dt><dd class="fx-next">${nd ? esc(nd) : blank}</dd>
+      <dt>Next date</dt><dd class="fx-next">${nd ? esc(nd) : isUnlisted(m) ? '<span class="fx-unl">UNLISTED – find the date</span>' : blank}${isOpen(m) && m.forum !== 'Advisory' ? ` <button class="fx-edit" data-act="fixdate" data-id="${m.id}">${nd ? 'Correct' : 'Enter'}</button>` : ''}</dd>
       <dt>Purpose</dt><dd>${v(m.purpose)}</dd>
     </dl>
   </div>`;
@@ -76,5 +76,40 @@ function sheetSortNature() {
     let n = 0;
     change(() => { document.querySelectorAll('[data-ns]').forEach(s => { const r = rows[+s.dataset.ns], v = s.value; if (v !== 'Other' && v !== r.m.nature) { const m = find(r.m.id); logChange(m, 'Nature: ' + (m.nature || '—') + ' → ' + v); m.nature = v; touch(m); n++; } }); });
     closeSheet(); toast(n ? n + ' matter' + (n === 1 ? '' : 's') + ' sorted' : 'Nothing changed'); if (typeof render === 'function') render();
+  };
+}
+
+/* ---------- correcting a wrong next date / marking it Unlisted ---------- */
+const isUnlisted = m => !!m.unlisted && !m.nextDate && isOpen(m);
+function sheetFixDate(m) {
+  const had = m.nextDate || '';
+  openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · ${esc(caseLine(m))}</small><h1>Correct the next date</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    <p class="hint">${had ? `Now shown: <b>${dmy(had)}</b>${m.purpose ? ' for ' + esc(m.purpose) : ''}. Use this when that date was entered wrongly. It corrects the date; it does not record a hearing.` : isUnlisted(m) ? 'This matter is marked <b>Unlisted</b>. Enter the correct date once you find it.' : 'No next date is entered.'}</p>
+    <div class="field"><label for="fd_date">CORRECT NEXT DATE</label><input class="in" type="date" id="fd_date" value="${esc(had)}"></div>
+    <div class="field"><label for="fd_for">FIXED FOR</label><input class="in" id="fd_for" list="fd_ff" value="${esc(m.purpose || '')}"><datalist id="fd_ff">${FIXED_FOR.map(x => `<option value="${x}">`).join('')}</datalist></div>
+    <button class="save" id="fd_save">Save correct date</button>
+    <div class="grp" style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)"><span class="lbl">Date not known?</span>
+      <p class="hint" style="margin:0 0 8px">The next date is left blank and the matter shows <b>UNLISTED – find the date</b> in red, and stays in "Needs next date" until you fill it.</p>
+      <button class="act blue" id="fd_unl" style="width:100%;min-height:46px">Mark Unlisted – date not known</button></div>`);
+  const fixHist = (from, to) => {   // the history entry that gave the wrong date now gives the correct one (or none)
+    if (!from) return;
+    const h = [...(m.hearings || [])].reverse().find(x => x.next === from);
+    if (h) { h.next = to; h.edited = todayIso(); }
+  };
+  $('#fd_save').onclick = () => {
+    const d = $('#fd_date').value, p = $('#fd_for').value.trim();
+    if (!d) return toast('Pick the correct date, or mark Unlisted');
+    change(() => {
+      logChange(m, 'Next date corrected: ' + (had ? dmy(had) : (m.unlisted ? 'Unlisted' : '—')) + ' → ' + dmy(d) + (had && had !== d ? ' (wrong date entered earlier)' : ''));
+      fixHist(had, d); m.nextDate = d; m.purpose = p; m.unlisted = false; if (m.status !== 'Reserved') m.status = 'Pending'; m.calPending = true; touch(m);
+    });
+    closeSheet(); toast('Next date ' + dmy(d)); if (typeof render === 'function') render();
+  };
+  $('#fd_unl').onclick = () => {
+    change(() => {
+      logChange(m, 'Next date ' + (had ? dmy(had) + ' was wrong — ' : '') + 'marked Unlisted (date not known)');
+      fixHist(had, ''); m.nextDate = ''; m.item = ''; m.unlisted = true; m.unlistedSince = todayIso(); m.calPending = !!m.eventId || !!had; touch(m);
+    });
+    closeSheet(); toast('Marked Unlisted — fill the date when known'); if (typeof render === 'function') render();
   };
 }
