@@ -156,6 +156,7 @@ function viewMatter(m) {
     <div class="next-strip">${m.nextDate ? `<span>Next date</span><b>${DOWL[parseIso(m.nextDate).getDay()].slice(0, 3)}, ${dmy(m.nextDate)}</b>${m.purpose ? `<span>for ${esc(m.purpose)}</span>` : ''}` : `<b>${m.status === 'Pending' ? 'No next date' : esc(m.status)}</b>`}</div>
   </header>
   <main class="matter-main"><div class="mp-col">
+    <section class="card fx-card">${factsBlock(m, true)}</section>
     ${typeof stageStrip === 'function' && !isRetainer(m) && stageOf(m) !== 'decided' ? `<section class="card" style="padding:10px 14px">${stageStrip(m)}</section>` : ''}
     <div class="acts mp-acts" style="grid-template-columns:1.3fr 1fr 1fr 1fr"><button class="act primary" data-act="record" data-id="${m.id}">Next date</button><button class="act blue" data-act="edit" data-id="${m.id}">Edit</button><button class="act blue" data-act="draft" data-id="${m.id}">Draft</button><button class="act wa" data-act="wa" data-id="${m.id}" ${waOf(m) ? '' : 'disabled title="Add client mobile first"'}>${I.wa}Client</button></div>
     <div class="acts mp-acts" style="grid-template-columns:1fr 1fr 1fr;margin-top:-4px"><button class="act blue" data-act="readorder" data-id="${m.id}">Read order photo</button><button class="act blue" data-act="claudedraft" data-id="${m.id}">Draft with Claude</button><button class="act blue" data-act="research" data-id="${m.id}">Research</button></div>

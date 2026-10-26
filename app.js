@@ -290,7 +290,7 @@ function logChange(m, text) {
   const now = new Date(), stamp = todayIso() + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
   m.changes = (m.changes || []).concat([{ at: stamp, t: text }]).slice(-60);
 }
-const FIELD_NAMES = { email: 'Email', clientCode: 'Client code', title: 'Title', clients: 'Client', forum: 'Category', court: "Hon'ble Court", type: 'Type', caseNo: 'Case no.', crimeNo: 'Crime no.', cnr: 'CNR', filingNo: 'Filing no.', ps: 'Police station', sections: 'Sections', side: 'Appearing for', nextDate: 'Next date', item: 'Item', purpose: 'Fixed for', status: 'Status', outcome: 'Result', feeAgreed: 'Fees agreed', feeReceived: 'Fees received', phone: 'Mobile', whatsapp: 'WhatsApp', altName: 'Alternate contact', altPhone: 'Alternate mobile', deadline: 'Deadline', notes: 'Notes' };
+const FIELD_NAMES = { email: 'Email', clientCode: 'Client code', title: 'Title', clients: 'Client', forum: 'Category', court: "Hon'ble Court", type: 'Type', caseNo: 'Case no.', courtNo: 'Court no.', pet: 'Petitioner side', opp: 'Opposite side', nature: 'Nature', sections: 'U/S', ps: 'Police station', purpose: 'Fixed for', crimeNo: 'Crime no.', cnr: 'CNR', filingNo: 'Filing no.', ps: 'Police station', sections: 'Sections', side: 'Appearing for', nextDate: 'Next date', item: 'Item', purpose: 'Fixed for', status: 'Status', outcome: 'Result', feeAgreed: 'Fees agreed', feeReceived: 'Fees received', phone: 'Mobile', whatsapp: 'WhatsApp', altName: 'Alternate contact', altPhone: 'Alternate mobile', deadline: 'Deadline', notes: 'Notes' };
 function logDiff(m, before, after, how) {
   const bits = [];
   for (const k of Object.keys(FIELD_NAMES)) {
@@ -485,14 +485,17 @@ function itemBox(m) {
   return m.item ? `<div class="item" style="background:${f.c}"><small>ITEM</small><b>${esc(m.item)}</b></div>` : `<div class="item sm" style="background:${f.c}"><small>REF.</small><b>${esc(mrefBox(m))}</b></div>`;
 }
 function metaLine(m) { return [m.caseNo ? (m.type ? m.type + ' ' : '') + m.caseNo : m.type, m.crimeNo ? 'FIR ' + m.crimeNo + (m.ps ? ', PS ' + m.ps : '') : '', m.side ? 'for ' + m.side : ''].filter(Boolean).join(' · '); }
+function caseLine(m) { return (m.caseNo ? (m.type ? m.type + ' ' : '') + m.caseNo : m.type) || mref(m); }
+function sideLine(m) { return [m.crimeNo ? 'FIR ' + m.crimeNo : '', m.side ? 'for ' + m.side : ''].filter(Boolean).join(' · '); }
+const mWrap = (btn, m) => `<div class="mwrap">${btn}<div class="mwrap-f" data-act="open" data-id="${m.id}">${factsBlock(m)}</div></div>`;
 function matterCard(m) {
   const wa = waOf(m);
   return `<article class="card matter">
     <div class="m-top">${itemBox(m)}<div class="m-col" data-act="open" data-id="${m.id}" style="cursor:pointer">
-      <span class="m-title">${dupStar(m)}${esc(m.title || m.clients)}</span>
-      <span class="m-meta">${esc(metaLine(m))}</span>
-      ${m.purpose ? `<span class="purpose">For: ${esc(m.purpose)}</span>` : ''}
+      <span class="m-title">${dupStar(m)}${esc(caseLine(m))}</span>
+      ${sideLine(m) ? `<span class="m-meta">${esc(sideLine(m))}</span>` : ''}
     </div></div>
+    <div data-act="open" data-id="${m.id}" style="cursor:pointer">${factsBlock(m)}</div>
     <div class="acts">
       <button class="act primary" data-act="record" data-id="${m.id}">Next date</button>
       <button class="act blue" data-act="open" data-id="${m.id}">${I.folder}${m.folderId ? 'Files' : 'Details'}</button>
@@ -502,7 +505,7 @@ function matterCard(m) {
 }
 function doneRow(m) {
   const h = (m.hearings || []).filter(x => x.date === S.day).slice(-1)[0];
-  return `<button class="card row" data-act="open" data-id="${m.id}">${itemBox(m)}<span class="m-col"><span class="m-title">${esc(m.title)}</span><span class="m-meta">${esc(h.happened)}${h.next ? ' · next ' + dmy(h.next) : ''}</span></span><span class="done-pill">Done</span></button>`;
+  return mWrap(`<button class="card row" data-act="open" data-id="${m.id}">${itemBox(m)}<span class="m-col"><span class="m-title">${esc(caseLine(m))}</span><span class="m-meta">${esc(h.happened)}${h.next ? ' · next ' + dmy(h.next) : ''}</span></span><span class="done-pill">Done</span></button>`, m);
 }
 
 function viewMatters() {
@@ -529,16 +532,16 @@ function viewMatters() {
     <div class="filters">${/^al_/.test(f || '') ? chip(f, 'Allotted: ' + esc(f === 'al_self' ? 'Self' : jShort(juniors().find(j => j.id === f.slice(3))))) : ''}${chip('pending', 'Pending')}${chip('st_consult', 'Consultations')}${chip('st_tofile', 'To be filed')}${chip('st_filed', 'Filed – no date yet')}${chip('need', 'Need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory / Pre-litigation')}${live().some(m => dupsOf(m).length) ? chip('dups', '<span class="dupstar">★</span> Duplicates') : ''}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
   </header>
   <main><div class="list">
-    <div class="h2"><span class="sub">${ms.length} matter${ms.length === 1 ? '' : 's'}${S.stf ? ' · ' + esc(S.stf) + ' <button class="linkbtn" data-act="filter" data-f="' + f + '">clear</button>' : ''}</span><span><button class="linkbtn" data-act="allotted">Allotted</button> · <button class="linkbtn" data-act="cats">Categories</button></span></div>
+    <div class="h2"><span class="sub">${ms.length} matter${ms.length === 1 ? '' : 's'}${S.stf ? ' · ' + esc(S.stf) + ' <button class="linkbtn" data-act="filter" data-f="' + f + '">clear</button>' : ''}</span><span><button class="linkbtn" data-act="allotted">Allotted</button> · <button class="linkbtn" data-act="cats">Categories</button>${(() => { const k = live().filter(x => !x.nature || x.nature === 'Other').length; return k ? ` · <button class="linkbtn" data-act="sortnature">Sort "Other" (${k})</button>` : ''; })()}</span></div>
     ${ms.length ? ms.map((m, i) => {
       const fo = forumOf(m), late = needsDate(m);
       const head = split && i === 0 ? `<div class="h2" style="margin-top:4px"><h2>Pending</h2><span class="sub">${firstShut}</span></div>` : split && i === firstShut ? `<div class="h2" style="margin-top:14px"><h2>Decided / closed</h2><span class="sub">${ms.length - firstShut}</span></div>` : '';
       const stg = typeof stageOf === 'function' && !isRetainer(m) ? stageOf(m) : '', right = f === 'fees' ? rupees(feeDue(m)) : f === 'deadline' ? dmy(m.deadline) : (m.nextDate ? dmy(m.nextDate) : ['consult', 'fee', 'prep', 'filed'].includes(stg) ? STAGE_NAME[stg] : shortSt(m.status));
-      return head + `<button class="card row" data-act="open" data-id="${m.id}">
+      return head + mWrap(`<button class="card row" data-act="open" data-id="${m.id}">
         <div class="item sm" style="background:${fo.c}"><small>REF.</small><b>${esc(mrefBox(m))}</b></div>
-        <span class="m-col"><span class="m-title">${dupStar(m)}${esc(m.title || m.clients)}</span><span class="m-meta">${esc([m.court, metaLine(m)].filter(Boolean).join(' · '))}</span></span>
+        <span class="m-col"><span class="m-title">${dupStar(m)}${esc(caseLine(m))}</span>${sideLine(m) ? `<span class="m-meta">${esc(sideLine(m))}</span>` : ''}</span>
         <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:${late ? 'var(--red)' : 'var(--muted)'};text-align:right">${esc(right)}</span>
-      </button>`;
+      </button>`, m);
     }).join('') : `<div class="card empty">No matters here.</div>`}
   </div></main>`;
 }
@@ -608,14 +611,15 @@ function sheetEdit(m) {
     ${isNew ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-6px 0 2px;flex-wrap:wrap"><span class="hint" style="margin:0">Client has come for advice?</span><button class="act primary" type="submit" data-kind="consult" style="min-height:38px;padding:0 14px">Start as consultation</button></div>` : ''}
     ${fld('aka', 'Client also known as', (typeof aliasesOf === 'function' ? aliasesOf(m.clients) : []).join(', '), 'text', 'placeholder="other names of the same client, e.g. Anuj Kumar Gupta (separate with commas)"')}
     ${fld('title', 'Parties (title)', m.title, 'text', 'placeholder="e.g. Ritz Restaurant v. Ram Dular Pathak"')}
-    ${fld('court', 'Court', m.court, 'text', 'list="courts" placeholder="e.g. High Court, Lucknow Bench · Court 7"')}
+    <div class="two">${fld('pet', 'Petitioner / applicant side', m.pet, 'text', 'placeholder="e.g. X, Y, Z"')}${fld('opp', 'Opposite side', m.opp, 'text', 'placeholder="e.g. A, B, C"')}</div>
+    <div class="two" style="grid-template-columns:2fr 1fr">${fld('court', "Hon'ble Court", m.court, 'text', 'list="courts" placeholder="e.g. High Court, Lucknow Bench"')}${fld('courtNo', 'Court no.', m.courtNo, 'text', 'placeholder="e.g. 12"')}</div>
     <datalist id="courts">${[...new Set(live().map(x => x.court).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('')}</datalist>
     <div class="two"><div class="field"><label for="f_type">Type</label><select class="in" id="f_type" name="type"><option value=""></option>${opt(TYPES, m.type)}</select></div>${fld('caseNo', 'Case no.', m.caseNo, 'text', 'placeholder="e.g. 8027/2026"')}</div>
     ${fld('cnr', 'CNR no.', m.cnr, 'text', 'placeholder="16 characters, e.g. UPHC020344252026" style="text-transform:uppercase;font-family:var(--mono);letter-spacing:.03em" autocapitalize="characters" spellcheck="false"')}
     <div class="two">${fld('filingNo', 'Filing no.', m.filingNo)}<div class="field"><label for="f_cc">Client code</label><select class="in" id="f_cc" name="ccpick" style="font-family:var(--mono)"></select><small id="f_ccnote" style="color:var(--muted);font-size:12px"></small></div></div>
     <div class="two">${fld('crimeNo', 'Crime / FIR no.', m.crimeNo)}${fld('ps', 'Police station', m.ps)}</div>
     ${fld('sections', 'Under section(s)', m.sections)}
-    <div class="two"><div class="field"><label for="f_nature">Nature</label><select class="in" id="f_nature" name="nature">${opt(['Criminal', 'Civil', 'Other'], m.nature)}</select></div><div class="field"><label for="f_status">Status</label><select class="in" id="f_status" name="status">${opt(statusList(m), m.status)}</select></div></div>
+    <div class="two"><div class="field"><label for="f_nature">Nature</label><select class="in" id="f_nature" name="nature">${opt(NATURES, m.nature)}</select></div><div class="field"><label for="f_status">Status</label><select class="in" id="f_status" name="status">${opt(statusList(m), m.status)}</select></div></div>
     <div class="field" id="f_outwrap" style="${m.status === 'Decided' ? '' : 'display:none'}"><label for="f_outcome">Decided — result</label><select class="in" id="f_outcome" name="outcome"><option value="">—</option>${opt(OUTCOMES, m.outcome)}</select></div>
     <div class="two">${fld('side', 'Appearing for', m.side, 'text', 'placeholder="e.g. Applicant, OP, Complainant"')}${typeof juniors === 'function' ? `<div class="field"><label for="f_allot">Allotted to</label><select class="in" id="f_allot" name="allot"><option value="self">Self</option>${juniors().map(j => `<option value="${esc(j.id)}" ${m.allot === j.id ? 'selected' : ''}>${esc(j.name)}</option>`).join('')}<option value="__new">+ Add another junior…</option></select></div>` : ''}</div>
     <div class="two">${fld('nextDate', 'Next date', m.nextDate, 'date')}${fld('item', 'Item no.', m.item)}</div>
@@ -841,6 +845,7 @@ document.addEventListener('click', e => {
   if (a === 'day') { S.day = el.dataset.day; render(); return; }
   if (a === 'filter') { S.filter = el.dataset.f; S.stf = el.dataset.st || ''; S.tab = 'matters'; closeSheet(); render(); return; }
   if (a === 'cats') { sheetCategories(); return; }
+  if (a === 'sortnature') return sheetSortNature();
   if (a === 'add') return sheetEdit(null);
   if (a === 'open') return openMatter(id);
   if (a === 'edit') return sheetEdit(find(id));
