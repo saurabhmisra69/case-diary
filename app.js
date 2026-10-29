@@ -290,7 +290,7 @@ function logChange(m, text) {
   const now = new Date(), stamp = todayIso() + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
   m.changes = (m.changes || []).concat([{ at: stamp, t: text }]).slice(-60);
 }
-const FIELD_NAMES = { email: 'Email', clientCode: 'Client code', title: 'Title', clients: 'Client', forum: 'Category', court: "Hon'ble Court", type: 'Type', caseNo: 'Case no.', courtNo: 'Court no.', pet: 'Petitioner side', opp: 'Opposite side', nature: 'Nature', sections: 'U/S', ps: 'Police station', purpose: 'Fixed for', crimeNo: 'Crime no.', cnr: 'CNR', filingNo: 'Filing no.', ps: 'Police station', sections: 'Sections', side: 'Appearing for', nextDate: 'Next date', item: 'Item', purpose: 'Fixed for', status: 'Status', outcome: 'Result', feeAgreed: 'Fees agreed', feeReceived: 'Fees received', phone: 'Mobile', whatsapp: 'WhatsApp', altName: 'Alternate contact', altPhone: 'Alternate mobile', deadline: 'Deadline', notes: 'Notes' };
+const FIELD_NAMES = { email: 'Email', clientCode: 'Client code', title: 'Title', clients: 'Client', forum: 'Category', court: "Hon'ble Court", type: 'Type', caseNo: 'Case no.', courtNo: 'Court no.', pet: 'Petitioner side', opp: 'Opposite side', nature: 'Nature', sections: 'U/S', ps: 'Police station', purpose: 'Fixed for', crimeNo: 'Crime no.', cnr: 'CNR', filingNo: 'Filing no.', ps: 'Police station', district: 'District', sections: 'Sections', side: 'Appearing for', nextDate: 'Next date', item: 'Item', purpose: 'Fixed for', status: 'Status', outcome: 'Result', feeAgreed: 'Fees agreed', feeReceived: 'Fees received', phone: 'Mobile', whatsapp: 'WhatsApp', altName: 'Alternate contact', altPhone: 'Alternate mobile', deadline: 'Deadline', notes: 'Notes' };
 function logDiff(m, before, after, how) {
   const bits = [];
   for (const k of Object.keys(FIELD_NAMES)) {
@@ -440,6 +440,7 @@ function viewHome() {
     ${typeof tasksToday === 'function' ? tasksToday() : ''}
     ${typeof pipelineToday === 'function' ? pipelineToday() : ''}
     ${typeof hcListButton === 'function' ? hcListButton() : ''}
+    ${typeof detailsToday === 'function' ? detailsToday() : ''}
     ${briefHtml(list, deadlines, fees)}
     ${(() => { const rr = live().flatMap(m => retainerDue(m).map(x => ({ m, ...x }))); return rr.length ? `<section class="list"><div class="h2"><h2>Retainers</h2></div>${rr.map(x => `<button class="card row" data-act="open" data-id="${x.m.id}"><div class="item sm" style="background:var(--adv)"><small>${x.kind === 'bill' ? 'BILL' : 'TERM'}</small><b>${dmy(x.date).slice(0, 5)}</b></div><span class="m-col"><span class="m-title">${esc(x.m.title || x.m.clients)}</span><span class="m-meta">${esc(x.text)}</span></span></button>`).join('')}</section>` : ''; })()}
     <section class="list a-list">
@@ -613,13 +614,15 @@ function sheetEdit(m, pre) {
     ${isNew ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-6px 0 2px;flex-wrap:wrap"><span class="hint" style="margin:0">Client has come for advice?</span><button class="act primary" type="submit" data-kind="consult" style="min-height:38px;padding:0 14px">Start as consultation</button></div>` : ''}
     ${fld('aka', 'Client also known as', (typeof aliasesOf === 'function' ? aliasesOf(m.clients) : []).join(', '), 'text', 'placeholder="other names of the same client, e.g. Anuj Kumar Gupta (separate with commas)"')}
     ${fld('title', 'Parties (title)', m.title, 'text', 'placeholder="e.g. Ritz Restaurant v. Ram Dular Pathak"')}
-    <div class="two">${fld('pet', 'Petitioner / applicant side', m.pet, 'text', 'placeholder="e.g. X, Y, Z"')}${fld('opp', 'Opposite side', m.opp, 'text', 'placeholder="e.g. A, B, C"')}</div>
+    <div class="field"><label for="f_pet">Petitioners / applicants <small>(one per line, with parentage)</small></label><textarea class="in" id="f_pet" name="pet" rows="2" placeholder="e.g. Ajay Kumar Baghel S/o Shri …, aged about 45 years, R/o …">${esc(m.pet || '')}</textarea></div>
+    <div class="field"><label for="f_opp">Respondents / opposite side <small>(one per line)</small></label><textarea class="in" id="f_opp" name="opp" rows="2" placeholder="e.g. State of U.P. through Principal Secretary, Home">${esc(m.opp || '')}</textarea></div>
     <div class="two" style="grid-template-columns:2fr 1fr">${fld('court', "Hon'ble Court", m.court, 'text', 'list="courts" placeholder="e.g. High Court, Lucknow Bench"')}${fld('courtNo', 'Court no.', m.courtNo, 'text', 'placeholder="e.g. 12"')}</div>
     <datalist id="courts">${[...new Set(live().map(x => x.court).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('')}</datalist>
     <div class="two"><div class="field"><label for="f_type">Type</label><select class="in" id="f_type" name="type"><option value=""></option>${opt(TYPES, m.type)}</select></div>${fld('caseNo', 'Case no.', m.caseNo, 'text', 'placeholder="e.g. 8027/2026"')}</div>
     ${fld('cnr', 'CNR no.', m.cnr, 'text', 'placeholder="16 characters, e.g. UPHC020344252026" style="text-transform:uppercase;font-family:var(--mono);letter-spacing:.03em" autocapitalize="characters" spellcheck="false"')}
     <div class="two">${fld('filingNo', 'Filing no.', m.filingNo)}<div class="field"><label for="f_cc">Client code</label><select class="in" id="f_cc" name="ccpick" style="font-family:var(--mono)"></select><small id="f_ccnote" style="color:var(--muted);font-size:12px"></small></div></div>
     <div class="two">${fld('crimeNo', 'Crime / FIR no.', m.crimeNo)}${fld('ps', 'Police station', m.ps)}</div>
+    ${fld('district', 'District', m.district, 'text', 'placeholder="e.g. Lucknow (for High Court matters)"')}
     ${fld('sections', 'Under section(s)', m.sections)}
     <div class="two"><div class="field"><label for="f_nature">Nature</label><select class="in" id="f_nature" name="nature">${opt(NATURES, m.nature)}</select></div><div class="field"><label for="f_status">Status</label><select class="in" id="f_status" name="status">${opt(statusList(m), m.status)}</select></div></div>
     <div class="field" id="f_outwrap" style="${m.status === 'Decided' ? '' : 'display:none'}"><label for="f_outcome">Decided — result</label><select class="in" id="f_outcome" name="outcome"><option value="">—</option>${opt(OUTCOMES, m.outcome)}</select></div>
@@ -675,6 +678,7 @@ function sheetEdit(m, pre) {
     if (asConsult) { fd.forum = 'Advisory'; fd.status = 'Instructions received'; fd.stage = 'consult'; if (!fd.title) fd.title = clientName(fd.clients) + ' – consultation'; }
     if (fd.status !== 'Decided') fd.outcome = '';
     for (const k in fd) fd[k] = String(fd[k]).trim();
+    for (const k of ['pet', 'opp']) if (fd[k]) fd[k] = fd[k].split('\n').map(x => x.trim()).filter(Boolean).join('\n');
     fd.year = parseInt(fd.year, 10) || y;
     if (!fd.title) fd.title = fd.clients;
     if (fd.cnr) fd.cnr = fd.cnr.toUpperCase().replace(/\s+/g, '');

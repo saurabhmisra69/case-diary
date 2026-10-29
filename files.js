@@ -529,6 +529,7 @@ async function processInbox() {
                 m.readings = (m.readings || []).filter(x => x.paper !== c.reading.paper || x.date !== c.reading.date);
                 m.readings.unshift(Object.assign({ date: todayIso() }, c.reading)); m.readings = m.readings.slice(0, 20);
               }
+              if (c.details && typeof applyDetails === 'function') applyDetails(m, c.details, S.data);
               if (c.relink) { m.folderName = ''; autoTried.delete(m.id); }
               touch(m);
             }

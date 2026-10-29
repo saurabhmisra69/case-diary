@@ -12,7 +12,12 @@ function partiesOf(m) {
   const p = t.split(/\s+(?:vs\.?|v\/s\.?|v\.|versus)\s+/i);
   return p.length >= 2 ? { a: p[0].trim(), b: p.slice(1).join(' vs ').trim() } : { a: t, b: '' };
 }
-function partiesHtml(m) {
+/* several parties, one per line: the card shows "First & Anr./Ors.", the matter page shows all */
+const partyShort = s => { const ls = String(s || '').split('\n').map(x => x.trim()).filter(Boolean); if (ls.length < 2) return ls[0] || ''; const first = ls[0].split(/,|\s+(?:s\/o|d\/o|w\/o|through|thru\.?)\s+/i)[0].trim(); return first + (ls.length === 2 ? ' & Anr.' : ' & Ors.'); };
+function partiesHtml(m, full) {
+  if (full && (/\n/.test(m.pet || '') || /\n/.test(m.opp || ''))) { const L = s => String(s || '').split('\n').map(x => x.trim()).filter(Boolean).map((x, i, a) => esc((a.length > 1 ? (i + 1) + '. ' : '') + x)).join('<br>');
+    return `${L(m.pet)}${m.opp ? `<br><span class="fx-vs">– vs –</span><br>${L(m.opp)}` : ''}`; }
+  if (m.pet || m.opp) { const a = partyShort(m.pet), b = partyShort(m.opp); return b ? `${esc(a)} <span class="fx-vs">– vs –</span> ${esc(b)}` : esc(a); }
   const p = partiesOf(m);
   return p.b ? `${esc(p.a)} <span class="fx-vs">– vs –</span> ${esc(p.b)}` : esc(p.a);
 }
@@ -47,12 +52,13 @@ function factsBlock(m, full) {
     : blank;
   return `<div class="facts${full ? ' fx-full' : ''}">
     ${courtSerialHtml(m)}
-    <div class="fx-parties">${partiesHtml(m) || blank}</div>
+    <div class="fx-parties">${partiesHtml(m, full) || blank}</div>${(m.detailDiffs || []).length ? `<button class="fx-edit" data-act="dtcheck" data-id="${m.id}" style="margin:4px 0 8px;color:var(--saffron-ink)">${m.detailDiffs.length} difference${m.detailDiffs.length > 1 ? 's' : ''} from the papers — check</button>` : ''}
     <dl>
       <dt>Hon'ble Court &amp; no.</dt><dd>${v(courtFull(m))}</dd>
       <dt>Nature</dt><dd>${m.nature && m.nature !== 'Other' ? `<span class="fx-nat fx-${m.nature.toLowerCase()}">${esc(m.nature)}</span>` : v(m.nature === 'Other' ? 'Other' : '')}</dd>
       <dt>U/S</dt><dd>${v(m.sections)}</dd>
       <dt>Police station</dt><dd>${v(m.ps)}</dd>
+      ${m.district || m.forum === 'HC' ? `<dt>District</dt><dd>${v(m.district)}</dd>` : ''}
       <dt>Previous dates</dt><dd>${prevHtml}</dd>
       <dt>Next date</dt><dd class="fx-next">${nd ? esc(nd) : isUnlisted(m) ? '<span class="fx-unl">UNLISTED – find the date</span>' : blank}${isOpen(m) && m.forum !== 'Advisory' ? ` <button class="fx-edit" data-act="fixdate" data-id="${m.id}">${nd ? 'Correct' : 'Enter'}</button>` : ''}</dd>
       <dt>Purpose</dt><dd>${v(m.purpose)}</dd>
