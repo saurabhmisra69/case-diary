@@ -55,10 +55,11 @@ function factsBlock(m, full) {
     <div class="fx-parties">${partiesHtml(m, full) || blank}</div>${(m.detailDiffs || []).length ? `<button class="fx-edit" data-act="dtcheck" data-id="${m.id}" style="margin:4px 0 8px;color:var(--saffron-ink)">${m.detailDiffs.length} difference${m.detailDiffs.length > 1 ? 's' : ''} from the papers — check</button>` : ''}
     <dl>
       <dt>Hon'ble Court &amp; no.</dt><dd>${v(courtFull(m))}</dd>
-      <dt>Nature</dt><dd>${m.nature && m.nature !== 'Other' ? `<span class="fx-nat fx-${m.nature.toLowerCase()}">${esc(m.nature)}</span>` : v(m.nature === 'Other' ? 'Other' : '')}</dd>
-      ${isCrimMatter(m) ? `<dt>Crime / FIR no.</dt><dd>${v(m.crimeNo)}</dd>
+      <dt>Nature</dt><dd>${m.nature && m.nature !== 'Other' ? `<span class="fx-nat fx-${m.nature.toLowerCase()}">${esc(m.nature)}${m.nature === 'Criminal' && crimKindOf(m) ? ' – ' + esc(crimKindOf(m)) : ''}</span>` : v(m.nature === 'Other' ? 'Other' : '')}</dd>
+      ${isCrimMatter(m) ? (crimKindOf(m) === 'Complaint' ? `<dt>Complaint case no.</dt><dd>${v(complaintNoOf(m))}</dd>
+      <dt>U/S</dt><dd>${v(m.sections)}</dd>` : `<dt>Crime / FIR no.</dt><dd>${v(m.crimeNo)}</dd>
       <dt>U/S</dt><dd>${v(m.sections)}</dd>
-      <dt>Police station</dt><dd>${v(m.ps)}</dd>` : ''}
+      <dt>Police station</dt><dd>${v(m.ps)}</dd>`) : ''}
       ${m.district || m.forum === 'HC' ? `<dt>District</dt><dd>${v(m.district)}</dd>` : ''}
       <dt>Previous dates</dt><dd>${prevHtml}</dd>
       <dt>Next date</dt><dd class="fx-next">${nd ? esc(nd) : isUnlisted(m) ? '<span class="fx-unl">UNLISTED – find the date</span>' : blank}${isOpen(m) && m.forum !== 'Advisory' ? ` <button class="fx-edit" data-act="fixdate" data-id="${m.id}">${nd ? 'Correct' : 'Enter'}</button>` : ''}</dd>
@@ -68,6 +69,8 @@ function factsBlock(m, full) {
 }
 
 /* ---------- sorting "Other" matters ---------- */
+const crimKindOf = m => m.crimKind || (m.crimeNo || m.ps ? 'FIR' : /complaint|परिवाद|\b138\b|NI Act/i.test([m.type, m.caseNo, m.title, m.court].join(' ')) ? 'Complaint' : '');
+const complaintNoOf = m => m.complaintNo || (/complaint|138/i.test(m.type || '') ? m.caseNo || '' : '');
 const isCrimMatter = m => (m.nature || guessNature(m)) === 'Criminal';
 function guessNature(m) {
   const hay = [m.type, m.title, m.court, m.sections, m.caseNo, m.notes, m.purpose].filter(Boolean).join(' ');
@@ -79,11 +82,12 @@ function guessNature(m) {
     /\bsuit\b|civil|\bCPC\b|\bO\.?S\.?\b|writ|\bWP\b|\bRERA\b|arbitra|execution|lease|mutation|deed|property|partition|injunction|recovery|tenan|rent|revenue|tehsil|\bSDM\b|\bADM\b|tribunal|\bAFT\b|pension|service/i.test(hay)) return 'Civil';
   return '';
 }
+const needsSort = m => !m.nature || m.nature === 'Other' || (m.nature === 'Criminal' && !crimKindOf(m));
 function sheetSortNature() {
-  const rows = live().filter(m => !m.nature || m.nature === 'Other').map(m => ({ m, g: guessNature(m) }));
+  const rows = live().filter(needsSort).map(m => ({ m, g: m.nature === 'Criminal' ? 'Criminal' : guessNature(m) }));
   rows.sort((a, b) => (a.g ? 0 : 1) - (b.g ? 0 : 1) || (a.g || '').localeCompare(b.g || '') || (b.m.year - a.m.year));
-  const sel = (r, i) => `<select class="in" data-ns="${i}" style="min-height:36px;padding:4px 8px">${NATURES.map(x => `<option ${x === (r.g || 'Other') ? 'selected' : ''}>${x}</option>`).join('')}</select>`;
-  openSheet(`<div class="s-head"><div><small>Matters marked "Other"</small><h1>Civil / Criminal / Matrimonial / Consumer</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+  const sel = (r, i) => `<select class="in" data-ns="${i}" style="min-height:36px;padding:4px 8px">${['Criminal – FIR', 'Criminal – Complaint', ...NATURES.filter(x => x !== 'Criminal')].map(x => `<option ${x === (r.g === 'Criminal' ? 'Criminal – ' + (crimKindOf(r.m) || 'FIR') : r.g || 'Other') ? 'selected' : ''}>${x}</option>`).join('')}</select>`;
+  openSheet(`<div class="s-head"><div><small>Matters to sort ("Other", or Criminal without FIR / Complaint)</small><h1>Civil / Criminal / Matrimonial / Consumer</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
     <p class="hint">${rows.length} matter${rows.length === 1 ? '' : 's'} not yet sorted. A suggestion is filled in from the case type, title, court and sections; change any that are wrong. Nothing is saved until you press <b>Save all</b>. Leave a matter on "Other" to keep it as it is.</p>
     ${rows.length ? `<div class="list" id="ns_list">${rows.map((r, i) => `<div class="card" style="padding:10px 12px;display:grid;grid-template-columns:1fr 150px;gap:10px;align-items:center;box-shadow:none;border:1px solid var(--line)">
       <div style="min-width:0"><b style="display:block;font-size:14px">${esc(r.m.title || r.m.clients)}</b><small style="color:var(--muted)">${esc(mref(r.m))}${r.m.court ? ' · ' + esc(r.m.court) : ''}${r.m.type ? ' · ' + esc(r.m.type) : ''}</small></div>${sel(r, i)}</div>`).join('')}</div>
@@ -91,7 +95,7 @@ function sheetSortNature() {
   const b = $('#ns_save'); if (!b) return;
   b.onclick = () => {
     let n = 0;
-    change(() => { document.querySelectorAll('[data-ns]').forEach(s => { const r = rows[+s.dataset.ns], v = s.value; if (v !== 'Other' && v !== r.m.nature) { const m = find(r.m.id); logChange(m, 'Nature: ' + (m.nature || '—') + ' → ' + v); m.nature = v; touch(m); n++; } }); });
+    change(() => { document.querySelectorAll('[data-ns]').forEach(s => { const r = rows[+s.dataset.ns]; let v = s.value, k = ''; if (/^Criminal – /.test(v)) { k = v.slice(11); v = 'Criminal'; } if (v !== 'Other' && (v !== r.m.nature || (k && k !== r.m.crimKind))) { const m = find(r.m.id); logChange(m, 'Nature: ' + (m.nature || '—') + ' → ' + v + (k ? ' (' + k + ')' : '')); m.nature = v; if (k) m.crimKind = k; touch(m); n++; } }); });
     closeSheet(); toast(n ? n + ' matter' + (n === 1 ? '' : 's') + ' sorted' : 'Nothing changed'); if (typeof render === 'function') render();
   };
 }

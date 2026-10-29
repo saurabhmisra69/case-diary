@@ -589,6 +589,7 @@ document.addEventListener('change', e => {
 document.addEventListener('change', e => { if (e.target.id !== 'f_type') return;
   const n = document.getElementById('f_nature'); if (!n) return;
   const g = ['Appeal', 'Writ'].includes(e.target.value) ? '' : guessNature({ type: e.target.value }); if (g && g !== n.value) { n.value = g; n.dispatchEvent(new Event('change', { bubbles: true })); } });
+document.addEventListener('change', e => { if (e.target.id === 'f_crimKind') { const f = document.getElementById('f_firwrap'), c = document.getElementById('f_cmpwrap'); if (f) f.style.display = e.target.value === 'FIR' ? '' : 'none'; if (c) c.style.display = e.target.value === 'Complaint' ? '' : 'none'; } });
 document.addEventListener('change', e => { if (e.target.id === 'f_nature') { const w = document.getElementById('f_crimwrap'); if (w) w.style.display = e.target.value === 'Criminal' ? '' : 'none'; } });
 document.addEventListener('change', e => { if (e.target.id === 'f_status') { const w = document.getElementById('f_outwrap'); if (w) w.style.display = e.target.value === 'Decided' ? '' : 'none'; } });
 document.addEventListener('change', e => {

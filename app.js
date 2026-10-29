@@ -290,7 +290,7 @@ function logChange(m, text) {
   const now = new Date(), stamp = todayIso() + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
   m.changes = (m.changes || []).concat([{ at: stamp, t: text }]).slice(-60);
 }
-const FIELD_NAMES = { email: 'Email', clientCode: 'Client code', title: 'Title', clients: 'Client', forum: 'Category', court: "Hon'ble Court", type: 'Type', caseNo: 'Case no.', courtNo: 'Court no.', pet: 'Petitioner side', opp: 'Opposite side', nature: 'Nature', sections: 'U/S', ps: 'Police station', purpose: 'Fixed for', crimeNo: 'Crime no.', cnr: 'CNR', filingNo: 'Filing no.', ps: 'Police station', district: 'District', sections: 'Sections', side: 'Appearing for', nextDate: 'Next date', item: 'Item', purpose: 'Fixed for', status: 'Status', outcome: 'Result', feeAgreed: 'Fees agreed', feeReceived: 'Fees received', phone: 'Mobile', whatsapp: 'WhatsApp', altName: 'Alternate contact', altPhone: 'Alternate mobile', deadline: 'Deadline', notes: 'Notes' };
+const FIELD_NAMES = { email: 'Email', clientCode: 'Client code', title: 'Title', clients: 'Client', forum: 'Category', court: "Hon'ble Court", type: 'Type', caseNo: 'Case no.', crimKind: 'Criminal case from', complaintNo: 'Complaint case no.', courtNo: 'Court no.', pet: 'Petitioner side', opp: 'Opposite side', nature: 'Nature', sections: 'U/S', ps: 'Police station', purpose: 'Fixed for', crimeNo: 'Crime no.', cnr: 'CNR', filingNo: 'Filing no.', ps: 'Police station', district: 'District', sections: 'Sections', side: 'Appearing for', nextDate: 'Next date', item: 'Item', purpose: 'Fixed for', status: 'Status', outcome: 'Result', feeAgreed: 'Fees agreed', feeReceived: 'Fees received', phone: 'Mobile', whatsapp: 'WhatsApp', altName: 'Alternate contact', altPhone: 'Alternate mobile', deadline: 'Deadline', notes: 'Notes' };
 function logDiff(m, before, after, how) {
   const bits = [];
   for (const k of Object.keys(FIELD_NAMES)) {
@@ -536,7 +536,7 @@ function viewMatters() {
   </header>
   <main><div class="list">
     ${typeof shotButton === 'function' ? shotButton('matters') : ''}
-    <div class="h2"><span class="sub">${ms.length} matter${ms.length === 1 ? '' : 's'}${S.stf ? ' · ' + esc(S.stf) + ' <button class="linkbtn" data-act="filter" data-f="' + f + '">clear</button>' : ''}</span><span><button class="linkbtn" data-act="allotted">Allotted</button> · <button class="linkbtn" data-act="cats">Categories</button>${(() => { const k = live().filter(x => !x.nature || x.nature === 'Other').length; return k ? ` · <button class="linkbtn" data-act="sortnature">Sort "Other" (${k})</button>` : ''; })()}</span></div>
+    <div class="h2"><span class="sub">${ms.length} matter${ms.length === 1 ? '' : 's'}${S.stf ? ' · ' + esc(S.stf) + ' <button class="linkbtn" data-act="filter" data-f="' + f + '">clear</button>' : ''}</span><span><button class="linkbtn" data-act="allotted">Allotted</button> · <button class="linkbtn" data-act="cats">Categories</button>${(() => { const k = live().filter(needsSort).length; return k ? ` · <button class="linkbtn" data-act="sortnature">Sort nature (${k})</button>` : ''; })()}</span></div>
     ${ms.length ? ms.map((m, i) => {
       const fo = forumOf(m), late = needsDate(m);
       const head = split && i === 0 ? `<div class="h2" style="margin-top:4px"><h2>Pending</h2><span class="sub">${firstShut}</span></div>` : split && i === firstShut ? `<div class="h2" style="margin-top:14px"><h2>Decided / closed</h2><span class="sub">${ms.length - firstShut}</span></div>` : '';
@@ -624,7 +624,9 @@ function sheetEdit(m, pre) {
     <div class="two">${fld('filingNo', 'Filing no.', m.filingNo)}<div class="field"><label for="f_cc">Client code</label><select class="in" id="f_cc" name="ccpick" style="font-family:var(--mono)"></select><small id="f_ccnote" style="color:var(--muted);font-size:12px"></small></div></div>
     <div class="two"><div class="field"><label for="f_nature">Nature</label><select class="in" id="f_nature" name="nature">${opt(NATURES, m.nature || guessNature(m) || NATURES[0])}</select></div><div class="field"><label for="f_status">Status</label><select class="in" id="f_status" name="status">${opt(statusList(m), m.status)}</select></div></div>
     <div id="f_crimwrap" style="${(m.nature || guessNature(m) || NATURES[0]) === 'Criminal' ? '' : 'display:none'}">
-    <div class="two">${fld('crimeNo', 'Crime / FIR no.', m.crimeNo)}${fld('ps', 'Police station', m.ps)}</div>
+    <div class="field"><label for="f_crimKind">Criminal case arising from</label><select class="in" id="f_crimKind" name="crimKind">${['FIR', 'Complaint'].map(x => `<option value="${x}" ${x === (crimKindOf(m) || 'FIR') ? 'selected' : ''}>${x === 'FIR' ? 'FIR (police case)' : 'Complaint (complaint case)'}</option>`).join('')}</select></div>
+    <div id="f_firwrap" class="two" style="${(crimKindOf(m) || 'FIR') === 'FIR' ? '' : 'display:none'}">${fld('crimeNo', 'Crime / FIR no.', m.crimeNo)}${fld('ps', 'Police station', m.ps)}</div>
+    <div id="f_cmpwrap" style="${crimKindOf(m) === 'Complaint' ? '' : 'display:none'}">${fld('complaintNo', 'Complaint case no.', complaintNoOf(m), 'text', 'placeholder="e.g. 4318/2021"')}</div>
       ${fld('sections', 'Under section(s)', m.sections)}
     </div>
     ${fld('district', 'District', m.district, 'text', 'placeholder="e.g. Lucknow (for High Court matters)"')}
