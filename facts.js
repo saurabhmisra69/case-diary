@@ -22,6 +22,14 @@ function courtFull(m) {
   if (new RegExp('court\\s*(no\\.?)?\\s*' + n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(c)) return c;
   return (c ? c + ', ' : '') + 'Court No. ' + n;
 }
+/* the court number: the Court No. box, else "(Court No. 14)" written in the court name */
+const courtNoOf = m => String(m.courtNo || '').trim() || ((String(m.court || '').match(/court\s*no\.?\s*([0-9A-Z-]+)/i) || [])[1] || '');
+/* bold red strip: COURT NO. 14 · SERIAL NO. 3030 */
+function courtSerialHtml(m) {
+  const n = courtNoOf(m), s = String(m.item || '').trim();
+  if ((!n && !s) || !isOpen(m)) return '';
+  return `<div class="fx-cs">${n ? `<span>COURT NO. <b>${esc(n)}</b></span>` : ''}${s ? `<span>SERIAL NO. <b>${esc(s)}</b></span>` : ''}</div>`;
+}
 /* every listed date before today, newest first, with what happened */
 function previousDates(m) {
   const t = todayIso(), by = new Map();
@@ -38,6 +46,7 @@ function factsBlock(m, full) {
     ? `<details class="fx-prev"><summary>${prev.length} date${prev.length === 1 ? '' : 's'} · last ${dmy(prev[0].date)}</summary><ol>${prev.map(h => `<li><b>${dmy(h.date)}</b>${h.happened ? `<span>${esc(h.happened)}${h.purpose ? ' · ' + esc(h.purpose) : ''}</span>` : ''}</li>`).join('')}</ol></details>`
     : blank;
   return `<div class="facts${full ? ' fx-full' : ''}">
+    ${courtSerialHtml(m)}
     <div class="fx-parties">${partiesHtml(m) || blank}</div>
     <dl>
       <dt>Hon'ble Court &amp; no.</dt><dd>${v(courtFull(m))}</dd>

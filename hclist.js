@@ -148,7 +148,7 @@ if (typeof window !== 'undefined') {
       let n = 0;
       const sets = go.filter(r => r.pick);
       if (sets.length) change(() => { for (const r of sets) { const m = live().find(x => x.id === r.pick); if (!m) continue;
-        const set = { nextDate: r.date, item: r.item || '', court: HC_COURT(r.court), unlisted: false };
+        const set = { nextDate: r.date, item: r.item || '', court: HC_COURT(r.court), courtNo: r.court || '', unlisted: false };
         if (m.status !== 'Reserved' && isOpen(m)) set.status = 'Pending';
         if (m.nextDate !== r.date || String(m.item || '') !== String(r.item) || m.court !== set.court) {
           if (set.nextDate !== m.nextDate) logListing(m, m.nextDate, set.nextDate, 'High Court listing screenshot');
@@ -159,7 +159,7 @@ if (typeof window !== 'undefined') {
       toast(n ? n + ' matter' + (n > 1 ? 's' : '') + ' updated' : sets.length ? 'Already up to date' : 'Nothing updated');
       const next = () => { const r = adds.shift(); if (!r) return; const ty = hcType(r.prefix);
         window.__afterSave = adds.length ? next : null;
-        sheetEdit(null, { forum: 'HC', status: 'Pending', court: HC_COURT(r.court), type: ty, caseNo: ty ? r.num + '/' + r.year : r.caseText, nextDate: r.date, item: r.item, purpose: 'Hearing',
+        sheetEdit(null, { forum: 'HC', status: 'Pending', court: HC_COURT(r.court), courtNo: r.court || '', type: ty, caseNo: ty ? r.num + '/' + r.year : r.caseText, nextDate: r.date, item: r.item, purpose: 'Hearing',
           title: [r.pet, r.res.replace(/^STATE OF U\.?\s?P\.?\b.*?(&\s*(Anr|Ors)\.)?$/i, (_, a) => 'State of U.P.' + (a ? ' ' + a : ''))].filter(Boolean).join(' v. '), notes: 'Added from the High Court listing screenshot of ' + dmy(t) + '.' }); };
       if (adds.length) setTimeout(next, 300);
     };

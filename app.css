@@ -485,3 +485,7 @@ html.welcoming,html.welcoming body{overflow:hidden}
 .dc-chk input{width:20px;height:20px}
 .dc-fee{display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:8px}
 .dc-done .lbl:first-child{color:var(--dc)}
+
+/* court no. and serial no., bold red on every matter card */
+.fx-cs{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 10px;padding:8px 12px;border:2px solid var(--red);border-radius:10px;background:color-mix(in srgb,var(--red) 8%,transparent);color:var(--red);font-weight:800;font-size:15px;letter-spacing:.03em}
+.fx-cs b{font-size:22px;font-weight:900;margin-left:4px;font-family:var(--mono)}
