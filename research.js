@@ -31,10 +31,10 @@ function sectionSearches(secStr) {
   return [...new Set(out)].slice(0, 10);
 }
 const TOPICS = {
-  'Bail': ['bail parity co-accused', 'bail long incarceration delay in trial'], 'ABA': ['anticipatory bail 482 BNSS conditions', 'anticipatory bail 438 CrPC'], '482': ['quashing of FIR inherent powers 528 BNSS', 'quashing civil dispute given criminal colour'],
+  'Bail': ['bail parity co-accused', 'bail long incarceration delay in trial'], 'ABA': ['anticipatory bail 482 BNSS conditions', 'anticipatory bail 438 CrPC'], '482': ['quashing of FIR inherent powers 528 BNSS', 'quashing civil dispute given criminal colour'], '482/528': ['quashing of FIR inherent powers 528 BNSS', 'quashing civil dispute given criminal colour'],
   '138 NI': ['section 138 NI Act presumption section 139', 'cheque dishonour legally enforceable debt'], 'Revision': ['scope of revisional jurisdiction', 'discharge revision interference'], 'DV': ['domestic relationship shared household DV Act'],
-  '125': ['maintenance wife able to earn section 125', 'maintenance interim disclosure affidavit'], 'Writ': ['writ alternative remedy maintainability'], 'Suit': ['injunction prima facie balance of convenience'], 'Arbitration': ['section 34 arbitration patent illegality'],
-  'Appeal': ['appeal reappreciation of evidence'], 'Execution': ['execution of decree objections'], 'Complaint': ['summoning order application of mind', 'discharge sufficient ground for proceeding'],
+  '125': ['maintenance wife able to earn section 125', 'maintenance interim disclosure affidavit'], 'Writ': ['writ alternative remedy maintainability'], 'Suit': ['injunction prima facie balance of convenience'], 'Civil Suit': ['injunction prima facie balance of convenience'], 'Arbitration': ['section 34 arbitration patent illegality'],
+  'Appeal': ['appeal reappreciation of evidence'], 'Execution': ['execution of decree objections'], 'Complaint': ['summoning order application of mind', 'discharge sufficient ground for proceeding'], 'Criminal Complaint': ['summoning order application of mind', 'discharge sufficient ground for proceeding'],
 };
 function sheetResearch(m) {
   const pt = parties(m), notState = x => x && !/state of|union of india/i.test(x);

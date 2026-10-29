@@ -3,7 +3,7 @@
 'use strict';
 
 /* ================= Limitation alerts ================= */
-const isCrim = m => /crim/i.test(m.nature || '') || /^(Complaint|FIR|482|Bail|ABA|Revision|138 NI|125|DV)$/.test(m.type || '');
+const isCrim = m => /crim/i.test(m.nature || '') || /^(Complaint|Criminal Complaint|FIR|482|482\/528|Bail|ABA|Revision|138 NI|125|DV)$/.test(m.type || '');
 function suggestRemedies(m) {
   const t = m.type || '', ks = [];
   if (t === 'Arbitration') ks.push('arb34');

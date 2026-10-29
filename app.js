@@ -21,7 +21,7 @@ const FORUMS = {
   Revenue:  { label: 'Revenue court',     c: 'var(--rv)', soft: 'var(--rv-soft)', ink: 'var(--rv-ink)' },
   Advisory: { label: 'Advisory / Pre-litigation', c: 'var(--adv)', soft: 'var(--adv-soft)', ink: 'var(--adv-ink)' },
 };
-const TYPES = ['Complaint','FIR','Writ','482','Bail','ABA','Revision','Appeal','Suit','WS','Execution','DV','125','138 NI','Arbitration','AFT','Consumer','RERA','Mutation','Opinion','Notice','Deed'];
+const TYPES = ['Criminal Complaint','FIR','Writ','482/528','Bail','ABA','Revision','Appeal','Civil Suit','WS','Execution','DV','125','138 NI','Arbitration','AFT','Consumer','RERA','Mutation','Opinion','Notice','Deed','Advisory/Consultation'];
 const STATUSES = ['Not filed', 'Filed – under objection', 'Pending', 'Admitted', 'Part-heard', 'Reserved', 'Proceedings stayed', 'Adjourned sine die', 'Decided', 'Abated', 'Withdrawn', 'Dismissed in default', 'Infructuous', 'Returned', 'Transferred', 'Consigned to record', 'Dropped / Closed'];
 const OPEN_STATUSES = ['Not filed', 'Filed – under objection', 'Pending', 'Admitted', 'Part-heard', 'Reserved', 'Proceedings stayed', 'Adjourned sine die'];
 const OUTCOMES = ['In our favour', 'Against us', 'Partly in our favour', 'Disposed of with directions', 'Compromise / settled', 'Remanded'];

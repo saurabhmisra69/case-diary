@@ -69,7 +69,7 @@ async function uploadFile(parentId, file, name, onProgress) {
 
 /* ---------- naming: quick-identification rule (approved 20.10.2026) ----------
    Who it is against or about · type · case no. · (diary no.)  e.g. "Baghel 482 – 2787-2024 (2024-001)" */
-const TYPE_SHORT = { '138 NI': 'NI', 'Complaint': 'Complaint', 'Writ': 'Writ', 'Revision': 'Revision', 'Appeal': 'Appeal', 'Suit': 'Suit', 'Bail': 'Bail', 'ABA': 'ABA', 'DV': 'DV', '125': '125', 'Execution': 'Execution', 'Arbitration': 'Award', 'Mutation': 'Mutation', 'Opinion': 'Opinion', 'Notice': 'Notice', 'Deed': 'Deed' };
+const TYPE_SHORT = { '138 NI': 'NI', 'Complaint': 'Complaint', 'Criminal Complaint': 'Complaint', '482/528': '482', 'Civil Suit': 'Suit', 'Advisory/Consultation': 'Advisory', 'Writ': 'Writ', 'Revision': 'Revision', 'Appeal': 'Appeal', 'Suit': 'Suit', 'Bail': 'Bail', 'ABA': 'ABA', 'DV': 'DV', '125': '125', 'Execution': 'Execution', 'Arbitration': 'Award', 'Mutation': 'Mutation', 'Opinion': 'Opinion', 'Notice': 'Notice', 'Deed': 'Deed' };
 const NOISE = /^(m\/s|shri|smt\.?|sri|dr\.?|mr\.?|mrs\.?|ms\.?|the|km\.?)$/i;
 function keyWord(party) {
   const w = String(party || '').replace(/&.*$/, '').replace(/\(.*?\)/g, '').split(/[\s,.]+/).filter(x => x && !NOISE.test(x));
@@ -665,6 +665,11 @@ function runOneTimeFixes() {
       if (j) { j.name = 'Izhar Ahmad (Chand), Advocate'; j.u = Date.now(); for (const m of d.matters || []) (m.tasks || []).forEach(t => { if (t.who === j.id) t.whoName = j.name; }); }
       d.fixes = [...(d.fixes || []), '2026-10-24-izhar-chand']; });
   }
+  if (!done.includes('2026-10-29-type-names')) {
+    const REN = { 'Complaint': 'Criminal Complaint', 'Suit': 'Civil Suit', '482': '482/528' };
+    change(d => { for (const m of d.matters || []) if (REN[m.type]) { m.type = REN[m.type]; m.u = Date.now(); }
+      d.fixes = [...(d.fixes || []), '2026-10-29-type-names']; });
+  }
   for (const fx of ONE_TIME_FIXES) {
     if (done.includes(fx.id)) continue;
     let hits = live().filter(fx.find);
@@ -682,7 +687,7 @@ function sheetToCase(m) {
     <form id="tc_form">
     <div class="field"><label for="tc_forum">FORUM</label><select class="in" id="tc_forum" name="forum">${fo.map(([k, x]) => `<option value="${k}" ${k === 'District' ? 'selected' : ''}>${x.label}</option>`).join('')}</select></div>
     <div class="field"><label for="tc_court">HON'BLE COURT</label><input class="in" id="tc_court" name="court" placeholder="e.g. CJM, Lucknow / High Court, Lucknow Bench"></div>
-    <div class="two"><div class="field"><label for="tc_type">TYPE</label><input class="in" id="tc_type" name="type" list="tc_types" placeholder="e.g. Complaint, Suit, 138 NI"><datalist id="tc_types">${TYPES.map(t => `<option>${esc(t)}</option>`).join('')}</datalist></div>
+    <div class="two"><div class="field"><label for="tc_type">TYPE</label><input class="in" id="tc_type" name="type" list="tc_types" placeholder="e.g. Criminal Complaint, Civil Suit, 138 NI"><datalist id="tc_types">${TYPES.map(t => `<option>${esc(t)}</option>`).join('')}</datalist></div>
     <div class="field"><label for="tc_no">CASE NO.</label><input class="in" id="tc_no" name="caseNo" placeholder="blank if not yet filed"></div></div>
     <div class="two"><div class="field"><label for="tc_side">APPEARING FOR</label><input class="in" id="tc_side" name="side" value="${esc(m.side || '')}" placeholder="e.g. Complainant"></div>
     <div class="field"><label for="tc_next">NEXT DATE</label><input class="in" id="tc_next" name="nextDate" type="date"></div></div>

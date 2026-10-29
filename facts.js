@@ -56,9 +56,9 @@ function guessNature(m) {
   const hay = [m.type, m.title, m.court, m.sections, m.caseNo, m.notes, m.purpose].filter(Boolean).join(' ');
   if (m.forum === 'Consumer' || m.type === 'Consumer' || /consumer|\bCDRC\b|\bNCDRC\b|District Commission/i.test(hay)) return 'Consumer';
   if (['125', 'DV'].includes(m.type) || /hindu marriage|\bHMA\b|divorce|matrimon|domestic violence|\bDV\b|\bD\.V\.|maintenance|family court|restitution|custody|guardian|\b(125|144)\s*(cr\.?p\.?c|bnss)|(u\/s|section|sec\.?)\s*(125|144)\b|\b498\s*-?\s*a\b|dowry/i.test(hay)) return 'Matrimonial';
-  if (m.crimeNo || m.ps || ['Complaint', 'FIR', '482', 'Bail', 'ABA', '138 NI'].includes(m.type) ||
+  if (m.crimeNo || m.ps || ['Complaint', 'Criminal Complaint', 'FIR', '482', '482/528', 'Bail', 'ABA', '138 NI'].includes(m.type) ||
     /\bIPC\b|\bBNS\b|\bBNSS\b|cr\.?p\.?c|\bNI Act\b|\b138\b|bail|\b482\b|\b528\b|\bFIR\b|criminal|crl|complaint case|\bA?CJM\b|sessions|magistrate|police|charge ?sheet|discharge|\bPFA\b|quash/i.test(hay)) return 'Criminal';
-  if (['Suit', 'WS', 'Execution', 'Arbitration', 'RERA', 'Mutation', 'Deed', 'Appeal', 'Writ'].includes(m.type) ||
+  if (['Suit', 'Civil Suit', 'WS', 'Execution', 'Arbitration', 'RERA', 'Mutation', 'Deed', 'Appeal', 'Writ'].includes(m.type) ||
     /\bsuit\b|civil|\bCPC\b|\bO\.?S\.?\b|writ|\bWP\b|\bRERA\b|arbitra|execution|lease|mutation|deed|property|partition|injunction|recovery|tenan|rent|revenue|tehsil|\bSDM\b|\bADM\b|tribunal|\bAFT\b|pension|service/i.test(hay)) return 'Civil';
   return '';
 }
