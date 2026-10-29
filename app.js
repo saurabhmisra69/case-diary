@@ -431,7 +431,7 @@ function viewHome() {
       <div class="who"><span class="mark"><img src="icons/icon-512.png" alt="" style="display:block;width:100%;height:100%"></span><div><small>${DOWL[now.getDay()]}, ${now.getDate()} ${MONL[now.getMonth()]}</small><b>${esc(greeting())}${S.name ? ', ' + esc(S.name) : ''}</b></div></div>
       <button id="syncbtn" class="sync" data-act="sync"></button>
     </div>
-    <div style="display:flex;gap:8px;align-items:stretch"><label class="search" style="flex:1">${I.search}<input type="search" placeholder="Case no., FIR, party, client" data-act="q" value="${esc(S.q)}" enterkeyhint="search"></label><button class="micbtn" data-act="voice" aria-label="Speak a next date">${I.mic}</button></div>
+    <div style="display:flex;gap:8px;align-items:stretch"><label class="search" style="flex:1">${I.search}<input type="search" placeholder="Case no., FIR, party, client" data-act="q" value="${esc(S.q)}" enterkeyhint="search"></label><button class="micbtn" data-act="dictate" aria-label="Speak and apply (English or Hindi)">${I.mic}</button></div>
     <div class="week">${week}</div>
   </header>
   <main class="home-main">

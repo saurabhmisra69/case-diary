@@ -467,3 +467,20 @@ html.welcoming,html.welcoming body{overflow:hidden}
 .fx-unl{color:var(--red);font-weight:800;letter-spacing:.02em}
 .fx-edit{margin-left:6px;border:1px solid var(--line);background:var(--bg);color:var(--ink-2);font:600 11.5px var(--sans,inherit);padding:2px 8px;border-radius:5px;cursor:pointer;vertical-align:1px}
 .ns-fix{margin-left:auto;align-self:center;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.12);color:#fff;font-weight:700;font-size:12.5px;padding:5px 10px;border-radius:6px;cursor:pointer}
+
+/* ===== Speak & Apply ===== */
+.dc-m{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;background:var(--hc-soft);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.dc-m div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dc-m small{font-family:var(--mono);font-size:11.5px;color:var(--muted);font-weight:700}
+.dc-m b{font-size:15px;font-weight:800;color:var(--ink)}
+.dc-m span{font-size:12.5px;color:var(--ink-2);font-weight:600}
+.dc-none{flex-direction:column;background:var(--saffron-soft)}
+.dc-bar{display:grid;grid-template-columns:1.3fr 1.2fr .8fr;gap:8px}
+.dc-bar .act{min-height:46px}
+.dc-rec{background:var(--red)!important;color:#fff!important;animation:dcPulse 1.4s ease-in-out infinite}
+@keyframes dcPulse{50%{opacity:.7}}
+.dc-mid{display:block;color:var(--muted);font-style:italic;margin-top:4px}
+.dc-chk{display:flex;gap:8px;align-items:center;font-size:14px;margin:0 0 10px}
+.dc-chk input{width:20px;height:20px}
+.dc-fee{display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:8px}
+.dc-done .lbl:first-child{color:var(--dc)}
