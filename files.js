@@ -670,6 +670,25 @@ function runOneTimeFixes() {
       if (j) { j.name = 'Izhar Ahmad (Chand), Advocate'; j.u = Date.now(); for (const m of d.matters || []) (m.tasks || []).forEach(t => { if (t.who === j.id) t.whoName = j.name; }); }
       d.fixes = [...(d.fixes || []), '2026-10-24-izhar-chand']; });
   }
+  if (!done.includes('2026-10-29-vipin-baliyan-code')) {
+    /* R K Firm / Arcade Farm matters: the client is Vipin Kumar Baliyan — one client, one code (his existing code if he has one) */
+    const NAME = 'Vipin Kumar Baliyan';
+    const hit = m => /\bR\.?\s*K\.?\s*firm|arcade\s*farm|baliyan/i.test([m.title, m.clients, m.pet, m.opp, m.notes, m.folderName].join(' ')) || /\bvipin\b/i.test(m.clients || '') || /^9303\/2026$|^862\/2025$/.test(caseKeyOf(m.caseNo) || '') && /vipin|sharma|mohit|basheshwar|kotwali|muzaffar/i.test([m.title, m.clients, m.pet, m.opp, m.ps, m.district, m.court].join(' '));
+    const ms = live().filter(hit);
+    let code = '';
+    if (ms.length) {
+      const inLetters = ms.flatMap(m => (m.letters || []).map(l => (String(l.no).match(/\/(C\d{3,4}-[A-Z0-9]+)\//) || [])[1])).filter(Boolean);
+      const codes = [...new Set(ms.map(m => m.clientCode).filter(Boolean))].sort((a, b) => ccNum(a) - ccNum(b));
+      code = inLetters[0] || codes.find(c => /^C\d{3,4}-/.test(c)) || codes[0] || ccFmt(ccNext(), 'VKB');
+    }
+    change(d => { for (const m of ms) {
+        if (m.clients !== NAME) { logChange(m, 'Client: ' + (m.clients || '—') + ' → ' + NAME + ' (R K Firm / Arcade Farm)'); m.clients = NAME; }
+        if (m.clientCode !== code) { logChange(m, 'Client code: ' + (m.clientCode || '—') + ' → ' + code); m.clientCode = code; }
+        touch(m); }
+      d.fixes = [...(d.fixes || []), '2026-10-29-vipin-baliyan-code']; });
+    if (ms.length) toast('Vipin Kumar Baliyan: client code ' + code + ' set on ' + ms.length + ' matter' + (ms.length > 1 ? 's' : '') + ' (' + ms.map(m => mrefBase(m)).join(', ') + ')', 9000);
+    else toast('No R K Firm / Arcade Farm matter found to set Vipin Kumar Baliyan\'s client code', 7000);
+  }
   if (!done.includes('2026-10-29-type-names')) {
     const REN = { 'Complaint': 'Criminal Complaint', 'Suit': 'Civil Suit', '482': '482/528' };
     change(d => { for (const m of d.matters || []) if (REN[m.type]) { m.type = REN[m.type]; m.u = Date.now(); }
