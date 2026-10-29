@@ -27,7 +27,7 @@
       <p class="wc-special">Specially designed, developed and customised<br>for <b>Saurabh Misra, Advocate</b></p>
       <p class="wc-court"><span>High Court of Judicature at Allahabad</span><i class="wc-sep"> · </i><span>Lucknow Bench</span></p>
       <p class="wc-by">by <b>Harsh Mishra</b> <span>(Senior Software Engineer)</span></p>
-      <p class="wc-about">SM Chambers is now <em>32 program modules</em>, about <em>8,200 dense lines</em> (roughly 30,000–35,000 lines of ordinary code), refined over <em><span id="wc-rel">${rel}</span> releases</em>. It covers matters and stages, client engagement forms with Standard and Strategic plans, fees and date fees, bills and receipts with TDS, fee-plan and consultation posters, Word documents in English and Hindi, OneDrive and Outlook integration, Supreme Today, Bare Acts, juniors, conflict checks, backups and an app lock.</p>
+      <p class="wc-about">SM Chambers is <em>32 program modules</em>, about <em>8,200 dense lines</em> (roughly 30,000–35,000 lines of ordinary code), refined over <em><span id="wc-rel">${rel}</span> releases</em>. It covers matters and stages, client engagement forms with Standard and Strategic plans, fees and date fees, bills and receipts with TDS, fee-plan and consultation posters, Word documents in English and Hindi, OneDrive and Outlook integration, Supreme Today, Bare Acts, juniors, conflict checks, backups and an app lock.</p>
       <p class="wc-tap"><span class="wc-pc">Click anywhere to enter</span><span class="wc-ph">Tap anywhere to enter</span></p>
     </div>
   </div>`;
