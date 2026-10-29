@@ -439,6 +439,7 @@ function viewHome() {
     ${typeof limitsToday === 'function' ? limitsToday() : ''}
     ${typeof tasksToday === 'function' ? tasksToday() : ''}
     ${typeof pipelineToday === 'function' ? pipelineToday() : ''}
+    ${typeof hcListButton === 'function' ? hcListButton() : ''}
     ${briefHtml(list, deadlines, fees)}
     ${(() => { const rr = live().flatMap(m => retainerDue(m).map(x => ({ m, ...x }))); return rr.length ? `<section class="list"><div class="h2"><h2>Retainers</h2></div>${rr.map(x => `<button class="card row" data-act="open" data-id="${x.m.id}"><div class="item sm" style="background:var(--adv)"><small>${x.kind === 'bill' ? 'BILL' : 'TERM'}</small><b>${dmy(x.date).slice(0, 5)}</b></div><span class="m-col"><span class="m-title">${esc(x.m.title || x.m.clients)}</span><span class="m-meta">${esc(x.text)}</span></span></button>`).join('')}</section>` : ''; })()}
     <section class="list a-list">
@@ -598,10 +599,10 @@ function sheetDetail(m) {
     <div class="grp"><span class="lbl">Hearing history</span>${hist.length ? `<div class="hist">${hist.map(h => `<div><b>${dmy(h.date)}</b><span><b style="font-family:inherit">${esc(h.happened)}</b>${h.next ? ' → ' + dmy(h.next) : ''}${h.purpose ? ' · ' + esc(h.purpose) : ''}${h.note ? '<br><span style="color:var(--muted)">' + esc(h.note) + '</span>' : ''}</span></div>`).join('')}</div>` : '<span style="color:var(--muted);font-size:14px">No hearings recorded yet.</span>'}</div>`);
 }
 
-function sheetEdit(m) {
+function sheetEdit(m, pre) {
   const isNew = !m;
   const y = new Date().getFullYear();
-  m = m || { year: y, forum: 'HC', status: 'Pending', nature: 'Criminal' };
+  m = m || Object.assign({ year: y, forum: 'HC', status: 'Pending', nature: 'Criminal' }, pre || {});
   const opt = (arr, v) => (v && !arr.includes(v) ? `<option selected>${esc(v)}</option>` : '') + arr.map(x => `<option ${x === v ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const fopt = Object.entries(FORUMS).map(([k, f]) => `<option value="${k}" ${k === m.forum ? 'selected' : ''}>${f.label}</option>`).join('');
   const fld = (id, label, val, type = 'text', extra = '') => `<div class="field"><label for="f_${id}">${label}</label><input class="in" id="f_${id}" name="${id}" type="${type}" value="${esc(val || '')}" ${extra}></div>`;
@@ -698,6 +699,7 @@ function sheetEdit(m) {
       if (asConsult && typeof openMatter === 'function') openMatter(rec.id);
       if (newJunior && typeof sheetNewJunior === 'function') setTimeout(() => sheetNewJunior(find(rec.id)), 300);
       if (ccPick === '@new' && clientKey(rec.clients) && typeof askCode === 'function') setTimeout(() => askCode(find(rec.id)), 300);
+      { const nx = window.__afterSave; window.__afterSave = null; if (nx) { if (newJunior || (ccPick === '@new' && clientKey(rec.clients))) toast('Add the other new listed cases from the screenshot again'); else setTimeout(nx, 400); } }
     } else {
       const old = find(m.id); const before = { caseNo: old.caseNo, type: old.type, court: old.court };
       change(() => {
