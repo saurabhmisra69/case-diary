@@ -111,11 +111,11 @@ const TEMPLATES = {
       return [
         ["In The Hon'ble High Court of Judicature At Allahabad, LUCKNOW BENCH, LUCKNOW", 'c'],
         ['M E N T I O N I N G   S L I P', 'cb'],
-        ['Court No.:\t' + (f.courtNo || '______') + '\t\tDate:\t' + dmy(todayIso()), 'p'],
+        ['Court No.:\t' + (f.courtNo || '______') + '\t\tDate:\t____________', 'p'],
         ['Case No.:\t' + ((m.type ? m.type + ' ' : '') + (m.caseNo || '__________')), 'p'],
         ['Parties:\t' + pt.first + (pt.second ? ' v. ' + pt.second : ''), 'p'],
         ...(m.crimeNo ? [['Crime No.:\t' + m.crimeNo + (m.sections ? ', u/s ' + m.sections : '') + (m.ps ? ', P.S. ' + m.ps : ''), 'p']] : []),
-        ['Counsel:\t' + ADV.name + ', Advocate (' + ADV.aor + ') · Mobile ' + ADV.phone.split(',')[0] + ' · for the ' + ourRole(m), 'p'],
+        ['Counsel:\t______________________, Advocate · Mobile ______________ · for the ' + ourRole(m), 'p'],
         ['Last listed / next date:\t' + (m.lastDate ? dmy(m.lastDate) : '______') + ' / ' + (m.nextDate ? dmy(m.nextDate) : '______'), 'p'],
         ['Mentioned for:\t' + (f.forWhat || 'urgent listing'), 'p'],
         ['Urgency:\t' + (f.why || '____________________________________________'), 'p'],
@@ -177,12 +177,12 @@ async function makeDraft(m, key, lang, f) {
   const rows0 = (hi ? T.hi_body : T.en_body)(m, f).filter(([t]) => !/^\(supported by affidavit\)$|^\(शपथ पत्र द्वारा समर्थित\)$/i.test(t));
   if (!T.own && /^(full|short|yes)$/.test(f.withAff || '')) rows0.push([hi ? '(शपथ पत्र द्वारा समर्थित)' : '(Supported by affidavit)', 'c']);
   const body = rows0.flatMap(([t, s]) => s === 'cb' ? P(t, { align: C, bold: true, u: true, after: 120 }) : s === 'c' ? P(t, { align: C, bold: true, after: 160 }) : P(t, T.own ? { align: D.AlignmentType.LEFT, indent: { left: 2160, hanging: 2160 } } : { indent: /^\d/.test(t) ? { left: 720, hanging: 720 } : undefined }));
-  const today = dmy(todayIso());
+  const today = '____________';
   const sig = [
-    new D.Paragraph({ spacing: { before: 360 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 8640 }], children: [new D.TextRun({ text: (hi ? 'लखनऊ' : 'Lucknow') + '\t(' + (hi ? HI_ADV : ADV.name) + ')', size: SZ, font: FONT, bold: true })] }),
+    new D.Paragraph({ spacing: { before: 360 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 8640 }], children: [new D.TextRun({ text: (hi ? 'लखनऊ' : 'Lucknow') + '\t(______________________)', size: SZ, font: FONT, bold: true })] }),
     new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 8640 }], children: [new D.TextRun({ text: (hi ? 'दिनांक: ' : 'Dated: ') + today + '\t' + (hi ? 'अधिवक्ता' : 'Advocate'), size: SZ, font: FONT })] }),
     new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 8640 }], children: [new D.TextRun({ text: '\t' + (hi ? role + ' के अधिवक्ता' : 'Counsel for the ' + role), size: SZ, font: FONT })] }),
-    new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 8640 }], children: [new D.TextRun({ text: '\t' + (hi ? 'पंजीकरण सं. ' : 'Enrolment No. ') + ADV.enrol, size: 22, font: FONT })] }),
+    new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 8640 }], children: [new D.TextRun({ text: '\t' + (hi ? 'पंजीकरण सं. ' : 'Enrolment No. ') + '______________', size: 22, font: FONT })] }),
   ];
   // affidavit in support: added on its own pages whenever the application needs one
   const aff = [];
@@ -226,7 +226,7 @@ async function makeDraft(m, key, lang, f) {
     aff.push(...P(hi ? 'हस्ताक्षरित एवं सत्यापित दिनांक ____________ को लखनऊ में।' : 'Signed and verified this ____ day of ______________, ' + new Date().getFullYear() + ' at Lucknow.'));
     aff.push(new D.Paragraph({ spacing: { before: 240, after: 240 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 8640 }], children: [new D.TextRun({ text: '\t' + (hi ? 'शपथकर्ता' : 'Deponent'), bold: true, size: SZ, font: FONT })] }));
     aff.push(...P(hi ? 'मैं शपथकर्ता को पहचानता हूँ जिसने मेरे समक्ष हस्ताक्षर किए हैं।' : 'I identify the deponent who has signed before me.'));
-    aff.push(new D.Paragraph({ spacing: { before: 240 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 8640 }], children: [new D.TextRun({ text: '\t(' + (hi ? HI_ADV : ADV.name) + ')', bold: true, size: SZ, font: FONT })] }));
+    aff.push(new D.Paragraph({ spacing: { before: 240 }, tabStops: [{ type: D.TabStopType.RIGHT, position: 8640 }], children: [new D.TextRun({ text: '\t(______________________)', bold: true, size: SZ, font: FONT })] }));
     aff.push(new D.Paragraph({ tabStops: [{ type: D.TabStopType.RIGHT, position: 8640 }], children: [new D.TextRun({ text: '\t' + (hi ? 'अधिवक्ता' : 'Advocate'), size: SZ, font: FONT })] }));
   }
   // documents attached as annexures follow the application, each from a new page
@@ -261,8 +261,8 @@ function formatValues(m) {
   const pt = parties(m);
   return { COURT: courtLine(m, false), CASE: ((m.type ? m.type + ' ' : '') + (m.caseNo || '')).trim(), CASE_NO: m.caseNo || '', TYPE: m.type || '',
     FIRST_PARTY: pt.first, SECOND_PARTY: pt.second, CLIENT: m.clients || '', SIDE: ourRole(m), CRIME_NO: m.crimeNo || '', SECTIONS: m.sections || '', PS: m.ps || '',
-    NEXT_DATE: m.nextDate ? dmy(m.nextDate) : '', LAST_DATE: m.lastDate ? dmy(m.lastDate) : '', ITEM: m.item || '', DATE: dmy(todayIso()),
-    ADVOCATE: ADV.name, ENROLMENT: ADV.enrol, MOBILE: ADV.phone.split(',')[0] };
+    NEXT_DATE: m.nextDate ? dmy(m.nextDate) : '', LAST_DATE: m.lastDate ? dmy(m.lastDate) : '', ITEM: m.item || '', DATE: '____________',
+    ADVOCATE: '______________________', ENROLMENT: '______________', MOBILE: ADV.phone.split(',')[0] };
 }
 let jszipLoading = null;
 function loadJSZip() {
