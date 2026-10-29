@@ -145,6 +145,7 @@ async function sheetDiaryUpdate(files) {
     const bits = [];
     if (c.hearing) bits.push((c.hearing.date ? dmy(c.hearing.date) + ': ' : '') + (c.hearing.happened || '') + (c.hearing.next ? ' → ' + dmy(c.hearing.next) : '') + (c.hearing.purpose ? ' (' + c.hearing.purpose + ')' : ''));
     if (c.history) bits.push(c.history.length + ' past hearing' + (c.history.length > 1 ? 's' : ''));
+    if (c.details) bits.push('details from papers: ' + [...Object.keys(c.details.matter || {}).map(k => (typeof DT_MATTER !== 'undefined' && DT_MATTER[k]) || k), ...(c.details.clients || []).map(x => 'client ' + x.name)].join(', ') + ' (blanks filled, differences to check)');
     if (c.set) bits.push(Object.entries(c.set).filter(([k]) => k !== 'calPending').map(([k, v]) => k === 'nextDate' ? 'next ' + dmy(v) : k + ': ' + v).join(', '));
     return `<div><b>${esc(m ? m.no : (c.no || ''))}</b><span>${m ? esc(m.title || m.clients) : '<span style="color:var(--red)">matter not found, will be skipped</span>'}<br><small>${esc(bits.join(' · '))}</small></span></div>`;
   };
