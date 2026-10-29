@@ -56,8 +56,9 @@ function factsBlock(m, full) {
     <dl>
       <dt>Hon'ble Court &amp; no.</dt><dd>${v(courtFull(m))}</dd>
       <dt>Nature</dt><dd>${m.nature && m.nature !== 'Other' ? `<span class="fx-nat fx-${m.nature.toLowerCase()}">${esc(m.nature)}</span>` : v(m.nature === 'Other' ? 'Other' : '')}</dd>
+      ${isCrimMatter(m) ? `<dt>Crime / FIR no.</dt><dd>${v(m.crimeNo)}</dd>
       <dt>U/S</dt><dd>${v(m.sections)}</dd>
-      <dt>Police station</dt><dd>${v(m.ps)}</dd>
+      <dt>Police station</dt><dd>${v(m.ps)}</dd>` : ''}
       ${m.district || m.forum === 'HC' ? `<dt>District</dt><dd>${v(m.district)}</dd>` : ''}
       <dt>Previous dates</dt><dd>${prevHtml}</dd>
       <dt>Next date</dt><dd class="fx-next">${nd ? esc(nd) : isUnlisted(m) ? '<span class="fx-unl">UNLISTED – find the date</span>' : blank}${isOpen(m) && m.forum !== 'Advisory' ? ` <button class="fx-edit" data-act="fixdate" data-id="${m.id}">${nd ? 'Correct' : 'Enter'}</button>` : ''}</dd>
@@ -67,6 +68,7 @@ function factsBlock(m, full) {
 }
 
 /* ---------- sorting "Other" matters ---------- */
+const isCrimMatter = m => (m.nature || guessNature(m)) === 'Criminal';
 function guessNature(m) {
   const hay = [m.type, m.title, m.court, m.sections, m.caseNo, m.notes, m.purpose].filter(Boolean).join(' ');
   if (m.forum === 'Consumer' || m.type === 'Consumer' || /consumer|\bCDRC\b|\bNCDRC\b|District Commission/i.test(hay)) return 'Consumer';
