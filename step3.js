@@ -103,7 +103,7 @@ VIEWS.clients = function () {
       const due = gr.ms.reduce((s, m) => s + feeDue(m), 0);
       const init = gr.name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
       return head + `<button class="card row" data-act="client" data-k="${esc(gr.key)}"><span class="avatar">${esc(init || '?')}</span>
-        <span class="m-col"><span class="m-title">${esc(gr.name)}</span>${gr.aka.length ? `<span class="m-meta">also ${esc(gr.aka.join(', '))}</span>` : ''}<span class="m-meta">${!gr.ms.length ? 'New client · no matter yet · ' : ''}${pend.length} pending · ${gr.ms.length - pend.length} closed${next ? ' · next ' + dmy(next) : ''}</span></span>
+        <span class="m-col"><span class="m-title">${esc(gr.name)}</span>${clientDesc(gr.name) ? `<span class="m-meta">${esc(clientDesc(gr.name))}</span>` : ''}${gr.aka.length ? `<span class="m-meta">also ${esc(gr.aka.join(', '))}</span>` : ''}<span class="m-meta">${!gr.ms.length ? 'New client · no matter yet · ' : ''}${pend.length} pending · ${gr.ms.length - pend.length} closed${next ? ' · next ' + dmy(next) : ''}</span></span>
         <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:${due ? 'var(--saffron-ink)' : 'var(--muted)'}">${due ? rupees(due) : ''}</span></button>`;
     }).join('') : '<div class="card empty">No clients yet. They appear here as you add matters.</div>'}
   </div></main>`;
@@ -118,13 +118,31 @@ function clientInfo(name) {
   const out = { ...saved }; for (const f of CI_TO_MATTER) if (!out[f]) { const m = ms.find(x => x[f]); if (m) out[f] = m[f]; }
   return out;
 }
+/* Parentage and age, written after the name as in pleadings: "S/o Shri Ram Gupta, aged about 45 years". Not for firms and companies. */
+const REL_OPTS = [['S/o', 'Son of', 'पुत्र'], ['D/o', 'Daughter of', 'पुत्री'], ['W/o', 'Wife of', 'पत्नी']];
+const isFirm = s => /^\s*(m\/s|messrs)\b|\b(pvt|private|ltd|limited|llp|enterprises?|traders|industries|company|corporation|society|trust|association|rwa|bank|state of|union of india)\b/i.test(String(s || ''));
+function relLine(ci, hi) {
+  if (!ci) return ''; const r = REL_OPTS.find(x => x[0] === ci.rel), out = [];
+  if (r && ci.relName) out.push((hi ? r[2] : r[0]) + ' ' + (hi ? ci.relName.replace(/^(shri|sri|sh)\.?\s+/i, 'श्री ').replace(/^(smt)\.?\s+/i, 'श्रीमती ') : ci.relName));
+  if (num(ci.age)) out.push(hi ? 'आयु लगभग ' + num(ci.age) + ' वर्ष' : 'aged about ' + num(ci.age) + ' years');
+  return out.join(', ');
+}
+const clientDesc = (name, hi) => !name || isFirm(name) ? '' : relLine((S.data?.meta?.clientInfo || {})[clientKey(name)], hi);
+/* each named client in "A & B" or "A & Anr." with his parentage and age: "A, S/o …, aged about 45 years & B, W/o …" */
+const withDesc = (s, hi) => String(s || '').split(/\s*&\s*/).map(p => { const d = /^(anr|ors|others|another)\.?$/i.test(p.trim()) ? '' : clientDesc(p, hi); return d ? p.trim() + ', ' + d : p.trim(); }).filter(Boolean).join(' & ');
+/* the relation / age boxes for a client form (prefix nc or ce) */
+const relFields = (px, ci, firm) => `<div id="${px}_relbox" class="grp" style="gap:12px;margin:0${firm ? ';display:none' : ''}">
+      <div class="two"><div class="field"><label for="${px}_rel">Son / daughter / wife of</label><select class="in" id="${px}_rel" name="rel"><option value="">—</option>${REL_OPTS.map(([k, n]) => `<option value="${k}" ${ci.rel === k ? 'selected' : ''}>${k} (${n.toLowerCase()})</option>`).join('')}</select></div>
+      <div class="field"><label for="${px}_age">Age <small>(years)</small></label><input class="in" id="${px}_age" name="age" inputmode="numeric" maxlength="3" value="${esc(ci.age || '')}" placeholder="e.g. 45"></div></div>
+      <div class="field"><label for="${px}_relName">Father's / husband's name</label><input class="in" id="${px}_relName" name="relName" value="${esc(ci.relName || '')}" placeholder="e.g. Shri Ram Kumar Gupta"></div></div>`;
+const relToggle = (px, nameEl) => { const f = () => { $('#' + px + '_relbox').style.display = isFirm(nameEl.value) ? 'none' : ''; }; nameEl.addEventListener('input', f); };
 function sheetClient(k) {
   const gr = clientGroups().find(x => x.key === k); if (!gr) return;
   const due = gr.ms.reduce((s, m) => s + feeDue(m), 0), recd = gr.ms.reduce((s, m) => s + num(m.feeReceived), 0);
   const ci = clientInfo(gr.name), wa = phoneDigits(ci.whatsapp || ci.phone || gr.phone);
   const r = (l, v) => v ? `<span>${l}</span><b>${v}</b>` : '';
   openSheet(`<div class="s-head"><div><small style="color:var(--hc)">Client${gr.ms.find(m => m.clientCode) ? ' · ' + esc(gr.ms.find(m => m.clientCode).clientCode) : ''}</small><h1>${esc(gr.name)}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
-    <div class="kv">${r('Also known as', esc(gr.aka.join(', ')))}${r('Mobile', ci.phone ? `<a href="tel:${esc(ci.phone)}">${esc(ci.phone)}</a>` : '')}${r('WhatsApp', ci.whatsapp ? esc(ci.whatsapp) : '')}${r('Email', ci.email ? `<a href="mailto:${esc(ci.email)}">${esc(ci.email)}</a>` : '')}${r('Alternate' + (ci.altName ? ' (' + esc(ci.altName) + ')' : ''), ci.altPhone ? `<a href="tel:${esc(ci.altPhone)}">${esc(ci.altPhone)}</a>` : '')}${r('Address', esc(ci.address || '').replace(/\n/g, '<br>'))}${r('PAN / GSTIN', esc(ci.pan || ''))}${r('Notes', esc(ci.notes || ''))}<span>Matters</span><b>${gr.ms.length}</b><span>Fees received</span><b>${rupees(recd)}</b><span>Fees pending</span><b style="color:${due ? 'var(--saffron-ink)' : 'inherit'}">${rupees(due)}</b></div>
+    <div class="kv">${r('Also known as', esc(gr.aka.join(', ')))}${isFirm(gr.name) ? '' : r((REL_OPTS.find(x => x[0] === ci.rel) || [, 'Son / daughter / wife of'])[1], esc(ci.relName || '')) + r('Age', num(ci.age) ? 'about ' + num(ci.age) + ' years' : '')}${r('Mobile', ci.phone ? `<a href="tel:${esc(ci.phone)}">${esc(ci.phone)}</a>` : '')}${r('WhatsApp', ci.whatsapp ? esc(ci.whatsapp) : '')}${r('Email', ci.email ? `<a href="mailto:${esc(ci.email)}">${esc(ci.email)}</a>` : '')}${r('Alternate' + (ci.altName ? ' (' + esc(ci.altName) + ')' : ''), ci.altPhone ? `<a href="tel:${esc(ci.altPhone)}">${esc(ci.altPhone)}</a>` : '')}${r('Address', esc(ci.address || '').replace(/\n/g, '<br>'))}${r('PAN / GSTIN', esc(ci.pan || ''))}${r('Notes', esc(ci.notes || ''))}<span>Matters</span><b>${gr.ms.length}</b><span>Fees received</span><b>${rupees(recd)}</b><span>Fees pending</span><b style="color:${due ? 'var(--saffron-ink)' : 'inherit'}">${rupees(due)}</b></div>
     <div class="two" style="margin-top:8px"><button class="ghost" data-act="ciedit" data-k="${esc(gr.key)}" style="margin:0">Edit client details</button><button class="act primary" data-act="consult" data-k="${esc(gr.key)}" style="min-height:44px">${gr.ms.length ? '+ New consultation' : 'Start consultation'}</button></div>
     <div class="two" style="margin-top:10px">${wa ? `<a class="act wa" style="min-height:48px" href="https://wa.me/${wa}" target="_blank" rel="noopener">${I.wa}WhatsApp ${esc(gr.name.split(' ')[0])}</a>` : '<span></span>'}<button class="act blue" data-act="shareclient" data-k="${esc(gr.key)}" style="min-height:48px">Share…</button></div>
     <div class="chips" style="margin-top:8px"><button class="chip" data-act="shareclient" data-k="${esc(gr.key)}" data-w="update">Matter update</button><button class="chip" data-act="shareclient" data-k="${esc(gr.key)}" data-w="doc">Document</button>${due ? `<button class="chip" data-act="shareclient" data-k="${esc(gr.key)}" data-w="fee">Fee reminder</button>` : ''}<button class="chip" data-act="shareclient" data-k="${esc(gr.key)}" data-w="card">Contact card</button></div>
@@ -138,6 +156,7 @@ function sheetClientEdit(k) {
     <form id="ce_form" class="grp" style="gap:12px" autocomplete="off">
       <div class="field"><label for="ce_name">Client name</label><input class="in" id="ce_name" name="name" value="${esc(gr.name)}" required></div>
       <div class="field"><label for="ce_aka">Also known as <small>(one name per line)</small></label><textarea class="in" id="ce_aka" name="aka" rows="2" placeholder="e.g. Anuj Kumar Gupta">${esc(gr.aka.join('\n'))}</textarea></div>
+      ${relFields('ce', ci, isFirm(gr.name))}
       <div class="two">${f('phone', ...CI_FIELDS[0].slice(1))}${f('whatsapp', ...CI_FIELDS[1].slice(1))}</div>
       ${f('email', ...CI_FIELDS[2].slice(1))}
       <div class="two">${f('altName', ...CI_FIELDS[3].slice(1))}${f('altPhone', ...CI_FIELDS[4].slice(1))}</div>
@@ -146,6 +165,7 @@ function sheetClientEdit(k) {
       <div class="field"><label for="ce_notes">Notes about the client</label><textarea class="in" id="ce_notes" name="notes" rows="2" placeholder="e.g. refers clients; prefers calls after 7 pm">${esc(ci.notes || '')}</textarea></div>
       <div class="toggles"><label><span>Put this mobile, WhatsApp and email on all ${gr.ms.length} of the client's matters <small>(off = only where blank)</small></span><input type="checkbox" id="ce_all" checked></label></div>
       <button class="save" type="submit">Save</button><button type="button" class="linkbtn" data-ce="back">‹ Back</button></form>`);
+  relToggle('ce', $('#ce_name'));
   $('#sheet-root').onclick = e => { if (e.target.closest('[data-ce]')) sheetClient(k); };
   $('#ce_form').onsubmit = e => { e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries()); for (const x in fd) fd[x] = String(fd[x]).trim();
@@ -164,6 +184,7 @@ function sheetClientEdit(k) {
       if (d.meta.clientList && d.meta.clientList[newKey]) d.meta.clientList[newKey] = Object.assign({}, d.meta.clientList[newKey], { name: newName });
       setAliases(d, newName, aka.filter(a => baseKey(a) !== baseKey(newName)));
       const info = {}; for (const [id] of CI_FIELDS) if (fd[id]) info[id] = fd[id]; if (fd.address) info.address = fd.address; if (fd.notes) info.notes = fd.notes;
+      if (!isFirm(newName)) for (const id of ['rel', 'relName', 'age']) if (fd[id]) info[id] = id === 'age' ? String(num(fd[id]) || '') : fd[id];
       d.meta.clientInfo = Object.assign({}, d.meta.clientInfo, { [newKey]: info });
       live().filter(m => clientKey(m.clients) === newKey).forEach(m => { let ch = false;
         for (const id of CI_TO_MATTER) { const v = fd[id] || ''; if ((all ? v && m[id] !== v : v && !m[id])) { logChange(m, (FIELD_NAMES[id] || id) + ': ' + (m[id] || '—') + ' → ' + v); m[id] = v; ch = true; } }

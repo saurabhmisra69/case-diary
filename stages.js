@@ -101,6 +101,7 @@ function sheetNewClient() {
       <div class="field"><label for="nc_name">Client name</label><input class="in" id="nc_name" required placeholder="e.g. Anuj Gupta, or M/s Maa Gayatri Enterprises"></div>
       <p class="hint" id="nc_same" style="margin:0;color:var(--saffron-ink)"></p>
       <div class="field"><label for="nc_aka">Also known as <small>(one per line)</small></label><textarea class="in" id="nc_aka" rows="2"></textarea></div>
+      ${relFields('nc', {}, false)}
       <div class="two"><div class="field"><label for="nc_phone">Mobile</label><input class="in" id="nc_phone" type="tel"></div><div class="field"><label for="nc_whatsapp">WhatsApp no.</label><input class="in" id="nc_whatsapp" type="tel" placeholder="blank = same as mobile"></div></div>
       <div class="field"><label for="nc_email">Email</label><input class="in" id="nc_email" type="email"></div>
       <div class="two"><div class="field"><label for="nc_altName">Alternate contact – name</label><input class="in" id="nc_altName"></div><div class="field"><label for="nc_altPhone">Alternate mobile</label><input class="in" id="nc_altPhone" type="tel"></div></div>
@@ -109,7 +110,7 @@ function sheetNewClient() {
       <div class="field"><label for="nc_notes">Referred by / notes</label><textarea class="in" id="nc_notes" rows="2"></textarea></div>
       <div class="field"><label for="nc_about">What he has come for <small>(for the consultation)</small></label><input class="in" id="nc_about" placeholder="e.g. FIR lodged against him; wants anticipatory bail"></div>
       <button class="save" type="submit">Save and start consultation</button><button type="button" class="ghost" data-nc="only">Save client only</button></form>`);
-  const nm = $('#nc_name');
+  const nm = $('#nc_name'); relToggle('nc', nm);
   nm.oninput = () => { const k = clientKey(nm.value), g = k && clientGroups().find(x => x.key === k); $('#nc_same').textContent = g ? 'Already a client: ' + g.name + ' (' + g.ms.length + ' matter' + (g.ms.length === 1 ? '' : 's') + '). Saving adds these details to him.' : ''; };
   const save = startConsult => {
     const name = nm.value.trim().replace(/\s+/g, ' '); if (!name) return toast('Enter the client’s name');
@@ -121,6 +122,7 @@ function sheetNewClient() {
       const aka = v('aka').split(/\n|;/).map(x => x.trim()).filter(Boolean); if (aka.length) setAliases(d, name, [...aliasesOf(name), ...aka]);
       const old = (d.meta.clientInfo || {})[clientKey(name)] || {}, info = { ...old };
       for (const f of ['phone', 'whatsapp', 'email', 'altName', 'altPhone', 'address', 'pan', 'notes']) if (v(f)) info[f] = v(f);
+      if (!isFirm(name)) for (const f of ['rel', 'relName', 'age']) if (v(f)) info[f] = f === 'age' ? String(num(v(f)) || '') : v(f);
       d.meta.clientInfo = Object.assign({}, d.meta.clientInfo, { [clientKey(name)]: info });
     });
     if (!startConsult) { window.__efNext = 0; toast('Client saved: ' + name); return sheetClient(clientKey(name)); }

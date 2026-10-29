@@ -67,7 +67,7 @@ function sheetLetters(m, form) {
     ${form ? '' : '<button class="act primary" data-lt="new" style="width:100%;margin-top:12px;min-height:46px">+ New letter / notice</button>'}
     ${form ? `<form id="lt_form" class="grp" style="gap:12px;margin-top:12px">
       <div class="two"><div class="field"><label for="lt_date">DATE</label><input class="in" type="date" id="lt_date" value="${d0}"></div><div class="field"><label for="lt_kind">KIND</label><select class="in" id="lt_kind">${['Letter', 'Legal notice', 'Reply to notice', 'Opinion', 'Advice'].map(k => `<option>${k}</option>`).join('')}</select></div></div>
-      <div class="field"><label for="lt_to">TO (NAME AND ADDRESS)</label><textarea class="in" id="lt_to" rows="3">${esc(m.clients || '')}</textarea></div>
+      <div class="field"><label for="lt_to">TO (NAME AND ADDRESS)</label><textarea class="in" id="lt_to" rows="3">${esc(withDesc(m.clients))}</textarea></div>
       <div class="field"><label for="lt_sub">SUBJECT</label><input class="in" id="lt_sub" required placeholder="e.g. Opinion on renewal of maintenance contract"></div>
       <div class="field"><label for="lt_body">TEXT (OPTIONAL — FOR A LETTER ON YOUR LETTERHEAD)</label><textarea class="in" id="lt_body" rows="6" placeholder="Leave blank to only take the number and note it in the register"></textarea></div>
       ${paperSwitch('letter')}

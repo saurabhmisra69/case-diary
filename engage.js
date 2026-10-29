@@ -257,7 +257,7 @@ function sheetEngage(m, rec) {
     scope: prev && prev.plan === 'OTHER' ? prev.scope : '', fee: prev ? prev.fee || '' : '', dateFee: prev ? prev.dateFee || '' : '' };
   if (prev && prev.paper) PAPER_NOW.engage = prev.paper; else delete PAPER_NOW.engage;
   const v0 = {
-    ef_client: prev ? prev.client : (m.clients || ''), ef_addr: prev ? prev.address : (ci.address || ''), ef_phone: prev ? prev.phone : [ci.phone || m.phone, ci.email || m.email].filter(Boolean).join(' / '),
+    ef_client: prev ? prev.client : withDesc(m.clients, st.lang === 'hi'), ef_addr: prev ? prev.address : (ci.address || ''), ef_phone: prev ? prev.phone : [ci.phone || m.phone, ci.email || m.email].filter(Boolean).join(' / '),
     ef_matter: prev ? prev.matter : (m.stage === 'consult' && / – consultation$/.test(m.title || '') ? '' : m.stage === 'consult' ? (m.notes || '') : [m.title, [m.type, m.caseNo].filter(Boolean).join(' ')].filter(Boolean).join(' — ')), ef_court: prev ? prev.court : (m.court || ''), ef_opp: prev ? prev.opp : oppGuess,
     ef_date: todayIso(), ef_out: prev ? prev.outFee || '' : '', ef_travel: prev ? prev.travel || '' : '', ef_stay: prev ? prev.stay || '' : '' };
   const keep = () => { const v = {}; document.querySelectorAll('#efform [id^="ef_"]').forEach(el => { v[el.id] = el.value; }); st.apply = $('#ef_apply')?.checked ?? st.apply; if (st.plan === 'OTHER') { st.scope = v.ef_scope ?? st.scope; st.fee = v.ef_fee ?? st.fee; st.dateFee = v.ef_dfee ?? st.dateFee; } return v; };
@@ -320,7 +320,7 @@ function sheetEngage(m, rec) {
     if (b.dataset.efx === 'std') { st.scope = efStdScope(st.lang === 'hi'); }
     if (b.dataset.efx === 'out') { st.out = b.checked; }
     if (b.dataset.efp) { const was = st.plan; st.plan = b.dataset.efp; if (st.plan === 'OTHER' && was !== 'OTHER' && !st.scope) st.scope = efStdScope(st.lang === 'hi'); }
-    if (b.dataset.efl) { const was = st.lang; st.lang = b.dataset.efl; if (st.plan === 'OTHER' && was !== st.lang && st.scope === efStdScope(was === 'hi')) st.scope = efStdScope(st.lang === 'hi'); }
+    if (b.dataset.efl) { const was = st.lang; st.lang = b.dataset.efl; if (was !== st.lang && v.ef_client === withDesc(m.clients, was === 'hi')) v.ef_client = withDesc(m.clients, st.lang === 'hi'); if (st.plan === 'OTHER' && was !== st.lang && st.scope === efStdScope(was === 'hi')) st.scope = efStdScope(st.lang === 'hi'); }
     Object.assign(v0, v); draw();
   };
 }
