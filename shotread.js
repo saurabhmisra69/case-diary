@@ -40,28 +40,58 @@ function srField(lines, re, stop) {
   return '';
 }
 /* the parties block of eCourts / High Court status: "1) Ram Kumar Advocate - X  2) ..." → "Ram Kumar & Anr." */
-function srParties(lines, re, stopRe) {
-  let i = lines.findIndex(l => re.test(l)); if (i < 0) return '';
-  const got = [];
-  let first = lines[i].replace(re, '');
-  for (let j = i; j < Math.min(lines.length, i + 8); j++) {
-    const l = j === i ? first : lines[j];
-    if (j > i && (stopRe.test(l) || /^\s*(acts?|under|fir|history|case|police|interim|orders?|category|subordinate|ia\b|connected|transfer|cnr|next|last|listing|court|stage|status|filing|registration|district|state\s*:|petitioner|respondent)/i.test(l))) break;
-    for (const bit of l.split(/\b\d\)\s*/)) {
-      const n = srClean(bit.replace(/\bAdvocate\s*[-:–].*$/i, '').replace(/\b(?:counsel|adv\.)\s*[-:–].*$/i, ''));
-      if (n && /[A-Za-zऀ-ॿ]{3}/.test(n) && !/^(and\s+advocate|advocate|name)$/i.test(n)) got.push(n);
-    }
+const SR_PET_H = /^\W{0,2}.?(?:etitioner|ppellant|pplicant|omplainant|laintiff|evisionist)s?\b(?:\s*(?:and|&)\s*advocates?(?:\(s\))?)?\s*(?:name)?\s*[:\-]?\s*/i;
+const SR_RES_H = /^\W{0,2}.?(?:espondent|pposite\s*part(?:y|ies)|ccused|efendant)s?\b(?:\s*(?:and|&)\s*advocates?(?:\(s\))?)?\s*(?:name)?\s*[:\-]?\s*/i;
+const SR_STOP_H = /^\W{0,2}(?:acts?\b|under\s*(?:act|section)|category|sub\s*category|crime\s*details|fir\s*details|ia\s*(?:status|details)|interim|orders?\b|history|listing|subordinate|connected|transfer|case\s*(?:status|details|history|type)|view\b|qr\s*code|lower\s*court|petitioner|respondent|district\b|police\s*station|cnr|next|first|filing|registration|court\s*(?:no|number)|stage)/i;
+/* the parties under a heading: "1) NAME", "2. NAME" (one per line, wrapped lines joined); advocate lines are left out */
+function srParties(lines, head) {
+  const i = lines.findIndex(l => head.test(l) && (l.replace(head, '').trim() === '' || !/advocate|counsel/i.test(l.slice(0, 40)) || /^\W{0,2}.?\w+\s*:\s*\S/.test(l)));
+  if (i < 0) return '';
+  const names = []; let cur = null, inAdv = false;
+  const push = () => { if (cur) { const n = srClean(cur.replace(/\(\s*[A-Z]{1,3}\s*\/\s*[A-Z0-9]*\d{3,}\s*\/?\s*\d{0,4}\s*\)?/g, '')); if (n && /[A-Za-z\u0900-\u097F]{3}/.test(n)) names.push(n); } cur = null; };
+  const rest = lines[i].replace(head, '').trim();
+  const body = (rest ? [rest] : []).concat(lines.slice(i + 1, i + 30));
+  for (const l of body) {
+    if (SR_STOP_H.test(l) || SR_PET_H.test(l) || SR_RES_H.test(l)) break;
+    if (/^\W{0,2}advocates?\b|^\W{0,2}counsel\b|^\W{0,2}adv\.\s*[-:]/i.test(l)) { push(); inAdv = true; continue; }
+    const m = l.match(/^\s*[\[(]?\s*[0-9Il|]{1,2}\s*[.)\]]\s*(.+)$/);
+    if (m) { push(); inAdv = false; cur = m[1]; continue; }
+    if (inAdv) continue;
+    if (cur === null) cur = l; else cur += ' ' + l;
   }
-  if (!got.length) return '';
-  const t = s => s.replace(/\bS\/O\b|\bD\/O\b|\bW\/O\b.*$/i, '').replace(/\s{2,}/g, ' ').trim();
-  let n0 = t(got[0]).replace(/\s+AND\s+ANOTHER\.?$/i, ' & Anr.').replace(/\s+AND\s+(?:OTHERS|ORS)\.?$/i, ' & Ors.');
-  if (/&\s*(Anr|Ors)\.$/.test(n0)) return n0;
-  return n0 + (got.length === 2 ? ' & Anr.' : got.length > 2 ? ' & Ors.' : '');
+  push();
+  const seen = new Set();
+  return names.map(n => n.replace(/\s+/g, ' ').trim()).filter(n => { const k = n.toLowerCase().replace(/[^a-z\u0900-\u097F]/g, ''); return k && !seen.has(k) && seen.add(k); }).join('\n');
+}
+/* "SUSHIL KUMAR SHARMA AND ANOTHER\nHAPPY SINGH" → "Sushil Kumar Sharma & Ors." for a title */
+function srShort(list) {
+  const L = String(list || '').split('\n').filter(Boolean); if (!L.length) return '';
+  let a = L[0].replace(/\s+AND\s+ANOTHER\.?$/i, ' & Anr.').replace(/\s+AND\s+(?:\d+\s+)?(?:OTHERS|ORS)\.?$/i, ' & Ors.').replace(/^STATE OF U\.?\s?P\.?/i, 'State of U.P.');
+  const more = /&\s*(Anr|Ors)\.$/.test(a) ? (L.length > 1 ? 2 : 0) : L.length - 1;
+  a = a.replace(/\s*&\s*(Anr|Ors)\.$/, '');
+  return a + (more === 1 && !/&/.test(L[0]) ? ' & Anr.' : more >= 1 || /AND\s+(ANOTHER|\d*\s*OTHERS)/i.test(L[0]) ? ' & Ors.' : '');
+}
+/* a block of labels followed by a block of ": value" lines (High Court site, Crime Details) → "label : value" */
+function srPairs(lines) {
+  const out = lines.slice();
+  for (let i = 0; i < out.length; i++) {
+    let a = i; while (a < out.length && !/:/.test(out[a]) && out[a].length < 30) a++;
+    const n = a - i; if (n < 2) continue;
+    let b = a; while (b < out.length && /^\s*:/.test(out[b])) b++;
+    if (b - a === n) { for (let k = 0; k < n; k++) out[i + k] = out[i + k] + ' ' + out[a + k]; out.splice(a, n); i += n - 1; }
+  }
+  return out;
 }
 /* "APPLICATION U/S 482 No. - 2787 of 2024", "CRLR 123/2024", "Crl. Case No. 1431/2008", "1234/2024" */
 function srCaseNo(s) {
   s = srDigits(s);
-  const m = s.match(/\b(\d{1,6})\s*(?:\/|of|-)\s*((?:19|20)\d{2})\b/i);
+  if (/^\W*\d{1,2}\s*[-\/.]\s*\d{1,2}\s*[-\/.]\s*(?:19|20)\d{2}\W*$/.test(s)) return '';
+  let m = null;
+  for (const x of s.matchAll(/\b(\d{1,6})\s*(?:\/|of|-)\s*((?:19|20)\d{2})\b/gi)) {
+    const before = s.slice(Math.max(0, x.index - 4), x.index);
+    if (+x[1] >= 1 && +x[1] <= 12 && /\b([0-2]?\d|3[01])\s*[-\/.]\s*$/.test(before)) continue;   // the month and year of a date
+    m = x; break;
+  }
   return m ? (+m[1]) + '/' + m[2] : '';
 }
 const SR_CNR = /\b([A-Z]{4}\s?\d{2}\s?\d{4,6}\s?\d{4})\b/;
@@ -108,17 +138,17 @@ const srPurposeIn = s => { const l = String(s || '').toLowerCase(); let best = '
 
 /* one case: eCourts case status, High Court case status, or an order */
 function srOne(text) {
-  const lines = text.split(/\n/).map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean), all = lines.join('\n');
+  const lines = srPairs(text.split(/\n/).map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean)), all = lines.join('\n');
   const r = { cnr: srCnr(all) };
   r.isOrder = /\border\s*sheet|\border\s*dated|\bheard\b|\bput\s*up\b|\blist\s*on\b|\bfixed\s*for\b|\bpresent\s*:|पेश\s*हो|नियत|वास्ते|आदेश/i.test(all) && !/case\s*status|case\s*details|registration\s*number/i.test(all);
   const ctype = srField(lines, /\bcase\s*type\s*[:\-]?/i, /\s{2,}|filing|registration/i);
-  const reg = srField(lines, /\bregistration\s*(?:number|no\.?)\s*[:\-]?/i, /registration\s*date|date/i);
-  const fil = srField(lines, /\bfiling\s*(?:number|no\.?)\s*[:\-]?/i, /filing\s*date|date/i);
+  const reg = srField(lines, /\bregistration(?!\s*date)\s*(?:number|no\.?)?\s*[:\-~=]*/i, /registration\s*date|\bdate\b/i);
+  const fil = srField(lines, /\bfiling(?!\s*date)\s*(?:number|no\.?)?\s*[:\-~=]*/i, /filing\s*date|\bdate\b/i);
   const hcNo = (all.match(/\b(?:APPLICATION|APPLN|CRIMINAL|CIVIL|WRIT|BAIL|CRL|CRLR|CRLA|CRLP|FIRST|SECOND|SPECIAL|MATTERS|MISC)[A-Z .()\/0-9-]{0,60}?\bNo\.?\s*[-–:]?\s*\d{1,6}\s*(?:of|\/)\s*(?:19|20)\d{2}\b/i) || [])[0] || '';
   const anyNo = (all.match(/(?<![A-Za-z])(?:case|crl\.?|criminal|complaint|suit|o\.?s\.?|misc\.?|s\.?t\.?|session|bail|appeal|revision|execution|petition|application|परिवाद|वाद|मुकदमा|मु\.|फौजदारी|प्रकीर्ण|सत्र|केस|अपील|निगरानी|जमानत)[A-Za-z\u0900-\u097F .]{0,30}?(?:no\.?|number|सं\.?|संख्या)\s*[:\-]?\s*\d{1,6}\s*(?:\/|of|-)\s*(?:19|20)?\d{2,4}\b/i) || [])[0] || '';
   r.caseNo = srCaseNo(reg) || srCaseNo(hcNo) || srCaseNo(anyNo) || '';
   r.filingNo = srCaseNo(fil) && srCaseNo(fil) !== r.caseNo ? srCaseNo(fil) : '';
-  r.type = srType(ctype + ' ' + hcNo + ' ' + anyNo);
+  r.type = srType(ctype + ' ' + reg + ' ' + hcNo + ' ' + anyNo + ' ' + srField(lines, /\bjudicial\s*branch\s*[:\-]?/i) + ' ' + srField(lines, /^\s*category\s*[:\-]?/i));
   r.caseText = srClean(hcNo) || (ctype ? srClean(ctype) + ' ' + r.caseNo : srClean(anyNo));
   // dates: next hearing / next listing / put up on …
   const nextLbl = /\b(?:next\s*(?:hearing\s*)?(?:date|listing\s*date|listing|hearing)|date\s*of\s*next\s*hearing|next\s*date\s*of\s*hearing|likely\s*(?:listing|date)|tentative\s*date|listed\s*on|to\s*be\s*listed\s*on)\s*[:\-]?/i;
@@ -134,8 +164,8 @@ function srOne(text) {
   r.court = srClean(cn ? cn[2] : cj).replace(/\bjudge\s*[:\-]?\s*$/i, '').slice(0, 90);
   r.item = (srField(lines, /\b(?:item|serial|sr\.?|s\.?\s?no\.?|list\s*serial)\s*(?:no\.?|number)?\s*[:\-]/i).match(/^\d{1,4}\b/) || [''])[0];
   // parties
-  if (!r.isOrder) r.pet = srParties(lines, /^.*?\b(?:petitioner|appellant|applicant|complainant|plaintiff|revisionist)s?\s*(?:and|&)?\s*(?:advocate|counsel)?\s*(?:name)?\s*[:\-]?/i, /\b(?:respondent|opposite\s*part|accused|defendant)/i);
-  if (!r.isOrder) r.opp = srParties(lines, /^.*?\b(?:respondent|opposite\s*part(?:y|ies)|accused|defendant)s?\s*(?:and|&)?\s*(?:advocate|counsel)?\s*(?:name)?\s*[:\-]?/i, /\b(?:acts?|under|fir|history|police|petitioner)/i);
+  if (!r.isOrder) r.pet = srParties(lines, SR_PET_H);
+  if (!r.isOrder) r.opp = srParties(lines, SR_RES_H);
   const vs = all.match(/^(.{3,120}?)\s+(?:vs\.?|v\.|v\/s|versus|बनाम)\s+(.{3,80})$/im);
   if (vs && !r.pet) r.pet = srClean(vs[1].replace(/^.*?\b\d{1,6}\s*(?:\/|of)\s*(?:19|20)\d{2}\b/i, '')); if (vs && !r.opp) r.opp = srClean(vs[2]);
   // FIR and sections
@@ -148,6 +178,11 @@ function srOne(text) {
   const act = srField(lines, /\bunder\s*(?:act\(?s?\)?|section\(?s?\)?)\s*(?:under\s*section\(?s?\)?)?\s*[:\-]?|\bu\/s\.?|धारा/i);
   r.sections = srClean(act.replace(/^\s*act\(?s?\)?\s*/i, '')).slice(0, 80);
   if (/\bNo\.?\s*[-–:]?\s*\d+\s*(?:of|\/)\s*\d{4}/i.test(r.sections)) r.sections = '';
+  { const k = lines.findIndex(l => /^\W{0,2}under\s*section/i.test(l) || /under\s*act\(?s?\)?\s*under\s*section/i.test(l));
+    const row = k >= 0 ? (lines[k + 1] || '') : '';
+    if (row && !SR_STOP_H.test(row)) { const m = row.match(/^(.*?[A-Za-z][A-Za-z .,]*?)(?:,?\s*((?:18|19|20)\d{2}))?\s*[,|]?\s+((?:\d{1,4}[A-Z]?(?:\(\d+\))*(?:\([a-z]\))?[\s,/&]*)+)$/);
+      if (m) { const act = m[1].replace(/indian penal code/i, 'IPC').replace(/bharatiya nyaya sanhita/i, 'BNS').replace(/code of criminal procedure|cr\.?p\.?c\.?/i, 'Cr.P.C.').replace(/bharatiya nagarik suraksha sanhita/i, 'BNSS').replace(/negotiable instruments? act/i, 'N.I. Act').replace(/[,\s]+$/, '');
+        r.sections = m[3].trim().replace(/\s*,\s*/g, ', ') + ' ' + act; } } }
   if (!r.ps && !r.crimeNo && !/\d/.test(r.sections)) r.sections = '';
   // an order: "put up on / list on / fixed for … on DATE", Hindi "दिनांक … को पेश हो"
   const ord = /\b(?:put\s*up|list(?:ed)?|fix(?:ed)?|adjourned|posted|come\s*up|awaited|next\s*date)\b[^\n]{0,80}/i;
@@ -163,9 +198,10 @@ function srOne(text) {
   }
   if (!r.stage) r.stage = '';
   r.forum = srForum(all, r.cnr);
+  if (r.forum === 'HC' && !r.court) r.court = /^UPHC01/.test(r.cnr) ? 'High Court, Allahabad' : /^UPHC02/.test(r.cnr) || /lucknow/i.test(all) ? 'High Court, Lucknow Bench' : '';
   r.status = (srField(lines, /\bcase\s*status\s*[:\-]?|\bstatus\s*[:\-]/i).match(/pending|disposed|decided|dismissed|allowed/i) || [''])[0];
   if (/disposed|decided|dismissed|allowed/i.test(r.status)) r.decided = true;
-  r.district = srClean(srField(lines, /\bdistrict\s*[:\-]/i, /\s{2,}|state/i)).slice(0, 30);
+  r.district = srClean(srField(lines, /^\W{0,2}district\b\s*[:\-]?/i, /state/i)).slice(0, 30);
   return r;
 }
 /* several cases: a district cause list (or any list with three or more case numbers) */
@@ -191,11 +227,12 @@ function srKind(text) {
   const t = srDigits(text);
   if (/listed\s+on\s+\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{4}\s+for\b/i.test(t) || (/case\s*serial/i.test(t) && /court\s*no/i.test(t))) return 'hclist';
   const nos = new Set((t.match(/\b\d{1,6}\s*\/\s*(?:19|20)\d{2}\b/g) || []).map(x => x.replace(/\s/g, '')));
+  if (/case\s*status|case\s*history|case\s*details|registration|cnr|petitioner\s*and\s*advocate|advocate\(s\)|first\s*hearing|next\s*hearing/i.test(t)) return 'one';
   if (/cause\s*list|daily\s*list|वाद\s*सूची|list\s*of\s*business/i.test(t) && nos.size >= 2) return 'list';
-  if (nos.size >= 4 && !/case\s*status|registration\s*number|cnr\s*number/i.test(t)) return 'list';
+  if (nos.size >= 4) return 'list';
   return 'one';
 }
-if (typeof module !== 'undefined') module.exports = { srOne, srList, srKind, srDates, srType, srCnr };
+if (typeof module !== 'undefined') module.exports = { srOne, srList, srKind, srDates, srType, srCnr, srShort };
 
 /* ---------- on the phone ---------- */
 if (typeof window !== 'undefined') {
@@ -280,7 +317,8 @@ if (typeof window !== 'undefined') {
       const det = one ? DET.filter(([k]) => r[k]).map(([k, lab]) => {
         const cur = m ? (k === 'pet' || k === 'opp' ? (m[k] || '') : (m[k] || '')) : '';
         const note = m && cur && !dtSame(cur, r[k]) ? `<small style="color:var(--saffron-ink)">SM Chambers has: ${esc(String(cur).replace(/\n/g, '; '))} — you will be asked which to keep</small>` : m && !cur ? '<small style="color:var(--muted)">empty now — will be filled</small>' : '';
-        return `<div class="field"><label>${lab}</label><input class="in" data-sr="${k}" data-i="${i}" value="${esc(r[k])}">${note}</div>`;
+        const box = k === 'pet' || k === 'opp' ? `<textarea class="in" rows="${Math.min(5, String(r[k]).split('\n').length + 1)}" data-sr="${k}" data-i="${i}">${esc(r[k])}</textarea>` : `<input class="in" data-sr="${k}" data-i="${i}" value="${esc(r[k])}">`;
+        return `<div class="field"><label>${lab}${k === 'pet' || k === 'opp' ? ' <small>(one per line)</small>' : ''}</label>${box}${note}</div>`;
       }).join('') : '';
       return `<div class="card" style="box-shadow:none;border:2px solid var(--line);padding:12px;display:grid;gap:8px">
         ${one ? '' : `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-family:var(--mono)">${esc([r.prefix, r.caseNo].filter(Boolean).join(' ') || '—')}</b><label style="display:flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" data-sr="on" data-i="${i}" ${r.on ? 'checked' : ''}> Apply</label></div>
@@ -300,7 +338,7 @@ if (typeof window !== 'undefined') {
     draw();
     const root = $('#sheet-root');
     root.oninput = root.onchange = e => { const el = e.target.closest('[data-sr]'); if (!el || el.dataset.sr === 'apply') return; const r = rows[+el.dataset.i], k = el.dataset.sr;
-      if (k === 'on' || k === 'decided') r[k] = el.checked; else if (k === 'pick') { r.pick = el.value; if (e.type === 'change') draw(); } else r[k] = el.value.trim(); };
+      if (k === 'on' || k === 'decided') r[k] = el.checked; else if (k === 'pick') { r.pick = el.value; if (e.type === 'change') draw(); } else r[k] = el.tagName === 'TEXTAREA' ? el.value.split('\n').map(x => x.trim()).filter(Boolean).join('\n') : el.value.trim(); };
     root.onclick = e => { if (!e.target.closest('[data-sr="apply"]')) return;
       const go = rows.filter(r => r.on);
       if (go.some(r => r.hits.length > 1 && !r.pick)) return toast('Choose the matter for each case, or untick it');
@@ -327,7 +365,7 @@ if (typeof window !== 'undefined') {
       const next = () => { const r = adds.shift(); if (!r) return; window.__afterSave = adds.length ? next : null;
         sheetEdit(null, { forum: r.forum || 'District', status: r.decided ? 'Decided' : 'Pending', nature: r.crimeNo || r.ps || /Bail|ABA|482|Complaint|138/.test(r.type || '') ? 'Criminal' : (r.type ? (typeof guessNature === 'function' ? guessNature({ type: r.type }) : '') : '') || 'Criminal',
           court: r.court || '', courtNo: r.courtNo || '', type: r.type || '', caseNo: r.caseNo || '', cnr: r.cnr || '', filingNo: r.filingNo || '', crimeNo: r.crimeNo || '', ps: r.ps || '', sections: r.sections || '', district: r.district || '',
-          pet: r.pet || '', opp: r.opp || '', title: [r.pet, r.opp].filter(Boolean).join(' v. '), nextDate: r.nextDate || '', purpose: r.stage || '', item: r.item || '',
+          pet: r.pet || '', opp: r.opp || '', title: [srShort(r.pet), srShort(r.opp)].filter(Boolean).join(' v. '), nextDate: r.nextDate || '', purpose: r.stage || '', item: r.item || '',
           notes: 'Added from a ' + how + ' of ' + dmy(t) + '.' }); };
       if (adds.length) setTimeout(next, 300);
     };
