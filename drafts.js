@@ -551,7 +551,7 @@ async function makeCover(m) {
       ...(contacts.length ? [para(run('Contacts', { bold: true, size: 22 }), { before: 160, after: 60 }), kv(contacts)] : []),
       para(run('Dates', { bold: true, size: 22 }), { before: 160, after: 60 }),
       dates,
-      para(run('Printed ' + dmy(todayIso()) + ' from SM Chambers', { size: 14, color: '7F7F7F' }), { align: D.AlignmentType.RIGHT, before: 80 }),
+      para(run('Printed ' + dmy(todayIso()) + ' from SM Chambers – A Comprehensive Litigation Management Suite', { size: 14, color: '7F7F7F' }), { align: D.AlignmentType.RIGHT, before: 80 }),
     ] }] });
   const blob = await D.Packer.toBlob(doc);
   const name = cleanName('File cover ' + mref(m).replace(/\//g, '-') + ' ' + (m.title || m.clients || '').slice(0, 60) + ' (' + paper + ')') + '.docx';

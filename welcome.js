@@ -5,6 +5,11 @@
   const q = location.search + location.hash;
   if (/[?&#](share|code|error|state)=/.test(q)) return;
   if (navigator.webdriver && !/[?&]welcome\b/.test(q)) return;   // automated checks only
+  // Release count: one release per published update. RELEASES is the count at this update; when online the
+  // app reads the live count from GitHub, so the cover page stays current without a manual edit.
+  const RELEASES = 153;
+  let rel = RELEASES;
+  try { rel = Math.max(rel, +localStorage.getItem('sm-releases') || 0); } catch (e) {}
   const el = document.createElement('div');
   el.id = 'welcome';
   el.setAttribute('role', 'dialog');
@@ -17,11 +22,12 @@
     <div class="wc-text">
       <h1 class="wc-title">SM&nbsp;Chambers</h1>
       <p class="wc-firm">Saurabh Misra &amp; Associates – Chambers</p>
+      <p class="wc-suite">A Comprehensive Litigation Management Suite</p>
       <div class="wc-rule"><span></span><b>◆</b><span></span></div>
       <p class="wc-special">Specially designed, developed and customised<br>for <b>Saurabh Misra, Advocate</b></p>
       <p class="wc-court"><span>High Court of Judicature at Allahabad</span><i class="wc-sep"> · </i><span>Lucknow Bench</span></p>
       <p class="wc-by">by <b>Harsh Mishra</b> <span>(Senior Software Engineer)</span></p>
-      <p class="wc-about">SM Chambers is now <em>26 program modules</em>, about <em>7,000 dense lines</em> (roughly 25,000–30,000 lines of ordinary code), refined over <em>145 releases</em>. It covers matters and stages, client engagement forms with Standard and Strategic plans, fees and date fees, bills and receipts with TDS, fee-plan and consultation posters, Word documents in English and Hindi, OneDrive and Outlook integration, Supreme Today, Bare Acts, juniors, conflict checks, backups and an app lock.</p>
+      <p class="wc-about">SM Chambers is now <em>26 program modules</em>, about <em>7,000 dense lines</em> (roughly 25,000–30,000 lines of ordinary code), refined over <em><span id="wc-rel">${rel}</span> releases</em>. It covers matters and stages, client engagement forms with Standard and Strategic plans, fees and date fees, bills and receipts with TDS, fee-plan and consultation posters, Word documents in English and Hindi, OneDrive and Outlook integration, Supreme Today, Bare Acts, juniors, conflict checks, backups and an app lock.</p>
       <p class="wc-tap"><span class="wc-pc">Click anywhere to enter</span><span class="wc-ph">Tap anywhere to enter</span></p>
     </div>
   </div>`;
@@ -39,4 +45,10 @@
   el.addEventListener('click', enter);
   el.addEventListener('keydown', e => { if (['Enter', ' ', 'Escape'].includes(e.key)) enter(e); });
   window.smEnterWelcome = enter;
+  if (navigator.onLine !== false && window.fetch) {
+    fetch('https://api.github.com/repos/saurabhmisra69/case-diary/commits?sha=main&per_page=1', { headers: { Accept: 'application/vnd.github+json' } })
+      .then(r => { const m = /[?&]page=(\d+)>;\s*rel="last"/.exec(r.headers.get('link') || ''); return r.ok && m ? +m[1] : 0; })
+      .then(n => { if (n >= RELEASES) { const s = document.getElementById('wc-rel'); if (s) s.textContent = n; try { localStorage.setItem('sm-releases', n); } catch (e) {} } })
+      .catch(() => {});
+  }
 })();

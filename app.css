@@ -410,6 +410,7 @@ html.welcoming,html.welcoming body{overflow:hidden}
   background:linear-gradient(180deg,#FFF3C8 0%,#E9C766 40%,#C1932F 70%,#F1D98C 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
   filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));animation-delay:.25s}
 .wc-firm{margin:0;font-family:"Source Serif 4",Georgia,serif;font-size:clamp(14px,3.6vw,18px);color:#E8D8AE;letter-spacing:.04em;animation-delay:.4s}
+.wc-suite{margin:-2px 0 0;font-family:"IBM Plex Sans",sans-serif;font-size:clamp(10.5px,2.7vw,13px);font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:#D4AF37;animation-delay:.45s}
 .wc-rule{display:flex;align-items:center;gap:10px;width:min(320px,80%);color:#D4AF37;font-size:11px;animation-delay:.5s}
 .wc-rule span{flex:1;height:1px;background:linear-gradient(90deg,transparent,#D4AF37,transparent)}
 .wc-special{margin:2px 0 0;font-family:"Cormorant Garamond","Source Serif 4",Georgia,serif;font-style:italic;font-weight:500;font-size:clamp(18px,4.8vw,25px);line-height:1.3;color:#F7EBC8;animation-delay:.65s}
