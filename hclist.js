@@ -164,5 +164,6 @@ if (typeof window !== 'undefined') {
       if (adds.length) setTimeout(next, 300);
     };
   }
+  window.hcReadFiles = runShots;
   document.addEventListener('click', e => { if (e.target.closest('[data-act="hcshot"]')) pickShot(); });
 }

@@ -439,7 +439,7 @@ function viewHome() {
     ${typeof limitsToday === 'function' ? limitsToday() : ''}
     ${typeof tasksToday === 'function' ? tasksToday() : ''}
     ${typeof pipelineToday === 'function' ? pipelineToday() : ''}
-    ${typeof hcListButton === 'function' ? hcListButton() : ''}
+    ${typeof shotButton === 'function' ? shotButton('home') : typeof hcListButton === 'function' ? hcListButton() : ''}
     ${typeof detailsToday === 'function' ? detailsToday() : ''}
     ${briefHtml(list, deadlines, fees)}
     ${(() => { const rr = live().flatMap(m => retainerDue(m).map(x => ({ m, ...x }))); return rr.length ? `<section class="list"><div class="h2"><h2>Retainers</h2></div>${rr.map(x => `<button class="card row" data-act="open" data-id="${x.m.id}"><div class="item sm" style="background:var(--adv)"><small>${x.kind === 'bill' ? 'BILL' : 'TERM'}</small><b>${dmy(x.date).slice(0, 5)}</b></div><span class="m-col"><span class="m-title">${esc(x.m.title || x.m.clients)}</span><span class="m-meta">${esc(x.text)}</span></span></button>`).join('')}</section>` : ''; })()}
@@ -535,6 +535,7 @@ function viewMatters() {
     <div class="filters">${/^al_/.test(f || '') ? chip(f, 'Allotted: ' + esc(f === 'al_self' ? 'Self' : jShort(juniors().find(j => j.id === f.slice(3))))) : ''}${chip('pending', 'Pending')}${live().some(isUnlisted) ? chip('unlisted', 'Unlisted (' + live().filter(isUnlisted).length + ')') : ''}${chip('st_consult', 'Consultations')}${chip('st_tofile', 'To be filed')}${chip('st_filed', 'Filed – no date yet')}${chip('need', 'Need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory / Pre-litigation')}${live().some(m => dupsOf(m).length) ? chip('dups', '<span class="dupstar">★</span> Duplicates') : ''}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
   </header>
   <main><div class="list">
+    ${typeof shotButton === 'function' ? shotButton('matters') : ''}
     <div class="h2"><span class="sub">${ms.length} matter${ms.length === 1 ? '' : 's'}${S.stf ? ' · ' + esc(S.stf) + ' <button class="linkbtn" data-act="filter" data-f="' + f + '">clear</button>' : ''}</span><span><button class="linkbtn" data-act="allotted">Allotted</button> · <button class="linkbtn" data-act="cats">Categories</button>${(() => { const k = live().filter(x => !x.nature || x.nature === 'Other').length; return k ? ` · <button class="linkbtn" data-act="sortnature">Sort "Other" (${k})</button>` : ''; })()}</span></div>
     ${ms.length ? ms.map((m, i) => {
       const fo = forumOf(m), late = needsDate(m);
