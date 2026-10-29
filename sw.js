@@ -1,7 +1,7 @@
 /* Offline support: keeps the app itself available without internet. Case data is never cached here. */
-const CACHE = 'case-diary-v1.100.4';
+const CACHE = 'case-diary-v1.100.5';
 const SHELL = ['./', 'index.html', 'welcome.js', 'icons/emblem.webp', 'app.css', 'app.js', 'paper.js', 'guard.js', 'files.js', 'step3.js', 'datefee.js', 'sort.js', 'drafts.js', 'ai.js', 'ease.js', 'viewer.js', 'voice.js', 'dictate.js', 'bills.js', 'refs.js', 'engage.js', 'money.js', 'practice.js', 'insight.js', 'comms.js', 'assist.js', 'research.js', 'acts.js', 'codes.js', 'facts.js', 'stages.js', 'hclist.js', 'shotread.js', 'details.js', 'hindi.js', 'lib/jszip.min.js', 'lib/docx.umd.js', 'manifest.webmanifest', 'posters/Fee_Plans_English_A4.pdf', 'posters/Fee_Plans_Hindi_A4.pdf', 'posters/Consultation_English_A4.pdf', 'posters/Consultation_Hindi_A4.pdf', 'forms/Vakalatnama_General.docx', 'lib/msal-browser.min.js', 'lib/xlsx.full.min.js', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];
-self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
+self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE && k !== 'cd-share').map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
@@ -22,7 +22,8 @@ self.addEventListener('fetch', e => {
   const fonts = /fonts\.(googleapis|gstatic)\.com$/.test(u.hostname);
   if (!sameOrigin && !fonts) return; // Microsoft sign-in and OneDrive go straight to the network
   e.respondWith(
-    fetch(e.request).then(r => { if (r.ok && !u.search.includes('code=')) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); } return r; })
+    fetch(sameOrigin ? new Request(e.request, { cache: 'no-cache' }) : e.request).then(r => {   // always ask the server, so an update shows on the next opening
+      if (r.ok && !u.search.includes('code=')) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); } return r; })
       .catch(() => caches.match(e.request, { ignoreSearch: true }).then(r => r || caches.match('index.html')))
   );
 });
