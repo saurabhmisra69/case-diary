@@ -121,7 +121,7 @@ if (typeof window !== 'undefined') {
     rows.forEach(r => { r.hits = hcMatch(r); r.pick = r.hits.length === 1 ? r.hits[0].id : ''; r.on = true; });
     const t = todayIso();
     const rowHtml = (r, i) => {
-      const m = r.hits.find(x => x.id === r.pick), same = m && m.nextDate === r.date && String(m.item || '') === String(r.item);
+      const m = live().find(x => x.id === r.pick), same = m && m.nextDate === r.date && String(m.item || '') === String(r.item);
       return `<div class="card" style="box-shadow:none;border:2px solid var(--line);padding:12px;display:grid;gap:8px" data-hcr="${i}">
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-family:var(--mono)">${esc(r.caseText || '—')}</b>
           <label style="display:flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" data-hc="on" data-i="${i}" ${r.on ? 'checked' : ''}> Apply</label></div>
@@ -130,7 +130,8 @@ if (typeof window !== 'undefined') {
           <div class="two"><div class="field"><label>Court no.</label><input class="in" inputmode="numeric" data-hc="court" data-i="${i}" value="${esc(r.court)}"></div><div class="field"><label>Serial</label><input class="in" inputmode="numeric" data-hc="item" data-i="${i}" value="${esc(r.item)}"></div></div></div>
         ${r.hits.length ? `<div class="field"><label>Matter</label><select class="in" data-hc="pick" data-i="${i}">${r.hits.length > 1 ? '<option value="">— choose —</option>' : ''}${r.hits.map(h => `<option value="${h.id}" ${h.id === r.pick ? 'selected' : ''}>${esc(mref(h))} · ${esc(h.title || h.clients || '')}</option>`).join('')}</select></div>
           <span class="hint" style="margin:0;${same ? '' : 'color:var(--saffron-ink)'}">${m ? (same ? 'Already in the diary for this date and serial.' : 'Diary now: ' + (m.nextDate ? dmy(m.nextDate) : 'no next date') + (m.item ? ' · item ' + esc(m.item) : '') + ' → will become ' + (r.date ? dmy(r.date) : '—') + ' · item ' + esc(r.item || '—')) : ''}</span>`
-        : `<span class="hint" style="margin:0;color:var(--saffron-ink)">Not in SM Chambers yet — Apply opens a new matter, filled in, for you to check and save.</span>`}
+        : `<div class="field"><label>Matter <small>(no matter with this case no.)</small></label><select class="in" data-hc="pick" data-i="${i}"><option value="">+ Add as a new matter</option>${live().filter(x => isOpen(x)).sort((a, b) => (b.forum === 'HC') - (a.forum === 'HC') || String(a.title || '').localeCompare(String(b.title || ''))).map(h => `<option value="${h.id}" ${h.id === r.pick ? 'selected' : ''}>${esc(mref(h))} · ${esc(h.title || h.clients || '')}${h.caseNo ? ' · ' + esc(h.caseNo) : ''}</option>`).join('')}</select></div>
+          <span class="hint" style="margin:0;color:var(--saffron-ink)">${r.pick ? 'Will update this matter (its case no. is not changed).' : 'Apply opens a new matter, filled in, for you to check and save. If this case is already in SM Chambers under another number, pick it above instead.'}</span>`}
       </div>`; };
     const draw = () => openSheet(`<div class="s-head"><div><small style="color:var(--hc)">High Court listing${rows[0].date ? ' · ' + dmy(rows[0].date) : ''}</small><h1>${rows.length} case${rows.length > 1 ? 's' : ''} found</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
       <p class="hint" style="margin:0 0 8px">Check each one against the screenshot. Correct anything read wrongly, then Apply.</p>
@@ -153,7 +154,7 @@ if (typeof window !== 'undefined') {
           if (set.nextDate !== m.nextDate) logListing(m, m.nextDate, set.nextDate, 'High Court listing screenshot');
           logDiff(m, { ...m }, set, 'High Court listing screenshot');
           Object.assign(m, set); if (!m.purpose) m.purpose = 'Hearing'; m.calPending = true; touch(m); n++; } } });
-      const adds = go.filter(r => !r.hits.length);
+      const adds = go.filter(r => !r.pick);
       closeSheet(); if (typeof render === 'function') render();
       toast(n ? n + ' matter' + (n > 1 ? 's' : '') + ' updated' : sets.length ? 'Already up to date' : 'Nothing updated');
       const next = () => { const r = adds.shift(); if (!r) return; const ty = hcType(r.prefix);
