@@ -126,15 +126,38 @@ function dcFindMatter(raw, p) {
 }
 
 /* ---------- speech ---------- */
-const DC = { rec: null, on: false };
+/* add a phrase, unless it only repeats or extends the last one ("great", "great has", "great has been" -> "great has been") */
+function dcMerge(segs, t) {
+  const b = t.toLowerCase(), l = segs.length ? segs[segs.length - 1].toLowerCase() : '';
+  if (l && b.startsWith(l)) segs[segs.length - 1] = t;
+  else if (l && (l.startsWith(b) || l.endsWith(b))) {}
+  else segs.push(t);
+  return segs;
+}
+const DC = { rec: null, on: false, sid: 0 };
 function dcStop() { DC.on = false; try { DC.rec && DC.rec.stop(); } catch (e) {} DC.rec = null; }
 function dcStart(lang, onText, onState) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { toast('Speech is not available here. Use Chrome on your phone or PC.'); return; }
   dcStop(); DC.on = true;
   const go = () => {
-    const r = new SR(); DC.rec = r; r.lang = lang; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
-    r.onresult = e => { let fin = '', mid = ''; for (let i = e.resultIndex; i < e.results.length; i++) { const x = e.results[i]; if (x.isFinal) fin += x[0].transcript; else mid += x[0].transcript; } onText(fin, mid); };
+    const r = new SR(); DC.rec = r; r.lang = lang; r.interimResults = true; r.maxAlternatives = 1;
+    r.continuous = !/Android/i.test(navigator.userAgent);   // Android repeats words in continuous mode: one phrase at a time there, restarted after each pause
+    const sid = ++DC.sid;
+    r.onresult = e => {
+      // Rebuild this session's words from the full list every time (never append piece by piece). Some phones send each
+      // growing phrase again as a new result ("ine", "ine Sandeep", "ine Sandeep kushvaha" …): keep only the longest.
+      const segs = []; let mid = '';
+      for (let i = 0; i < e.results.length; i++) {
+        const x = e.results[i], t = x[0].transcript.trim(); if (!t) continue;
+        if (!x.isFinal) { mid = t; continue; }
+        dcMerge(segs, t);
+      }
+      const acc = segs.join(' ');
+      const last = (segs[segs.length - 1] || '').toLowerCase();
+      if (mid && last && mid.toLowerCase().startsWith(last)) mid = mid.slice(last.length).trim();
+      onText(acc, mid, sid);
+    };
     r.onerror = e => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { DC.on = false; toast('Microphone permission is off for SM Chambers'); onState(false); } };
     r.onend = () => { if (DC.on && !document.getElementById('dc_text')) DC.on = false; if (DC.on) { try { go(); } catch (e) { DC.on = false; onState(false); } } else onState(false); };   // phones stop after a pause: carry on until Stop
     try { r.start(); onState(true); } catch (e) { DC.on = false; onState(false); }
@@ -256,9 +279,11 @@ function sheetDictate(forMatter) {
     if (a === 'mic') {
       keep();
       if (F.live) { dcStop(); F.live = false; F.mid = ''; draw(); return; }
-      dcStart(lang, (fin, mid) => {
+      let base = null, bsid = 0;
+      dcStart(lang, (fin, mid, sid) => {
         const box = $('#dc_text'); if (!box) { dcStop(); return; }
-        if (fin) { box.value = (box.value.trim() ? box.value.trim() + ' ' : '') + fin.trim(); F.text = box.value; }
+        if (sid !== bsid) { bsid = sid; base = box.value.trim(); }   // what was in the box before this phrase
+        if (fin) { box.value = (base ? base + ' ' : '') + fin; F.text = box.value; }
         F.mid = mid; const s = $('.dc-mid'); if (s) s.textContent = mid ? '… ' + mid : ''; else if (mid) { const n = document.createElement('small'); n.className = 'dc-mid'; n.textContent = '… ' + mid; box.after(n); }
       }, on => { if (F.live !== on) { keep(); F.live = on; if (!on) F.mid = ''; draw(); } });
     }
