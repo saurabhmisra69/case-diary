@@ -237,12 +237,6 @@ function dcTidy(raw, m) {
   if (p.fee) bits.push((p.feeKind === 'date' ? 'Date fee' : 'Fee') + ' ' + rupees(p.fee) + ' received.');
   return t + (bits.length ? '\n' + bits.join(' ') : '');
 }
-const DC_CLAUDE_PROMPT = (raw, m) => `I am an advocate (High Court of Judicature at Allahabad, Lucknow Bench). Below is what I dictated by voice after a court hearing, in English, Hindi or a mix; the phone's speech recognition may have mis-heard some words.
-${m ? 'Matter: ' + (m.title || m.clients) + (m.caseNo ? ' · ' + (m.type ? m.type + ' ' : '') + m.caseNo : '') + (m.crimeNo ? ' · FIR ' + m.crimeNo : '') + (m.court ? ' · ' + m.court : '') + '\n' : ''}Today is ${dmy(todayIso())}.
-Dictation: """${raw}"""
-
-Rewrite it as a short, formal case-diary note in English (write "Hon'ble Court", correct obviously mis-heard words and names, keep every fact, add nothing). Also pick out the details. Return JSON:
-{"note": "the formal note", "caseRef": "case or crime no. mentioned, else empty", "happened": "Adjourned | Evidence recorded | Heard | Reserved | Disposed | Not taken up | empty", "nextDate": "YYYY-MM-DD or empty", "unlisted": true/false (next date not known), "fixedFor": "purpose of the next date, else empty", "item": "item no., else empty", "fee": number paid today or 0, "feeKind": "date or prof"}`;
 
 /* ---------- the sheet ---------- */
 function sheetDictate(forMatter) {
@@ -278,10 +272,10 @@ function sheetDictate(forMatter) {
         <button class="act blue" data-dc="clear" ${F.text ? '' : 'disabled'}>Clear</button>
       </div>
       ${F.text.trim() && !F.live ? `<div class="dc-clean${F.okd ? ' dc-okd' : ''}">
-        <div class="dc-clean-h"><b>${F.okd ? '✓ Using this version' : 'Reframed — is this OK?'}</b><small>${F.cleanBy === 'claude' ? 'by Claude' : 'tidied in SM Chambers'}</small></div>
+        <div class="dc-clean-h"><b>${F.okd ? '✓ Using this version' : 'Reframed — is this OK?'}</b><small>tidied in SM Chambers</small></div>
         <textarea class="in" id="dc_clean" rows="5">${esc(F.clean)}</textarea>
         ${F.okd ? `<button class="linkbtn" data-dc="unok">Change it</button>` : `<div class="two" style="margin-top:8px"><button class="act primary" data-dc="ok" style="min-height:44px">OK</button><button class="act blue" data-dc="raw" style="min-height:44px">Keep my words</button></div>`}
-        <div class="dc-clean-more"><button class="linkbtn" data-dc="tidy">Tidy again</button> · <button class="linkbtn" data-dc="claude">Reframe with Claude</button></div>
+        <div class="dc-clean-more"><button class="linkbtn" data-dc="tidy">Tidy again</button></div>
       </div>` : ''}
       <button class="save" data-dc="apply" style="margin-top:10px">Apply${F.okd ? '' : F.text.trim() && !F.live ? ' (my words as spoken)' : ''}</button>
       <div class="dc-fields${F.applied ? ' dc-done' : ''}">
@@ -393,15 +387,6 @@ function sheetDictate(forMatter) {
     else if (a === 'unok') { keep(); F.okd = false; draw(); }
     else if (a === 'raw') { keep(); F.okd = false; F.clean = dcTidy(F.text, F.m); F.cleanBy = 'rules'; apply(); }
     else if (a === 'tidy') { keep(); F.clean = dcTidy(F.text, F.m); F.cleanBy = 'rules'; F.ai = null; F.okd = false; draw(); }
-    else if (a === 'claude') {
-      keep(); if (!F.text.trim()) return toast('Speak or type first');
-      const m0 = F.m || (dcFindMatter(F.text, dcParse(F.text))[0] || {}).m;
-      claudeAppRead({ m: m0, prompt: DC_CLAUDE_PROMPT(F.text.trim(), m0), title: 'Reframe with Claude' }).then(o => {
-        if (o && o.note) { F.clean = String(o.note); F.cleanBy = 'claude'; F.ai = o; F.okd = false; }
-        draw(); bind();
-        if (o && o.note) toast('Claude’s version is in the box — press OK if it is right');
-      });
-    }
   };
   const onInput = e => { if (e.target.id === 'dc_text') { F.text = e.target.value; if (F.okd) { F.okd = false; } } };
   bind();
