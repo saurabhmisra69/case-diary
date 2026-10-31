@@ -165,15 +165,95 @@ function dcStart(lang, onText, onState) {
   go();
 }
 
+
+/* ---------- tidy-up: correct names and mis-heard words, write a court-diary note ---------- */
+const DC_FIX = [   // [what the phone often hears, what was meant]
+  [/\bine\b/gi, 'in'], [/\b(?:d\.?\s?v\.?\s?r|dvr|d v r|devi|dee vee)\b(?=\s*(?:case|act|matter|application|मामल|केस))/gi, 'DV'], [/\bdvr\b/gi, 'DV'],
+  [/\bnext great\b/gi, 'next date'], [/\bgreat (has been|was|is) (given|fixed)\b/gi, 'date $1 $2'], [/\b(?:the |a )?great of hearing\b/gi, 'the date of hearing'],
+  [/\b(anticipatory|regular|interim)\s+bell\b/gi, '$1 bail'], [/\bbell (application|plea|order|bond|granted|rejected)\b/gi, 'bail $1'],
+  [/\bcross[\s-]?examination\b/gi, 'cross-examination'], [/\b4\s?8\s?2\b/g, '482'], [/\b5\s?2\s?8\b/g, '528'], [/\b1\s?3\s?8\b/g, '138'],
+  [/केस\s*(?:नंबर|नम्बर|संख्या)/g, 'Case No.'], [/क्राइम\s*(?:नंबर|नम्बर)|अपराध\s*संख्या/g, 'Crime No.'], [/\bcase number\b/gi, 'Case No.'], [/\bcrime number\b/gi, 'Crime No.'],
+  [/(\d{1,6})\s+(?:of|सन)\s+(\d{4})\b/g, '$1/$2'], [/अगली\s*(?:तारीख़?|डेट|तिथि)/g, 'next date'], [/\bagli\s*(?:tarikh|tareekh|date)\b/gi, 'next date'],
+  [/(\d+)\s*(?:रुपए|रुपये|रूपए|rupaye|rupees?|rs\.?)\s*(?:की\s*)?(?:डेट|date|तारीख़?)\s*(?:की\s*)?(?:फ़?ीस|fees?)\s*(?:दी|दिए|दिया|paid|जमा\s*की)?/gi, 'paid date fee of ₹$1'],
+  [/(\d+)\s*(?:रुपए|रुपये|रूपए|rupaye|rupees?|rs\.?)\s*(?:फ़?ीस|fees?)\s*(?:दी|दिए|दिया|paid)?/gi, 'paid fee of ₹$1'],
+  [/\bdate fees? of (?:rs\.?|rupees?)\s*(\d+)/gi, 'date fee of ₹$1'], [/\b(?:rs\.?|rupees)\s*(\d+)/gi, '₹$1'],
+  [/(\d{1,2})\s*(जनवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|सितम्बर|अक्टूबर|नवंबर|नवम्बर|दिसंबर|दिसम्बर)/g, (x, d, mo) => d + ' ' + ({ 'जनवरी': 'January', 'फरवरी': 'February', 'मार्च': 'March', 'अप्रैल': 'April', 'मई': 'May', 'जून': 'June', 'जुलाई': 'July', 'अगस्त': 'August', 'सितंबर': 'September', 'सितम्बर': 'September', 'अक्टूबर': 'October', 'नवंबर': 'November', 'नवम्बर': 'November', 'दिसंबर': 'December', 'दिसम्बर': 'December' })[mo]],
+  [/\s+में\s+/g, ', '], [/\bcouncil\b/gi, 'counsel'], [/\bhon(?:ou)?rable\b/gi, "Hon'ble"], [/\ba\.?\s?g\.?\s?a\.?\b/gi, 'A.G.A.'], [/\bf\.?\s?i\.?\s?r\.?\b/gi, 'FIR'],
+  [/\bjudge sa(?:h|a)?ab\b/gi, 'the Presiding Officer'], [/\bopposite (?:party|side) council\b/gi, 'counsel for the opposite party'],
+  [/\bcounter (?:affidavit )?(?:has been |was )?filed\b/gi, 'counter affidavit filed'], [/\bvakalat ?nama\b/gi, 'vakalatnama'], [/\brejoinder\b/gi, 'rejoinder']
+];
+const DC_PHRASES = [   // everyday ways of saying it -> diary wording
+  [/\b(?:i|we|me)\s+(?:have\s+)?argued\s+(?:at\s+)?(?:some\s+|great\s+|full\s+)?length\b/gi, '\u0001Argued at length\u0001'],
+  [/(?:मैंने|मैने|हमने)\s*(?:काफी|काफ़ी|बहुत)?\s*(?:देर|देर तक|विस्तार से)?\s*बहस\s*(?:की|किया)/g, '\u0001Argued at length\u0001'],
+  [/\b(?:the\s+)?(?:hon'ble\s+)?court\s+(?:said|asked|directed|told)\s+(?:us\s+|me\s+)?(?:to\s+)?conclude\s+(?:the\s+arguments\s+)?(?:on|by)\s+(?:the\s+)?next\s+date\b/gi, "\u0001The Hon'ble Court directed that arguments be concluded on the next date\u0001"],
+  [/(?:कोर्ट|अदालत|जज साहब|न्यायालय)\s*ने\s*(?:कहा|आदेश दिया)\s*(?:कि)?\s*(?:अगली\s*(?:तारीख|तारीख़|डेट)|next date)\s*(?:पर|को)\s*(?:बहस\s*)?(?:पूरी|समाप्त|conclude)\s*(?:करें|करो|कीजिए)?/g, "\u0001The Hon'ble Court directed that arguments be concluded on the next date\u0001"],
+  [/\b(?:the\s+)?presiding officer\s+(?:is\s+|was\s+)?on\s+leave\b/gi, '\u0001The Presiding Officer was on leave\u0001'], [/जज\s*साहब\s*(?:छुट्टी|अवकाश)\s*पर\s*(?:थे|हैं)/g, '\u0001The Presiding Officer was on leave\u0001'],
+  [/\bno sitting\b/gi, "\u0001No sitting of the Hon'ble Court\u0001"], [/\b(?:lawyers?|advocates?|bar)\s*(?:on\s+)?strike\b|हड़ताल|हडताल/gi, '\u0001Advocates abstained from work (strike)\u0001'],
+  [/\b(?:opposite\s+(?:party|side)|other\s+side)\s+(?:sought|took|asked for)\s+time\b/gi, '\u0001Time was sought on behalf of the opposite party\u0001'],
+  [/\b(?:a\.g\.a\.|government advocate|state counsel)\s+(?:sought|took|asked for)\s+time\b/gi, '\u0001Time was sought by the learned A.G.A.\u0001'],
+  [/\b(?:client|party)\s+(?:paid|gave|has paid)\b/gi, '\u0001Client paid'], [/क्लाइंट\s*ने/g, '\u0001Client']
+];
+let DC_NAMES = null;
+function dcNameKey(w) { return w.toLowerCase().replace(/w/g, 'v').replace(/ph/g, 'f').replace(/z/g, 'j').replace(/([bcdfgjklmnpqrstvx])h/g, '$1').replace(/ee/g, 'i').replace(/oo/g, 'u').replace(/(.)\1+/g, '$1'); }
+function dcLev(a, b) { const d = Array.from({ length: a.length + 1 }, (_, i) => [i]); for (let j = 1; j <= b.length; j++) d[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[a.length][b.length]; }
+const DC_COMMON = /^(state|union|india|others|other|anr|ors|through|district|police|station|court|case|matter|date|great|given|hearing|client|paid|fees|next|order|orders|application|bail|petition|appeal|revision|complaint|limited|private|company|transport|restaurant|enterprises|traders|construction|government|uttar|pradesh|lucknow|shri|smt|kumar|kumari|singh|devi|prasad|chandra|nath|lal|ram)$/i;
+function dcNames() {
+  if (DC_NAMES) return DC_NAMES;
+  const count = new Map();
+  for (const m of live()) {
+    const src = [m.clients, m.title, m.pet, m.opp, ...(typeof aliasesOf === 'function' ? aliasesOf(m.clients) : [])].filter(Boolean).join(' ');
+    for (const w of src.split(/[^A-Za-z]+/)) if (w.length >= 5 && /^[A-Z]/.test(w) && !DC_COMMON.test(w)) count.set(w, (count.get(w) || 0) + 1);
+  }
+  const byKey = new Map();
+  for (const [w, n] of count) { const k = dcNameKey(w); const cur = byKey.get(k); if (!cur || n > cur.n) byKey.set(k, { w, n }); }
+  DC_NAMES = [...byKey.entries()].map(([k, v]) => ({ k, w: v.w }));
+  return DC_NAMES;
+}
+function dcFixNames(text) {
+  const names = dcNames();
+  return text.replace(/[A-Za-z]{5,}/g, w => {
+    if (DC_COMMON.test(w)) return w;
+    const k = dcNameKey(w); let best = null, bd = 9;
+    for (const n of names) { if (n.k[0] !== k[0] || Math.abs(n.k.length - k.length) > 2) continue; const d = dcLev(k, n.k); if (d < bd) { bd = d; best = n; } }
+    return best && bd <= Math.max(1, Math.floor(k.length / 5)) && (bd > 0 || best.w !== w) && (/^[A-Z]/.test(w) || (w.length >= 7 && bd <= 1)) ? best.w : w;
+  });
+}
+function dcTidy(raw, m) {
+  let t = String(raw || '').replace(/\s+/g, ' ').trim(); if (!t) return '';
+  for (const [re, to] of DC_FIX) t = t.replace(re, to);
+  t = dcFixNames(t);
+  for (const [re, to] of DC_PHRASES) t = t.replace(re, to);
+  t = t.replace(/\b(?:the\s+)?court\b(?![-\s]*(?:no|number|fee))/gi, (x, i, all) => /hon'ble\s*$/i.test(all.slice(0, i)) ? x.replace(/^the\s+/i, '') : "the Hon'ble Court")
+    .replace(/the the /gi, 'the ').replace(/\bthe Hon'ble Court\b/, "The Hon'ble Court").replace(/(^|[.!?]\s+)the Hon'ble/g, "$1The Hon'ble");
+  // sentences: each diary phrase stands on its own; drop dangling "and thereafter", capitalise, full stops
+  t = t.split('\u0001').map(x => x.replace(/^[\s,;.]*(?:and\s+)?(?:thereafter|then|after that|और|फिर)?[\s,;]*/i, '').replace(/[\s,;]*(?:and\s+)?(?:thereafter|then|after that|और|फिर)?[\s,;]*$/i, '').trim()).filter(Boolean)
+    .map(x => { x = x.replace(/\s*([,;])\s*/g, '$1 ').replace(/\s+\./g, '.').replace(/\s+/g, ' ').trim(); x = x.charAt(0).toUpperCase() + x.slice(1); return /[.!?।]$/.test(x) ? x : x + '.'; }).join(' ');
+  // a short summary of what will be filled in
+  const p = dcParse(t + ' ' + raw), bits = [];
+  if (p.happened && p.happened !== 'Adjourned') bits.push(p.happened + '.');
+  if (p.next) bits.push('Next date: ' + dmy(p.next) + (p.purpose ? ', for ' + p.purpose.toLowerCase() : '') + '.');
+  else if (p.unlisted) bits.push('Next date not known (unlisted).');
+  if (p.item) bits.push('Item no. ' + p.item + '.');
+  if (p.fee) bits.push((p.feeKind === 'date' ? 'Date fee' : 'Fee') + ' ' + rupees(p.fee) + ' received.');
+  return t + (bits.length ? '\n' + bits.join(' ') : '');
+}
+const DC_CLAUDE_PROMPT = (raw, m) => `I am an advocate (High Court of Judicature at Allahabad, Lucknow Bench). Below is what I dictated by voice after a court hearing, in English, Hindi or a mix; the phone's speech recognition may have mis-heard some words.
+${m ? 'Matter: ' + (m.title || m.clients) + (m.caseNo ? ' · ' + (m.type ? m.type + ' ' : '') + m.caseNo : '') + (m.crimeNo ? ' · FIR ' + m.crimeNo : '') + (m.court ? ' · ' + m.court : '') + '\n' : ''}Today is ${dmy(todayIso())}.
+Dictation: """${raw}"""
+
+Rewrite it as a short, formal case-diary note in English (write "Hon'ble Court", correct obviously mis-heard words and names, keep every fact, add nothing). Also pick out the details. Return JSON:
+{"note": "the formal note", "caseRef": "case or crime no. mentioned, else empty", "happened": "Adjourned | Evidence recorded | Heard | Reserved | Disposed | Not taken up | empty", "nextDate": "YYYY-MM-DD or empty", "unlisted": true/false (next date not known), "fixedFor": "purpose of the next date, else empty", "item": "item no., else empty", "fee": number paid today or 0, "feeKind": "date or prof"}`;
+
 /* ---------- the sheet ---------- */
 function sheetDictate(forMatter) {
   const LS = 'cd.dclang';
   let lang = 'hi-IN'; try { lang = localStorage.getItem(LS) || 'hi-IN'; } catch (e) {}
-  const F = { text: '', mid: '', m: forMatter || null, choices: [], happened: 'Adjourned', next: '', unlisted: false, purpose: '', item: '', fee: '', feeKind: 'date', mode: 'Cash', note: '', wa: false, cal: true, applied: false, live: false };
+  const F = { text: '', mid: '', m: forMatter || null, choices: [], happened: 'Adjourned', next: '', unlisted: false, purpose: '', item: '', fee: '', feeKind: 'date', mode: 'Cash', note: '', wa: false, cal: true, clean: '', cleanBy: '', okd: false, ai: null, applied: false, live: false };
   const root = $('#sheet-root');
   const keep = () => {   // read the boxes before redrawing
     const g = id => $('#' + id);
     if (g('dc_text')) F.text = g('dc_text').value;
+    if (g('dc_clean')) F.clean = g('dc_clean').value;
     if (!g('dc_next')) return;
     F.next = g('dc_next').value; F.unlisted = g('dc_unl').checked; F.purpose = g('dc_for').value; F.item = g('dc_item').value;
     F.fee = g('dc_fee').value; F.feeKind = g('dc_fk').value; F.mode = g('dc_mode').value; F.note = g('dc_note').value;
@@ -197,7 +277,13 @@ function sheetDictate(forMatter) {
         <button class="act blue" data-dc="lang">${lang === 'hi-IN' ? 'हिंदी + English' : 'English only'}</button>
         <button class="act blue" data-dc="clear" ${F.text ? '' : 'disabled'}>Clear</button>
       </div>
-      <button class="save" data-dc="apply" style="margin-top:10px">Apply</button>
+      ${F.text.trim() && !F.live ? `<div class="dc-clean${F.okd ? ' dc-okd' : ''}">
+        <div class="dc-clean-h"><b>${F.okd ? '✓ Using this version' : 'Reframed — is this OK?'}</b><small>${F.cleanBy === 'claude' ? 'by Claude' : 'tidied in SM Chambers'}</small></div>
+        <textarea class="in" id="dc_clean" rows="5">${esc(F.clean)}</textarea>
+        ${F.okd ? `<button class="linkbtn" data-dc="unok">Change it</button>` : `<div class="two" style="margin-top:8px"><button class="act primary" data-dc="ok" style="min-height:44px">OK</button><button class="act blue" data-dc="raw" style="min-height:44px">Keep my words</button></div>`}
+        <div class="dc-clean-more"><button class="linkbtn" data-dc="tidy">Tidy again</button> · <button class="linkbtn" data-dc="claude">Reframe with Claude</button></div>
+      </div>` : ''}
+      <button class="save" data-dc="apply" style="margin-top:10px">Apply${F.okd ? '' : F.text.trim() && !F.live ? ' (my words as spoken)' : ''}</button>
       <div class="dc-fields${F.applied ? ' dc-done' : ''}">
         <span class="lbl" style="display:block;margin:14px 0 6px">${F.applied ? 'Filled from what you said — check, then Save' : 'Details (filled when you press Apply)'}</span>
         <div class="grp"><span class="lbl">What happened</span><div class="chips">${[...HAPPENED, 'Only note / fee'].map(h => `<button class="chip ${F.happened === h ? 'on' : ''}" data-dc="hap" data-v="${h}">${h}</button>`).join('')}</div></div>
@@ -219,8 +305,16 @@ function sheetDictate(forMatter) {
   };
   const apply = () => {
     keep();
-    const raw = F.text.trim(); if (!raw) return toast('Speak or type first');
-    const p = dcParse(raw);
+    const spoken = F.text.trim(); if (!spoken) return toast('Speak or type first');
+    const raw = F.okd && F.clean.trim() ? F.clean.trim() + ' ' + spoken : spoken;
+    const p = dcParse(raw), A = F.okd && F.ai ? F.ai : null;
+    if (A) {
+      if (A.caseRef) { const r = dcParse('case ' + A.caseRef).refs; if (r.length) p.refs = r.concat(p.refs); }
+      if (A.happened && HAPPENED.includes(A.happened)) p.happened = A.happened;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(A.nextDate || '') && A.nextDate > todayIso()) { p.next = A.nextDate; p.unlisted = false; } else if (A.unlisted) { p.next = ''; p.unlisted = true; }
+      if (A.fixedFor) p.purpose = A.fixedFor; if (A.item) p.item = String(A.item);
+      if (+A.fee > 0) { p.fee = +A.fee; p.feeKind = A.feeKind === 'prof' ? 'prof' : 'date'; }
+    }
     if (!forMatter || p.refs.length) {
       const g = dcFindMatter(raw, p);
       if (g.length && (g.length === 1 || g[0].s >= (g[1] ? g[1].s : 0) + 3)) { F.m = g[0].m; F.choices = []; }
@@ -231,7 +325,7 @@ function sheetDictate(forMatter) {
     F.next = p.next || ''; F.unlisted = !!p.unlisted && !p.next;
     if (p.purpose) F.purpose = p.purpose; if (p.item) F.item = p.item;
     if (p.fee) { F.fee = String(p.fee); F.feeKind = p.feeKind; }
-    F.note = p.note; F.applied = true;
+    F.note = F.okd && F.clean.trim() ? F.clean.trim() : spoken; F.applied = true;
     if (F.m && waOf(F.m)) F.wa = true;
     draw();
     const bits = [F.m ? 'matter ' + mref(F.m) : F.choices.length ? 'choose the matter' : 'matter not found', F.next ? 'next ' + dmy(F.next) : F.unlisted ? 'Unlisted' : '', p.fee ? rupees(p.fee) + (p.feeKind === 'date' ? ' date fee' : ' fee') : ''].filter(Boolean);
@@ -273,29 +367,44 @@ function sheetDictate(forMatter) {
     if (typeof openMatter === 'function' && forMatter) openMatter(m.id);
   };
   draw();
-  root.onclick = e => {
+  const bind = () => { root.onclick = onClick; root.oninput = onInput; };
+  const onClick = e => {
     const el = e.target.closest('[data-dc]'); if (!el) return;
     const a = el.dataset.dc;
     if (a === 'mic') {
       keep();
-      if (F.live) { dcStop(); F.live = false; F.mid = ''; draw(); return; }
+      if (F.live) { dcStop(); F.live = false; F.mid = ''; if (F.text.trim() && F.cleanBy !== 'claude') { F.clean = dcTidy(F.text, F.m); F.cleanBy = 'rules'; F.okd = false; } draw(); return; }
       let base = null, bsid = 0;
       dcStart(lang, (fin, mid, sid) => {
         const box = $('#dc_text'); if (!box) { dcStop(); return; }
         if (sid !== bsid) { bsid = sid; base = box.value.trim(); }   // what was in the box before this phrase
         if (fin) { box.value = (base ? base + ' ' : '') + fin; F.text = box.value; }
         F.mid = mid; const s = $('.dc-mid'); if (s) s.textContent = mid ? '… ' + mid : ''; else if (mid) { const n = document.createElement('small'); n.className = 'dc-mid'; n.textContent = '… ' + mid; box.after(n); }
-      }, on => { if (F.live !== on) { keep(); F.live = on; if (!on) F.mid = ''; draw(); } });
+      }, on => { if (F.live !== on) { keep(); F.live = on; if (!on) { F.mid = ''; if (F.text.trim() && F.cleanBy !== 'claude') { F.clean = dcTidy(F.text, F.m); F.cleanBy = 'rules'; F.okd = false; } } draw(); } });
     }
     else if (a === 'lang') { keep(); lang = lang === 'hi-IN' ? 'en-IN' : 'hi-IN'; try { localStorage.setItem(LS, lang); } catch (e) {} if (F.live) { dcStop(); F.live = false; } draw(); toast(lang === 'hi-IN' ? 'Hindi + English: speak freely in both' : 'English only'); }
-    else if (a === 'clear') { keep(); F.text = ''; F.mid = ''; draw(); }
-    else if (a === 'apply') { if (F.live) { dcStop(); F.live = false; } apply(); }
+    else if (a === 'clear') { keep(); F.text = ''; F.mid = ''; F.clean = ''; F.cleanBy = ''; F.okd = false; F.ai = null; draw(); }
+    else if (a === 'apply') { if (F.live) { dcStop(); F.live = false; } keep(); if (!F.clean && F.text.trim()) { F.clean = dcTidy(F.text, F.m); F.cleanBy = 'rules'; } apply(); }
     else if (a === 'hap') { keep(); F.happened = el.dataset.v; draw(); }
     else if (a === 'pick') { keep(); F.m = find(el.dataset.id); F.choices = []; draw(); }
     else if (a === 'change') { keep(); const g = F.text ? dcFindMatter(F.text, dcParse(F.text)) : []; F.choices = g; F.m = null; if (!g.length) toast('Say or type the case no., crime no. or party name, then press Apply'); draw(); }
     else if (a === 'save') save();
+    else if (a === 'ok') { keep(); F.okd = true; draw(); toast('OK — now press Apply'); }
+    else if (a === 'unok') { keep(); F.okd = false; draw(); }
+    else if (a === 'raw') { keep(); F.okd = false; F.clean = dcTidy(F.text, F.m); F.cleanBy = 'rules'; apply(); }
+    else if (a === 'tidy') { keep(); F.clean = dcTidy(F.text, F.m); F.cleanBy = 'rules'; F.ai = null; F.okd = false; draw(); }
+    else if (a === 'claude') {
+      keep(); if (!F.text.trim()) return toast('Speak or type first');
+      const m0 = F.m || (dcFindMatter(F.text, dcParse(F.text))[0] || {}).m;
+      claudeAppRead({ m: m0, prompt: DC_CLAUDE_PROMPT(F.text.trim(), m0), title: 'Reframe with Claude' }).then(o => {
+        if (o && o.note) { F.clean = String(o.note); F.cleanBy = 'claude'; F.ai = o; F.okd = false; }
+        draw(); bind();
+        if (o && o.note) toast('Claude’s version is in the box — press OK if it is right');
+      });
+    }
   };
-  root.oninput = e => { if (e.target.id === 'dc_text') F.text = e.target.value; };
+  const onInput = e => { if (e.target.id === 'dc_text') { F.text = e.target.value; if (F.okd) { F.okd = false; } } };
+  bind();
   setTimeout(() => { const b = $('[data-dc="mic"]'); if (b && !F.text) b.click(); }, 250);   // start listening straight away
 }
 
