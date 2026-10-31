@@ -495,3 +495,10 @@ html.welcoming,html.welcoming body{overflow:hidden}
 .dc-clean-h b{font-size:14px}.dc-clean-h small{color:var(--muted);font-size:11.5px}
 .dc-clean textarea{background:#fff;font-weight:600}
 .dc-clean-more{margin-top:6px;font-size:13px;color:var(--muted)}
+.pd-rows{display:flex;flex-direction:column;gap:8px}
+.pd-row{border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:#fff}
+.pd-row.pd-off{opacity:.55}
+.pd-top{display:grid;grid-template-columns:24px 1fr 1fr;gap:8px;align-items:center}
+.pd-top input[type=checkbox]{width:20px;height:20px}
+.pd-row .in{min-height:38px;padding:6px 10px}
+.pd-warn{color:var(--red);font-weight:600;font-size:12px}

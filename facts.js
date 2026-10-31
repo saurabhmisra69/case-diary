@@ -61,7 +61,7 @@ function factsBlock(m, full) {
       <dt>U/S</dt><dd>${v(m.sections)}</dd>
       <dt>Police station</dt><dd>${v(m.ps)}</dd>`) : ''}
       ${m.district || m.forum === 'HC' ? `<dt>District</dt><dd>${v(m.district)}</dd>` : ''}
-      <dt>Previous dates</dt><dd>${prevHtml}</dd>
+      <dt>Previous dates</dt><dd>${prevHtml}${full ? ` <button class="fx-edit" data-act="pdadd" data-id="${m.id}">+ Add</button>` : ''}</dd>
       <dt>Next date</dt><dd class="fx-next">${nd ? esc(nd) : isUnlisted(m) ? '<span class="fx-unl">UNLISTED – find the date</span>' : blank}${isOpen(m) && m.forum !== 'Advisory' ? ` <button class="fx-edit" data-act="fixdate" data-id="${m.id}">${nd ? 'Correct' : 'Enter'}</button>` : ''}</dd>
       <dt>Purpose</dt><dd>${v(m.purpose)}</dd>
     </dl>
