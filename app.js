@@ -378,8 +378,12 @@ function render() {
   if (!S.account) return renderSignIn();
   const V = window.VIEWS && window.VIEWS[S.tab];
   const html = V ? V() : S.tab === 'home' ? viewHome() : S.tab === 'matters' ? viewMatters() : S.tab === 'matter' && find(S.mid) ? viewMatter(find(S.mid)) : viewMore();
+  const fx = document.querySelector('.filters'), keepX = fx ? fx.scrollLeft : 0;
   $('#app').innerHTML = html + navHtml();
   renderSync();
+  // the filter button pressed stays in view and highlighted (the row no longer jumps back to the start)
+  const f2 = document.querySelector('.filters');
+  if (f2) { f2.scrollLeft = keepX; const on = f2.querySelector('button.on'); if (on) { const l = on.offsetLeft - f2.offsetLeft, r = l + on.offsetWidth; if (l < f2.scrollLeft || r > f2.scrollLeft + f2.clientWidth) f2.scrollLeft = Math.max(0, l - (f2.clientWidth - on.offsetWidth) / 2); } }
 }
 function renderSignIn() {
   $('#app').innerHTML = `<section class="signin">
@@ -545,7 +549,7 @@ function viewMatters() {
   return `<header class="phead">
     <div class="top-row"><div class="tr-l">${backBtn()}<h1>${pageTitle || 'Matters'}</h1></div><button id="syncbtn" class="sync" data-act="sync"></button></div>
     <label class="search">${I.search}<input type="search" placeholder="Search matters" data-act="q" value="${esc(S.q)}"></label>
-    <div class="filters">${/^al_/.test(f || '') ? chip(f, 'Allotted: ' + esc(f === 'al_self' ? 'Self' : jShort(juniors().find(j => j.id === f.slice(3))))) : ''}${chip('pending', 'Pending')}${live().some(isStayed) ? chip('stayed', 'Stayed (' + live().filter(isStayed).length + ')') : ''}${live().some(isUnlisted) ? chip('unlisted', 'Unlisted (' + live().filter(isUnlisted).length + ')') : ''}${chip('st_consult', 'Consultations')}${chip('st_tofile', 'To be filed')}${chip('st_filed', 'Filed – no date yet')}${chip('need', 'Need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory / Pre-litigation')}${live().some(m => dupsOf(m).length) ? chip('dups', '<span class="dupstar">★</span> Duplicates') : ''}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
+    <div class="filters">${/^al_/.test(f || '') ? chip(f, 'Allotted: ' + esc(f === 'al_self' ? 'Self' : jShort(juniors().find(j => j.id === f.slice(3))))) : ''}${chip('pending', 'Pending')}${live().some(isStayed) ? chip('stayed', 'Stayed (' + live().filter(isStayed).length + ')') : ''}${live().some(isUnlisted) ? chip('unlisted', 'Unlisted (' + live().filter(isUnlisted).length + ')') : ''}${chip('st_consult', 'Consultations')}${chip('st_tofile', 'To be filed')}${chip('st_filed', 'Filed – no date yet')}${chip('need_hc', 'High Court – need a date')}${chip('need_trial', 'Trial courts – need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory / Pre-litigation')}${live().some(m => dupsOf(m).length) ? chip('dups', '<span class="dupstar">★</span> Duplicates') : ''}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
   </header>
   <main><div class="list">
     ${typeof shotButton === 'function' ? shotButton('matters') : ''}
