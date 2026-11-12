@@ -504,3 +504,4 @@ html.welcoming,html.welcoming body{overflow:hidden}
 .pd-warn{color:var(--red);font-weight:600;font-size:12px}
 .tr-l{display:flex;align-items:center;gap:10px;min-width:0}
 .tr-l h1{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.fx-stay{color:var(--tr);font-weight:800;background:var(--tr-soft);padding:2px 8px;border-radius:5px;display:inline-block;line-height:1.35}

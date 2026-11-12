@@ -154,7 +154,7 @@ function viewMatter(m) {
     <div class="top-row"><button class="backbtn" data-act="back" aria-label="Back">${I.back}</button><button id="syncbtn" class="sync" data-act="sync" style="background:rgba(255,255,255,.18)"></button></div>
     <div><small style="font-weight:800;opacity:.85;font-family:var(--mono);letter-spacing:.02em">${esc(mref(m))}</small><h1 style="margin-top:4px">${esc(m.title || m.clients)}</h1>
     <p class="m-meta" style="color:rgba(255,255,255,.85);margin:6px 0 0">${esc(metaLine(m))}</p></div>
-    <div class="next-strip">${m.nextDate ? `<span>Next date</span><b>${DOWL[parseIso(m.nextDate).getDay()].slice(0, 3)}, ${dmy(m.nextDate)}</b>${m.purpose ? `<span>for ${esc(m.purpose)}</span>` : ''}` : `<b>${isUnlisted(m) ? 'UNLISTED – find the date' : m.status === 'Pending' ? 'No next date' : esc(m.status)}</b>`}${isOpen(m) && m.forum !== 'Advisory' ? `<button class="ns-fix" data-act="fixdate" data-id="${m.id}">${m.nextDate ? 'Correct date' : 'Enter date'}</button>` : ''}</div>
+    <div class="next-strip">${m.nextDate ? `<span>Next date</span><b>${DOWL[parseIso(m.nextDate).getDay()].slice(0, 3)}, ${dmy(m.nextDate)}</b>${m.purpose ? `<span>for ${esc(m.purpose)}</span>` : ''}` : `<b>${isStayed(m) ? 'STAYED by High Court' : isUnlisted(m) ? 'UNLISTED – find the date' : m.status === 'Pending' ? 'No next date' : esc(m.status)}</b>`}${isStayed(m) ? `<button class="ns-fix" data-act="stayset" data-id="${m.id}">Stay details</button>` : isOpen(m) && m.forum !== 'Advisory' ? `<button class="ns-fix" data-act="fixdate" data-id="${m.id}">${m.nextDate ? 'Correct date' : 'Enter date'}</button>` : ''}</div>
   </header>
   <main class="matter-main"><div class="mp-col">
     <section class="card fx-card">${factsBlock(m, true)}</section>

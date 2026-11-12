@@ -272,7 +272,8 @@ function nextNumber(year) { return Math.max(0, ...live().filter(m => m.year === 
 const forumOf = m => FORUMS[m.forum] || FORUMS.District;
 const COURT_GROUPS = ['High Court', 'Trial courts, tribunals & commissions'];
 const courtGroup = m => m.forum === 'HC' ? 0 : 1;
-const needsDate = m => m.forum !== 'Advisory' && (m.status === 'Pending') && (!m.nextDate || m.nextDate < todayIso());
+const isStayed = m => !!(m && m.stay && m.stay.on) && isOpen(m);
+const needsDate = m => m.forum !== 'Advisory' && (m.status === 'Pending') && !isStayed(m) && (!m.nextDate || m.nextDate < todayIso());
 /* a retainer paid in advance instalments (e.g. ₹1,00,000 a year in 4 quarterly instalments of ₹25,000): only the
    instalments that have fallen due by today — or been billed — are pending, not the whole year's fee */
 function retainerFallenDue(m, on) {
@@ -441,6 +442,7 @@ function viewHome() {
     ${typeof limitsToday === 'function' ? limitsToday() : ''}
     ${typeof tasksToday === 'function' ? tasksToday() : ''}
     ${typeof pipelineToday === 'function' ? pipelineToday() : ''}
+    ${typeof stayToday === 'function' ? stayToday() : ''}
     ${typeof shotButton === 'function' ? shotButton('home') : typeof hcListButton === 'function' ? hcListButton() : ''}
     ${typeof detailsToday === 'function' ? detailsToday() : ''}
     ${briefHtml(list, deadlines, fees)}
@@ -459,7 +461,8 @@ function viewHome() {
       <button class="tile" style="background:var(--saffron-soft)" data-act="filter" data-f="fees"><span style="color:var(--saffron-ink)">Fees pending</span><b style="color:var(--saffron-ink)">${rupees(fees)}</b><span>${feeClients} matter${feeClients === 1 ? '' : 's'}</span></button>
       <button class="tile" style="background:var(--hc-soft)" data-act="filter" data-f="need_hc"><span style="color:var(--hc)">High Court – need a date</span><b style="color:var(--hc)">${need.filter(m => courtGroup(m) === 0).length}</b><span>Date passed or blank${live().some(m => isUnlisted(m) && courtGroup(m) === 0) ? ' · ' + live().filter(m => isUnlisted(m) && courtGroup(m) === 0).length + ' unlisted' : ''}</span></button>
       <button class="tile" style="background:var(--dc-soft)" data-act="filter" data-f="need_trial"><span style="color:var(--dc-ink)">Trial courts – need a date</span><b style="color:var(--dc-ink)">${need.filter(m => courtGroup(m) === 1).length}</b><span>District courts, tribunals, commissions${live().some(m => isUnlisted(m) && courtGroup(m) === 1) ? ' · ' + live().filter(m => isUnlisted(m) && courtGroup(m) === 1).length + ' unlisted' : ''}</span></button>
-      <button class="tile" style="background:var(--chip);grid-column:1 / -1" data-act="filter" data-f="pending"><span style="color:var(--ink)">Pending matters</span><b style="color:var(--ink)">${pending.length}</b><span>Including reserved</span></button>
+      <button class="tile" style="background:var(--chip)" data-act="filter" data-f="pending"><span style="color:var(--ink)">Pending matters</span><b style="color:var(--ink)">${pending.length}</b><span>Including reserved</span></button>
+      <button class="tile" style="background:var(--tr-soft)" data-act="filter" data-f="stayed"><span style="color:var(--tr-ink)">Stayed by High Court</span><b style="color:var(--tr-ink)">${live().filter(isStayed).length}</b><span>Trial court matters — no dates taken</span></button>
       ${typeof allotTile === 'function' ? allotTile() : ''}
       <button class="tile wide" style="background:var(--hc-soft)" data-act="tab" data-tab="limit"><span style="color:var(--hc)">Limitation</span><b style="color:var(--hc);font-size:19px">Calculate last date</b><span>Appeal, revision, review, s.34, NI Act and more</span></button>
     </section>
@@ -518,6 +521,7 @@ function viewMatters() {
   const tests = {
     pending: m => isOpen(m),
     need: needsDate,
+    stayed: m => isStayed(m),
     need_hc: m => needsDate(m) && courtGroup(m) === 0,
     need_trial: m => needsDate(m) && courtGroup(m) === 1,
     unlisted: m => isUnlisted(m),
@@ -534,14 +538,14 @@ function viewMatters() {
     .sort((a, b) => f === 'deadline' ? a.deadline.localeCompare(b.deadline) : ((isOpen(b) - isOpen(a)) || ((+a.year || 0) - (+b.year || 0)) || ((+a.n || 0) - (+b.n || 0))));
   // Need a date / Unlisted: High Court matters first, then trial courts, then tribunals, consumer and revenue
   const grouped = f === 'need' || f === 'unlisted';
-  const pageTitle = f === 'need_hc' ? 'High Court – need a date' : f === 'need_trial' ? 'Trial courts – need a date' : '';
+  const pageTitle = f === 'stayed' ? 'Stayed by High Court' : f === 'need_hc' ? 'High Court – need a date' : f === 'need_trial' ? 'Trial courts – need a date' : '';
   if (grouped) ms.sort((a, b) => (courtGroup(a) - courtGroup(b)) || ((a.nextDate || '') .localeCompare(b.nextDate || '')) || ((+a.year || 0) - (+b.year || 0)) || ((+a.n || 0) - (+b.n || 0)));
   const firstShut = f === 'deadline' || grouped ? -1 : ms.findIndex(m => !isOpen(m)), split = firstShut > 0;   // a heading between pending and decided
   const chip = (k, l) => `<button class="${f === k ? 'on' : ''}" data-act="filter" data-f="${k}">${l}</button>`;
   return `<header class="phead">
     <div class="top-row"><div class="tr-l">${backBtn()}<h1>${pageTitle || 'Matters'}</h1></div><button id="syncbtn" class="sync" data-act="sync"></button></div>
     <label class="search">${I.search}<input type="search" placeholder="Search matters" data-act="q" value="${esc(S.q)}"></label>
-    <div class="filters">${/^al_/.test(f || '') ? chip(f, 'Allotted: ' + esc(f === 'al_self' ? 'Self' : jShort(juniors().find(j => j.id === f.slice(3))))) : ''}${chip('pending', 'Pending')}${live().some(isUnlisted) ? chip('unlisted', 'Unlisted (' + live().filter(isUnlisted).length + ')') : ''}${chip('st_consult', 'Consultations')}${chip('st_tofile', 'To be filed')}${chip('st_filed', 'Filed – no date yet')}${chip('need', 'Need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory / Pre-litigation')}${live().some(m => dupsOf(m).length) ? chip('dups', '<span class="dupstar">★</span> Duplicates') : ''}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
+    <div class="filters">${/^al_/.test(f || '') ? chip(f, 'Allotted: ' + esc(f === 'al_self' ? 'Self' : jShort(juniors().find(j => j.id === f.slice(3))))) : ''}${chip('pending', 'Pending')}${live().some(isStayed) ? chip('stayed', 'Stayed (' + live().filter(isStayed).length + ')') : ''}${live().some(isUnlisted) ? chip('unlisted', 'Unlisted (' + live().filter(isUnlisted).length + ')') : ''}${chip('st_consult', 'Consultations')}${chip('st_tofile', 'To be filed')}${chip('st_filed', 'Filed – no date yet')}${chip('need', 'Need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory / Pre-litigation')}${live().some(m => dupsOf(m).length) ? chip('dups', '<span class="dupstar">★</span> Duplicates') : ''}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
   </header>
   <main><div class="list">
     ${typeof shotButton === 'function' ? shotButton('matters') : ''}
@@ -550,7 +554,7 @@ function viewMatters() {
       const fo = forumOf(m), late = needsDate(m);
       const g = grouped ? courtGroup(m) : -1;
       const head = grouped ? (i === 0 || courtGroup(ms[i - 1]) !== g ? `<div class="h2" style="margin-top:${i ? 14 : 4}px"><h2>${COURT_GROUPS[g]}</h2><span class="sub">${ms.filter(x => courtGroup(x) === g).length}</span></div>` : '') : split && i === 0 ? `<div class="h2" style="margin-top:4px"><h2>Pending</h2><span class="sub">${firstShut}</span></div>` : split && i === firstShut ? `<div class="h2" style="margin-top:14px"><h2>Decided / closed</h2><span class="sub">${ms.length - firstShut}</span></div>` : '';
-      const stg = typeof stageOf === 'function' && !isRetainer(m) ? stageOf(m) : '', right = f === 'fees' ? rupees(feeDue(m)) : f === 'deadline' ? dmy(m.deadline) : (m.nextDate ? dmy(m.nextDate) : ['consult', 'fee', 'prep', 'filed'].includes(stg) ? STAGE_NAME[stg] : shortSt(m.status));
+      const stg = typeof stageOf === 'function' && !isRetainer(m) ? stageOf(m) : '', right = isStayed(m) ? 'Stayed' : f === 'fees' ? rupees(feeDue(m)) : f === 'deadline' ? dmy(m.deadline) : (m.nextDate ? dmy(m.nextDate) : ['consult', 'fee', 'prep', 'filed'].includes(stg) ? STAGE_NAME[stg] : shortSt(m.status));
       return head + mWrap(`<button class="card row" data-act="open" data-id="${m.id}">
         <div class="item sm" style="background:${fo.c}"><small>REF.</small><b>${esc(mrefBox(m))}</b></div>
         <span class="m-col"><span class="m-title">${dupStar(m)}${esc(caseLine(m))}</span>${sideLine(m) ? `<span class="m-meta">${esc(sideLine(m))}</span>` : ''}</span>
