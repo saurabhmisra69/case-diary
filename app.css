@@ -502,3 +502,5 @@ html.welcoming,html.welcoming body{overflow:hidden}
 .pd-top input[type=checkbox]{width:20px;height:20px}
 .pd-row .in{min-height:38px;padding:6px 10px}
 .pd-warn{color:var(--red);font-weight:600;font-size:12px}
+.tr-l{display:flex;align-items:center;gap:10px;min-width:0}
+.tr-l h1{min-width:0;overflow:hidden;text-overflow:ellipsis}

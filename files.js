@@ -119,6 +119,7 @@ setTimeout(syncDetails, 15000);
 /* ---------- Matter page ---------- */
 function openMatter(id) {
   const m = find(id); if (!m) return;
+  if (S.tab !== 'matter' || S.mid !== id) navPush();
   if (S.tab !== 'matter') S.prevTab = S.tab;
   S.tab = 'matter'; S.mid = id; F.stack = []; F.items = null; F.err = ''; F.common = null;
   closeSheet(); render(); scrollTo(0, 0);
@@ -416,7 +417,7 @@ document.addEventListener('click', e => {
 document.addEventListener('click', async e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
   const a = el.dataset.act, m = find(S.mid);
-  if (a === 'back') { S.tab = S.prevTab || 'home'; render(); scrollTo(0, 0); }
+  if (a === 'back') smBack();
   else if (a === 'linkfolder') openPicker();
   else if (a === 'newfolder') openNewFolder();
   else if (a === 'reloadfiles') loadFolder();

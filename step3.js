@@ -10,7 +10,7 @@ Object.assign(I, {
   right: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
 });
 window.VIEWS = window.VIEWS || {};
-const pageHead = (title, extra = '') => `<header class="phead"><div class="top-row"><h1>${title}</h1><button id="syncbtn" class="sync" data-act="sync"></button></div>${extra}</header>`;
+const pageHead = (title, extra = '') => `<header class="phead"><div class="top-row"><div class="tr-l">${backBtn()}<h1>${title}</h1></div><button id="syncbtn" class="sync" data-act="sync"></button></div>${extra}</header>`;
 const openDeadlines = () => live().filter(m => m.deadline && !m.deadlineDone);
 
 /* ================= Calendar ================= */

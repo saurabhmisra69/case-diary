@@ -91,7 +91,7 @@ const S = {
   etag: localStorage.getItem(LS_ETAG) || '',
   dirty: localStorage.getItem(LS_DIRTY) === '1',
   syncing: false, syncErr: '', lastSynced: localStorage.getItem(LS_SYNCED) || '',
-  tab: 'home', prevTab: 'home', mid: '', day: todayIso(), q: '', filter: 'pending',
+  tab: 'home', prevTab: 'home', nav: [], hd: 0, mid: '', day: todayIso(), q: '', filter: 'pending',
 };
 const emptyData = () => ({ v: 1, matters: [], updated: 0 });
 const live = () => (S.data?.matters || []).filter(m => !m.deleted);
@@ -270,8 +270,8 @@ async function flushCalendar() {
 const byNo = (a, b) => (a.year - b.year) || (a.n - b.n);
 function nextNumber(year) { return Math.max(0, ...live().filter(m => m.year === year).map(m => m.n)) + 1; }
 const forumOf = m => FORUMS[m.forum] || FORUMS.District;
-const COURT_GROUPS = ['High Court', 'Trial courts (district courts)', 'Tribunals, consumer & revenue'];
-const courtGroup = m => m.forum === 'HC' ? 0 : (!m.forum || m.forum === 'District') ? 1 : 2;
+const COURT_GROUPS = ['High Court', 'Trial courts, tribunals & commissions'];
+const courtGroup = m => m.forum === 'HC' ? 0 : 1;
 const needsDate = m => m.forum !== 'Advisory' && (m.status === 'Pending') && (!m.nextDate || m.nextDate < todayIso());
 /* a retainer paid in advance instalments (e.g. ₹1,00,000 a year in 4 quarterly instalments of ₹25,000): only the
    instalments that have fallen due by today — or been billed — are pending, not the whole year's fee */
@@ -457,8 +457,9 @@ function viewHome() {
     <section class="tiles a-tiles">
       <button class="tile" style="background:var(--red-soft)" data-act="filter" data-f="deadline"><span style="color:var(--red-ink)">Deadlines</span><b style="color:var(--red-ink)">${deadlines.length}</b><span>${deadlines[0] ? esc(deadlines[0].deadlineFor || 'Due') + ' · ' + short(deadlines[0].deadline) : 'None this week'}</span></button>
       <button class="tile" style="background:var(--saffron-soft)" data-act="filter" data-f="fees"><span style="color:var(--saffron-ink)">Fees pending</span><b style="color:var(--saffron-ink)">${rupees(fees)}</b><span>${feeClients} matter${feeClients === 1 ? '' : 's'}</span></button>
-      <button class="tile" style="background:var(--hc-soft)" data-act="filter" data-f="need"><span style="color:var(--hc)">Need a date</span><b style="color:var(--hc)">${need.length}</b><span>High Court ${need.filter(m => courtGroup(m) === 0).length} · Trial courts ${need.filter(m => courtGroup(m) === 1).length}${need.some(m => courtGroup(m) === 2) ? ' · Others ' + need.filter(m => courtGroup(m) === 2).length : ''}</span></button>
-      <button class="tile" style="background:var(--dc-soft)" data-act="filter" data-f="pending"><span style="color:var(--dc-ink)">Pending matters</span><b style="color:var(--dc-ink)">${pending.length}</b><span>Including reserved</span></button>
+      <button class="tile" style="background:var(--hc-soft)" data-act="filter" data-f="need_hc"><span style="color:var(--hc)">High Court – need a date</span><b style="color:var(--hc)">${need.filter(m => courtGroup(m) === 0).length}</b><span>Date passed or blank${live().some(m => isUnlisted(m) && courtGroup(m) === 0) ? ' · ' + live().filter(m => isUnlisted(m) && courtGroup(m) === 0).length + ' unlisted' : ''}</span></button>
+      <button class="tile" style="background:var(--dc-soft)" data-act="filter" data-f="need_trial"><span style="color:var(--dc-ink)">Trial courts – need a date</span><b style="color:var(--dc-ink)">${need.filter(m => courtGroup(m) === 1).length}</b><span>District courts, tribunals, commissions${live().some(m => isUnlisted(m) && courtGroup(m) === 1) ? ' · ' + live().filter(m => isUnlisted(m) && courtGroup(m) === 1).length + ' unlisted' : ''}</span></button>
+      <button class="tile" style="background:var(--chip);grid-column:1 / -1" data-act="filter" data-f="pending"><span style="color:var(--ink)">Pending matters</span><b style="color:var(--ink)">${pending.length}</b><span>Including reserved</span></button>
       ${typeof allotTile === 'function' ? allotTile() : ''}
       <button class="tile wide" style="background:var(--hc-soft)" data-act="tab" data-tab="limit"><span style="color:var(--hc)">Limitation</span><b style="color:var(--hc);font-size:19px">Calculate last date</b><span>Appeal, revision, review, s.34, NI Act and more</span></button>
     </section>
@@ -517,6 +518,8 @@ function viewMatters() {
   const tests = {
     pending: m => isOpen(m),
     need: needsDate,
+    need_hc: m => needsDate(m) && courtGroup(m) === 0,
+    need_trial: m => needsDate(m) && courtGroup(m) === 1,
     unlisted: m => isUnlisted(m),
     deadline: m => m.deadline && !m.deadlineDone,
     fees: m => feeDue(m) > 0,
@@ -531,11 +534,12 @@ function viewMatters() {
     .sort((a, b) => f === 'deadline' ? a.deadline.localeCompare(b.deadline) : ((isOpen(b) - isOpen(a)) || ((+a.year || 0) - (+b.year || 0)) || ((+a.n || 0) - (+b.n || 0))));
   // Need a date / Unlisted: High Court matters first, then trial courts, then tribunals, consumer and revenue
   const grouped = f === 'need' || f === 'unlisted';
+  const pageTitle = f === 'need_hc' ? 'High Court – need a date' : f === 'need_trial' ? 'Trial courts – need a date' : '';
   if (grouped) ms.sort((a, b) => (courtGroup(a) - courtGroup(b)) || ((a.nextDate || '') .localeCompare(b.nextDate || '')) || ((+a.year || 0) - (+b.year || 0)) || ((+a.n || 0) - (+b.n || 0)));
   const firstShut = f === 'deadline' || grouped ? -1 : ms.findIndex(m => !isOpen(m)), split = firstShut > 0;   // a heading between pending and decided
   const chip = (k, l) => `<button class="${f === k ? 'on' : ''}" data-act="filter" data-f="${k}">${l}</button>`;
   return `<header class="phead">
-    <div class="top-row"><h1>Matters</h1><button id="syncbtn" class="sync" data-act="sync"></button></div>
+    <div class="top-row"><div class="tr-l">${backBtn()}<h1>${pageTitle || 'Matters'}</h1></div><button id="syncbtn" class="sync" data-act="sync"></button></div>
     <label class="search">${I.search}<input type="search" placeholder="Search matters" data-act="q" value="${esc(S.q)}"></label>
     <div class="filters">${/^al_/.test(f || '') ? chip(f, 'Allotted: ' + esc(f === 'al_self' ? 'Self' : jShort(juniors().find(j => j.id === f.slice(3))))) : ''}${chip('pending', 'Pending')}${live().some(isUnlisted) ? chip('unlisted', 'Unlisted (' + live().filter(isUnlisted).length + ')') : ''}${chip('st_consult', 'Consultations')}${chip('st_tofile', 'To be filed')}${chip('st_filed', 'Filed – no date yet')}${chip('need', 'Need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory / Pre-litigation')}${live().some(m => dupsOf(m).length) ? chip('dups', '<span class="dupstar">★</span> Duplicates') : ''}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
   </header>
@@ -558,7 +562,7 @@ function viewMatters() {
 
 function viewMore() {
   const n = live().length;
-  return `<header class="phead"><div class="top-row"><h1>More</h1><button id="syncbtn" class="sync" data-act="sync"></button></div></header>
+  return `<header class="phead"><div class="top-row"><div class="tr-l">${backBtn()}<h1>More</h1></div><button id="syncbtn" class="sync" data-act="sync"></button></div></header>
   <main><div class="menu">
     <div class="card"><b style="display:block;font-size:17px">Saurabh Misra &amp; Associates – Chambers</b><small style="color:var(--muted)">SM Chambers</small><div class="kv" style="margin-top:10px"><span>Signed in as</span><b>${esc(S.account?.username || '')}</b><span>Matters</span><b>${n}</b><span>Saved in</span><b>OneDrive › SM Chambers data</b><span>Version</span><b>${APP_VERSION}</b></div></div>
     ${typeof langSwitch === 'function' ? langSwitch() : ''}
@@ -590,9 +594,31 @@ function viewMore() {
 
 /* ---------- sheets ---------- */
 function openSheet(html) {
+  // every sheet gets a close (×) button, even short "Making…" ones
+  if (!/data-act="close"|data-ca="cancel"/.test(html) && html.includes('<div class="s-head">')) html = html.replace(/(<div class="s-head">[\s\S]*?<\/h1><\/div>)/, `$1<button class="x" data-act="close" aria-label="Close">${I.x}</button>`);
   $('#sheet-root').innerHTML = `<div class="scrim" data-act="scrim"><section class="sheet" role="dialog" aria-modal="true"><span class="grab"></span>${html}</section></div>`;
   document.body.style.overflow = 'hidden';
 }
+/* ---------- going back: every page has a back button; the phone's back gesture works the same way ---------- */
+function navPush() {
+  S.nav.push({ tab: S.tab, filter: S.filter, stf: S.stf, mid: S.mid, prevTab: S.prevTab });
+  if (S.nav.length > 50) S.nav.shift();
+  try { history.pushState({ sm: S.nav.length }, ''); S.hd++; } catch (e) {}
+}
+function goBack() {
+  const p = S.nav.pop();
+  if (p) { Object.assign(S, { tab: p.tab, filter: p.filter, stf: p.stf, mid: p.mid, prevTab: p.prevTab }); }
+  else S.tab = 'home';
+  closeSheet(); render(); scrollTo(0, 0);
+  if (S.tab === 'matter' && typeof loadFolder === 'function') { const m = find(S.mid); if (m && m.folderId) loadFolder(); }
+}
+function smBack() { if (S.hd > 0) history.back(); else goBack(); }
+const backBtn = () => `<button class="backbtn" data-act="tabback" aria-label="Back">${I.back}</button>`;
+window.addEventListener('popstate', () => {
+  if (document.getElementById('viewer')) return;   // the paper viewer closes itself
+  if ($('#sheet-root') && $('#sheet-root').innerHTML.trim()) { closeSheet(); try { history.pushState({ sm: S.nav.length }, ''); } catch (e) {} return; }
+  S.hd = Math.max(0, S.hd - 1); goBack();
+});
 function closeSheet() { $('#sheet-root').innerHTML = ''; document.body.style.overflow = ''; }
 const find = id => live().find(m => m.id === id);
 
@@ -862,9 +888,10 @@ document.addEventListener('click', e => {
   if (a === 'signin') return signIn();
   if (a === 'signout') return signOut();
   if (a === 'sync') { if (S.syncErr && S.syncErr !== 'offline') toast('Last try: ' + S.syncErr, 5000); return sync(); }
-  if (a === 'tab') { S.tab = el.dataset.tab; render(); scrollTo(0, 0); return; }
+  if (a === 'tabback') { smBack(); return; }
+  if (a === 'tab') { if (el.dataset.tab !== S.tab) navPush(); S.tab = el.dataset.tab; render(); scrollTo(0, 0); return; }
   if (a === 'day') { S.day = el.dataset.day; render(); return; }
-  if (a === 'filter') { S.filter = el.dataset.f; S.stf = el.dataset.st || ''; S.tab = 'matters'; closeSheet(); render(); return; }
+  if (a === 'filter') { if (S.tab !== 'matters' || S.filter !== el.dataset.f) navPush(); S.filter = el.dataset.f; S.stf = el.dataset.st || ''; S.tab = 'matters'; closeSheet(); render(); return; }
   if (a === 'cats') { sheetCategories(); return; }
   if (a === 'sortnature') return sheetSortNature();
   if (a === 'fixdate') return sheetFixDate(find(id));
