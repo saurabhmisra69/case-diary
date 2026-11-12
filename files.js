@@ -657,6 +657,25 @@ function runOneTimeFixes() {
     });
     if (n) toast('Hearing history filled in for ' + n + ' matter' + (n > 1 ? 's' : ''), 4000);
   }
+  if (!done.includes('2026-11-12-fee-reset')) {
+    // Fresh start for fees from 15.11.2026 (his instruction, 12.11.2026): fees agreed, payments, date fees, expenses and
+    // junior fees removed permanently from every matter. Kept: bills and receipts already issued, and the Omaxe Heights
+    // advisory retainer (terms and the quarter paid).
+    let n = 0;
+    change(d => {
+      for (const m of d.matters || []) {
+        if (typeof isRetainer === 'function' && isRetainer(m)) continue;
+        const had = ['feeAgreed', 'feeReceived', 'agreedParts', 'payments', 'dateFee', 'dateFeeFrom', 'dateFeeWaive', 'dateFeeByEF', 'expenses']
+          .filter(k => m[k] != null && m[k] !== '' && !(Array.isArray(m[k]) && !m[k].length) && String(m[k]) !== '0');
+        if (!had.length) continue;
+        had.forEach(k => { delete m[k]; });
+        if (!m.deleted) logChange(m, 'Fee records up to 14.11.2026 removed (fees, payments, date fees, expenses) — fresh start from 15.11.2026');
+        touch(m); n++;
+      }
+      d.fixes = [...(d.fixes || []), '2026-11-12-fee-reset'];
+    });
+    if (n) toast('Old fee records cleared in ' + n + ' matter' + (n > 1 ? 's' : '') + ' — fresh start from 15.11.2026', 5000);
+  }
   if (!done.includes('2026-10-24-juniors')) {
     change(d => { d.meta = d.meta || {}; const L = d.meta.juniors = d.meta.juniors || [];
       ['Jai Prakash Awasthi, Advocate', 'Izhar Ahmad, Advocate'].forEach(n => { const key = n.replace(/,?\s*advocate$/i, '').toLowerCase(); if (!L.some(j => !j.deleted && j.name.replace(/,?\s*advocate$/i, '').toLowerCase() === key)) L.push({ id: uid(), name: n, phone: '', u: Date.now() }); });
