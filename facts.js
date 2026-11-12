@@ -62,7 +62,7 @@ function factsBlock(m, full) {
       <dt>Police station</dt><dd>${v(m.ps)}</dd>`) : ''}
       ${m.district || m.forum === 'HC' ? `<dt>District</dt><dd>${v(m.district)}</dd>` : ''}
       <dt>Previous dates</dt><dd>${prevHtml}${full ? ` <button class="fx-edit" data-act="pdadd" data-id="${m.id}">+ Add</button>` : ''}</dd>
-      ${typeof stayedUnder === 'function' && m.forum === 'HC' && stayedUnder(m).length ? `<dt>Stay operating in</dt><dd>${stayedUnder(m).map(x => `<button class="linkbtn" data-act="open" data-id="${x.id}" style="display:block;text-align:left;font-weight:700">${esc(caseLineOf(x))} · ${esc((x.title || x.clients || '').slice(0, 50))}</button>`).join('')}</dd>` : ''}
+      ${typeof lowerRows === 'function' ? lowerRows(m, full) : ''}
       <dt>Next date</dt><dd class="fx-next">${isStayed(m) ? `<span class="fx-stay">${esc(stayText(m))}</span> <button class="fx-edit" data-act="stayset" data-id="${m.id}">Stay</button>` : `${nd ? esc(nd) : isUnlisted(m) ? '<span class="fx-unl">UNLISTED – find the date</span>' : blank}${isOpen(m) && m.forum !== 'Advisory' ? ` <button class="fx-edit" data-act="fixdate" data-id="${m.id}">${nd ? 'Correct' : 'Enter'}</button>` : ''}${full && isOpen(m) && m.forum !== 'HC' && m.forum !== 'Advisory' ? ` <button class="fx-edit" data-act="stayset" data-id="${m.id}">Stayed by HC?</button>` : ''}`}</dd>
       <dt>Purpose</dt><dd>${v(m.purpose)}</dd>
     </dl>
