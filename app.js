@@ -270,6 +270,8 @@ async function flushCalendar() {
 const byNo = (a, b) => (a.year - b.year) || (a.n - b.n);
 function nextNumber(year) { return Math.max(0, ...live().filter(m => m.year === year).map(m => m.n)) + 1; }
 const forumOf = m => FORUMS[m.forum] || FORUMS.District;
+const COURT_GROUPS = ['High Court', 'Trial courts (district courts)', 'Tribunals, consumer & revenue'];
+const courtGroup = m => m.forum === 'HC' ? 0 : (!m.forum || m.forum === 'District') ? 1 : 2;
 const needsDate = m => m.forum !== 'Advisory' && (m.status === 'Pending') && (!m.nextDate || m.nextDate < todayIso());
 /* a retainer paid in advance instalments (e.g. ₹1,00,000 a year in 4 quarterly instalments of ₹25,000): only the
    instalments that have fallen due by today — or been billed — are pending, not the whole year's fee */
@@ -455,7 +457,7 @@ function viewHome() {
     <section class="tiles a-tiles">
       <button class="tile" style="background:var(--red-soft)" data-act="filter" data-f="deadline"><span style="color:var(--red-ink)">Deadlines</span><b style="color:var(--red-ink)">${deadlines.length}</b><span>${deadlines[0] ? esc(deadlines[0].deadlineFor || 'Due') + ' · ' + short(deadlines[0].deadline) : 'None this week'}</span></button>
       <button class="tile" style="background:var(--saffron-soft)" data-act="filter" data-f="fees"><span style="color:var(--saffron-ink)">Fees pending</span><b style="color:var(--saffron-ink)">${rupees(fees)}</b><span>${feeClients} matter${feeClients === 1 ? '' : 's'}</span></button>
-      <button class="tile" style="background:var(--hc-soft)" data-act="filter" data-f="need"><span style="color:var(--hc)">Need a date</span><b style="color:var(--hc)">${need.length}</b><span>Date passed or blank${live().some(isUnlisted) ? ' · ' + live().filter(isUnlisted).length + ' unlisted' : ''}</span></button>
+      <button class="tile" style="background:var(--hc-soft)" data-act="filter" data-f="need"><span style="color:var(--hc)">Need a date</span><b style="color:var(--hc)">${need.length}</b><span>High Court ${need.filter(m => courtGroup(m) === 0).length} · Trial courts ${need.filter(m => courtGroup(m) === 1).length}${need.some(m => courtGroup(m) === 2) ? ' · Others ' + need.filter(m => courtGroup(m) === 2).length : ''}</span></button>
       <button class="tile" style="background:var(--dc-soft)" data-act="filter" data-f="pending"><span style="color:var(--dc-ink)">Pending matters</span><b style="color:var(--dc-ink)">${pending.length}</b><span>Including reserved</span></button>
       ${typeof allotTile === 'function' ? allotTile() : ''}
       <button class="tile wide" style="background:var(--hc-soft)" data-act="tab" data-tab="limit"><span style="color:var(--hc)">Limitation</span><b style="color:var(--hc);font-size:19px">Calculate last date</b><span>Appeal, revision, review, s.34, NI Act and more</span></button>
@@ -527,7 +529,10 @@ function viewMatters() {
   if (/^st_/.test(f || '')) { const k = f.slice(3); tests[f] = k === 'tofile' ? m => !isRetainer(m) && ['fee', 'prep'].includes(stageOf(m)) : m => !isRetainer(m) && stageOf(m) === k; }
   const ms = live().filter(tests[f] || tests.all).filter(m => !S.stf || (m.status || 'Pending') === S.stf).filter(m => matches(m, S.q))
     .sort((a, b) => f === 'deadline' ? a.deadline.localeCompare(b.deadline) : ((isOpen(b) - isOpen(a)) || ((+a.year || 0) - (+b.year || 0)) || ((+a.n || 0) - (+b.n || 0))));
-  const firstShut = f === 'deadline' ? -1 : ms.findIndex(m => !isOpen(m)), split = firstShut > 0;   // a heading between pending and decided
+  // Need a date / Unlisted: High Court matters first, then trial courts, then tribunals, consumer and revenue
+  const grouped = f === 'need' || f === 'unlisted';
+  if (grouped) ms.sort((a, b) => (courtGroup(a) - courtGroup(b)) || ((a.nextDate || '') .localeCompare(b.nextDate || '')) || ((+a.year || 0) - (+b.year || 0)) || ((+a.n || 0) - (+b.n || 0)));
+  const firstShut = f === 'deadline' || grouped ? -1 : ms.findIndex(m => !isOpen(m)), split = firstShut > 0;   // a heading between pending and decided
   const chip = (k, l) => `<button class="${f === k ? 'on' : ''}" data-act="filter" data-f="${k}">${l}</button>`;
   return `<header class="phead">
     <div class="top-row"><h1>Matters</h1><button id="syncbtn" class="sync" data-act="sync"></button></div>
@@ -539,7 +544,8 @@ function viewMatters() {
     <div class="h2"><span class="sub">${ms.length} matter${ms.length === 1 ? '' : 's'}${S.stf ? ' · ' + esc(S.stf) + ' <button class="linkbtn" data-act="filter" data-f="' + f + '">clear</button>' : ''}</span><span><button class="linkbtn" data-act="allotted">Allotted</button> · <button class="linkbtn" data-act="cats">Categories</button>${(() => { const k = live().filter(needsSort).length; return k ? ` · <button class="linkbtn" data-act="sortnature">Sort nature (${k})</button>` : ''; })()}</span></div>
     ${ms.length ? ms.map((m, i) => {
       const fo = forumOf(m), late = needsDate(m);
-      const head = split && i === 0 ? `<div class="h2" style="margin-top:4px"><h2>Pending</h2><span class="sub">${firstShut}</span></div>` : split && i === firstShut ? `<div class="h2" style="margin-top:14px"><h2>Decided / closed</h2><span class="sub">${ms.length - firstShut}</span></div>` : '';
+      const g = grouped ? courtGroup(m) : -1;
+      const head = grouped ? (i === 0 || courtGroup(ms[i - 1]) !== g ? `<div class="h2" style="margin-top:${i ? 14 : 4}px"><h2>${COURT_GROUPS[g]}</h2><span class="sub">${ms.filter(x => courtGroup(x) === g).length}</span></div>` : '') : split && i === 0 ? `<div class="h2" style="margin-top:4px"><h2>Pending</h2><span class="sub">${firstShut}</span></div>` : split && i === firstShut ? `<div class="h2" style="margin-top:14px"><h2>Decided / closed</h2><span class="sub">${ms.length - firstShut}</span></div>` : '';
       const stg = typeof stageOf === 'function' && !isRetainer(m) ? stageOf(m) : '', right = f === 'fees' ? rupees(feeDue(m)) : f === 'deadline' ? dmy(m.deadline) : (m.nextDate ? dmy(m.nextDate) : ['consult', 'fee', 'prep', 'filed'].includes(stg) ? STAGE_NAME[stg] : shortSt(m.status));
       return head + mWrap(`<button class="card row" data-act="open" data-id="${m.id}">
         <div class="item sm" style="background:${fo.c}"><small>REF.</small><b>${esc(mrefBox(m))}</b></div>
