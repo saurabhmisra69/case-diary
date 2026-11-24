@@ -512,3 +512,17 @@ html.welcoming,html.welcoming body{overflow:hidden}
 /* case details never squeeze letter by letter: in a narrow card the labels go above the values */
 .facts{container-type:inline-size}
 @container (max-width:330px){ .facts dl{grid-template-columns:1fr;gap:2px} .facts dt{padding-top:6px} .fx-prev ol{margin-left:0;width:100%} }
+/* phone calls with clients */
+.act.call{background:var(--wa);color:#fff;cursor:pointer}
+.act.call svg{flex:none}
+.cl-big{min-height:58px;justify-content:flex-start;padding:8px 16px;font-size:15px}
+.cl-big span{display:flex;flex-direction:column;align-items:flex-start;line-height:1.25}
+.cl-big small{font-family:var(--mono);font-weight:600;opacity:.9;font-size:13px}
+.cl-today{border-left:4px solid var(--wa);padding:12px 14px}
+.cl-plan{display:grid;grid-template-columns:62px 1fr auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.cl-plan:first-of-type{border-top:0}
+.cl-plan .act.call{min-height:40px;padding:0 12px}
+.cl-when{display:flex;flex-direction:column;align-items:center;background:var(--wa-soft);color:var(--wa);border-radius:6px;padding:6px 2px;text-align:center}
+.cl-when b{font-size:13px}.cl-when small{font-size:10px;font-weight:700}
+.cl-plan.late .cl-when{background:var(--red-soft);color:var(--red-ink)}
+.matter .acts .act{font-size:12px;padding:0 4px}

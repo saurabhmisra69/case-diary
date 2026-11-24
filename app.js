@@ -157,7 +157,7 @@ function merge(local, remote) {
   const fx = [...new Set([...(local.fixes || []), ...(remote.fixes || [])])]; if (fx.length) out.fixes = fx;
   const lm = local.meta || {}, rm = remote.meta || {}, meta = { ...rm, ...lm };
   for (const k of new Set([...Object.keys(lm), ...Object.keys(rm)])) if (/^seq:/.test(k)) meta[k] = Math.max(+lm[k] || 0, +rm[k] || 0);
-  for (const k of ['juniors', 'library']) {   // lists kept on several devices: join them entry by entry
+  for (const k of ['juniors', 'library', 'calls', 'callPlan']) {   // lists kept on several devices: join them entry by entry
     if (!Array.isArray(lm[k]) && !Array.isArray(rm[k])) continue;
     const mp = new Map(); for (const x of [...(rm[k] || []), ...(lm[k] || [])]) { const o = mp.get(x.id); if (!o || (x.u || 0) >= (o.u || 0)) mp.set(x.id, x); }
     meta[k] = [...mp.values()];
@@ -447,6 +447,7 @@ function viewHome() {
     ${typeof tasksToday === 'function' ? tasksToday() : ''}
     ${typeof pipelineToday === 'function' ? pipelineToday() : ''}
     ${typeof stayToday === 'function' ? stayToday() : ''}
+    ${typeof callsToday === 'function' ? callsToday() : ''}
     ${typeof shotButton === 'function' ? shotButton('home') : typeof hcListButton === 'function' ? hcListButton() : ''}
     ${typeof detailsToday === 'function' ? detailsToday() : ''}
     ${briefHtml(list, deadlines, fees)}
@@ -467,6 +468,7 @@ function viewHome() {
       <button class="tile" style="background:var(--dc-soft)" data-act="filter" data-f="need_trial"><span style="color:var(--dc-ink)">Trial courts – need a date</span><b style="color:var(--dc-ink)">${need.filter(m => courtGroup(m) === 1).length}</b><span>District courts, tribunals, commissions${live().some(m => isUnlisted(m) && courtGroup(m) === 1) ? ' · ' + live().filter(m => isUnlisted(m) && courtGroup(m) === 1).length + ' unlisted' : ''}</span></button>
       <button class="tile" style="background:var(--chip)" data-act="filter" data-f="pending"><span style="color:var(--ink)">Pending matters</span><b style="color:var(--ink)">${pending.length}</b><span>Including reserved</span></button>
       <button class="tile" style="background:var(--tr-soft)" data-act="filter" data-f="stayed"><span style="color:var(--tr-ink)">Stayed by High Court</span><b style="color:var(--tr-ink)">${live().filter(isStayed).length}</b><span>Trial court matters — no dates taken</span></button>
+      ${typeof callTile === 'function' ? callTile() : ''}
       ${typeof allotTile === 'function' ? allotTile() : ''}
       <button class="tile wide" style="background:var(--hc-soft)" data-act="tab" data-tab="limit"><span style="color:var(--hc)">Limitation</span><b style="color:var(--hc);font-size:19px">Calculate last date</b><span>Appeal, revision, review, s.34, NI Act and more</span></button>
     </section>
@@ -508,10 +510,11 @@ function matterCard(m) {
       ${sideLine(m) ? `<span class="m-meta">${esc(sideLine(m))}</span>` : ''}
     </div></div>
     <div data-act="open" data-id="${m.id}" style="cursor:pointer">${factsBlock(m)}</div>
-    <div class="acts">
+    <div class="acts" style="grid-template-columns:1.25fr 1fr 1fr .9fr">
       <button class="act primary" data-act="record" data-id="${m.id}">Next date</button>
       <button class="act blue" data-act="open" data-id="${m.id}">${I.folder}${m.folderId ? 'Files' : 'Details'}</button>
       <button class="act wa" data-act="wa" data-id="${m.id}" ${wa ? '' : 'disabled title="Add client phone first"'}>${I.wa}Client</button>
+      ${typeof callBtn === 'function' ? callBtn(m) : ''}
     </div>
   </article>`;
 }
