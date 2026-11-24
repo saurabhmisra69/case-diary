@@ -88,7 +88,7 @@ function clSaveNums(k, m, done) {
 
 /* the call in progress survives the app being closed or reloaded by the phone */
 function clSetPending(p) { try { localStorage.setItem(CL_PENDING, JSON.stringify(p)); } catch (e) {} }
-function clGetPending() { try { const p = JSON.parse(localStorage.getItem(CL_PENDING) || 'null'); return p && Date.now() - p.t < 3 * 3600e3 ? p : null; } catch (e) { return null; } }
+function clGetPending() { try { const p = JSON.parse(localStorage.getItem(CL_PENDING) || 'null'); return p && Date.now() - p.t < 20 * 60e3 ? p : null; } catch (e) { return null; } }
 function clClearPending() { try { localStorage.removeItem(CL_PENDING); } catch (e) {} }
 
 /* ---------- 2. after the call ---------- */
@@ -251,4 +251,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return; const p = clGetPending(); if (!p || !S.data) return;
   if (!document.getElementById('ac_note')) sheetAfterCall(p);
 });
-window.addEventListener('load', () => setTimeout(() => { const p = clGetPending(); if (p && S.data && !document.getElementById('ac_note') && !document.getElementById('welcome')) sheetAfterCall(p); }, 2500));
+window.addEventListener('load', () => setTimeout(() => { const p = clGetPending(); if (p && S.data && !document.getElementById('ac_note') && !document.getElementById('welcome')) sheetAfterCall(p); else if (!p) clClearPending(); }, 2500));
+
+/* the after-call note closed in any way (×, tap outside, Back) is not asked again */
+(function () { const orig = closeSheet; closeSheet = function () { if (document.getElementById('ac_note')) { clStopMic(); clClearPending(); } return orig.apply(this, arguments); }; })();
