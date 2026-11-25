@@ -646,6 +646,10 @@ function runOneTimeFixes() {
   if (!S.data || !S.account) return;
   const done = S.data.fixes || [];
   { const n = fillYearsFromCaseNo(); if (n) toast(n + ' matter' + (n > 1 ? 's' : '') + ' got the year from the case no. (new matter ref.)', 5000); }
+  { // his instruction 25.11.2026: no "(W/S)" in the case type — "Criminal Case (W/S)" is just "Criminal Case"
+    const ws = /\s*\(\s*w\s*\/\s*s\s*\)\s*|\s+w\/s\b/ig, hit = live().filter(m => ws.test(m.type || '') && !(ws.lastIndex = 0));
+    if (hit.length) { change(() => { for (const m of hit) { const t = m.type.replace(ws, ' ').replace(/\s+/g, ' ').trim(); logChange(m, 'Type: ' + m.type + ' → ' + t); m.type = t; touch(m); } }); toast('“(W/S)” removed from the case type of ' + hit.length + ' matter' + (hit.length > 1 ? 's' : ''), 4000); }
+  }
   if (!done.includes('2026-10-22-history-backfill')) {
     let n = 0;
     change(d => {
