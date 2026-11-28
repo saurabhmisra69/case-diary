@@ -13,7 +13,7 @@ function dashData() {
   const sts = {}; open.forEach(m => { const s = m.status || 'Pending'; sts[s] = (sts[s] || 0) + 1; });
   const bySt = Object.entries(sts).sort((a, b) => b[1] - a[1]).map(([s, n]) => [s, n, 'var(--tr)']);
   const decided = all.filter(m => m.status === 'Decided'), oc = {}; decided.forEach(m => { const o = m.outcome || 'Result not entered'; oc[o] = (oc[o] || 0) + 1; });
-  const OC_C = { 'In our favour': '#2E7D4F', 'Partly in our favour': '#7BA05B', 'Against us': '#B3261E', 'Disposed of with directions': 'var(--hc)', 'Compromise / settled': '#8A6D3B', 'Remanded': '#6B5B95', 'Result not entered': '#999' };
+  const OC_C = { 'In our favour': '#2E7D4F', 'Partly in our favour': '#7BA05B', 'Against us': '#B3261E', 'Disposed of with directions': 'var(--hc)', 'Compromise / settled': '#8A6D3B', 'Remanded': '#6B5B95', 'Dismissed – uncontested': '#5F6B7A', 'Result not entered': '#999' };
   const byOc = Object.entries(oc).sort((a, b) => b[1] - a[1]).map(([o, n]) => [o, n, OC_C[o] || 'var(--hc)']);
   const known = decided.filter(m => m.outcome && !/directions|remanded|compromise/i.test(m.outcome)), won = known.filter(m => /in our favour/i.test(m.outcome)).length;
   const months = []; const d0 = parseIso(t); for (let i = 11; i >= 0; i--) { const d = new Date(d0.getFullYear(), d0.getMonth() - i, 1); months.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')); }
