@@ -24,7 +24,9 @@ function closedRows(m, full) {
   const fx = !f ? `<i class="fx-none" style="color:var(--red-ink)">not entered</i>`
     : f.need === 'no' ? 'No'
     : `<span class="fx-fa${f.done ? ' done' : ''}">Yes – ${esc(f.what || 'to decide')}${f.by ? ' · by ' + dmy(f.by) : ''}${f.done ? ' · done' : ''}</span>${f.note ? `<small class="fx-fa-note">${esc(f.note)}</small>` : ''}`;
-  return `<dt>Result</dt><dd>${esc(res)}${m.closedOn ? ` <small style="font-weight:600;color:var(--muted)">(${dmy(m.closedOn)})</small>` : ''}</dd>
+  const dd = m.decidedOn || m.closedOn, lbl = m.status === 'Decided' ? 'Date of decision' : 'Date closed';
+  return `<dt>Result</dt><dd>${esc(res)}</dd>
+      <dt>${lbl}</dt><dd>${dd ? `<b class="fx-dod">${DOWL[parseIso(dd).getDay()].slice(0, 3)}, ${dmy(dd)}</b>` : '<i class="fx-none" style="color:var(--red-ink)">not entered</i>'} <button class="fx-edit" data-act="dodset" data-id="${m.id}">${dd ? 'Correct' : 'Enter'}</button></dd>
       <dt>Further action</dt><dd>${fx} ${m.forum === 'Advisory' && !full ? '' : `<button class="fx-edit" data-act="further" data-id="${m.id}">${f ? 'Change' : 'Enter'}</button>`}</dd>`;
 }
 
@@ -55,4 +57,22 @@ function sheetFurther(m) {
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act="further"]'); if (!el) return;
   e.stopPropagation(); const m = find(el.dataset.id); if (m) sheetFurther(m);
+}, true);
+
+/* date of decision: set on the day the status was changed; correct it to the actual date of the order */
+function sheetDecisionDate(m) {
+  const dd = m.decidedOn || m.closedOn || todayIso(), lbl = m.status === 'Decided' ? 'Date of decision' : 'Date closed';
+  openSheet(`<div class="s-head"><div><small>${esc(mref(m))} · ${esc(m.status || 'Closed')}${m.outcome ? ' – ' + esc(m.outcome) : ''}</small><h1>${lbl}</h1></div><button class="x" data-act="close" aria-label="Close">${I.x}</button></div>
+    <div class="field"><label for="dod_d">Date of the order / judgment</label><input class="in" id="dod_d" type="date" value="${dd}" max="${todayIso()}"></div>
+    <button class="save" id="dod_save" style="margin-top:14px">Save</button>`);
+  $('#dod_save').onclick = () => {
+    const d = $('#dod_d').value; if (!d) return toast('Choose the date');
+    const had = m.decidedOn || m.closedOn;
+    change(() => { m.decidedOn = d; m.closedOn = d; logChange(m, lbl + ': ' + (had && had !== d ? dmy(had) + ' → ' : '') + dmy(d)); touch(m); });
+    closeSheet(); toast(lbl + ' ' + dmy(d)); if (typeof render === 'function') render();
+  };
+}
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act="dodset"]'); if (!el) return;
+  e.stopPropagation(); const m = find(el.dataset.id); if (m) sheetDecisionDate(m);
 }, true);

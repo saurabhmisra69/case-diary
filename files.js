@@ -569,11 +569,11 @@ document.addEventListener('change', e => {
       if (!isOpen(m) && wasOpen) { m.closedOn = todayIso(); m.calPending = true; }
       if (!isOpen(m) && (m.nextDate || m.purpose)) { logChange(m, 'Next date ' + (m.nextDate ? dmy(m.nextDate) : '—') + (m.purpose ? ' (' + m.purpose + ')' : '') + ' removed: matter ' + v); }
       if (!isOpen(m)) { m.nextDate = ''; m.purpose = ''; m.item = ''; m.unlisted = false; }
-      if (isOpen(m)) m.closedOn = '';
+      if (isOpen(m)) { m.closedOn = ''; m.decidedOn = ''; }
       touch(m);
     });
     change(() => logChange(m, 'Status: ' + (was || '—') + ' → ' + v));
-    toast('Status: ' + v + (v === 'Decided' ? '. Now choose the result and further action.' : !isOpen(m) ? '. Next date removed.' : ''), 3000);
+    toast('Status: ' + v + (v === 'Decided' ? '. Now choose the result, date of decision and further action.' : !isOpen(m) ? '. Next date removed.' : ''), 3000);
   } else if (el.dataset.st === 'allot') {
     if (el.value === '__new') { render(); return sheetNewJunior(m); }
     const was = allotName(m); change(() => { m.allot = el.value; logChange(m, 'Allotted to: ' + was + ' → ' + allotName(m)); touch(m); });
