@@ -63,8 +63,8 @@ function factsBlock(m, full) {
       ${m.district || m.forum === 'HC' ? `<dt>District</dt><dd>${v(m.district)}</dd>` : ''}
       <dt>Previous dates</dt><dd>${prevHtml}${full ? ` <button class="fx-edit" data-act="pdadd" data-id="${m.id}">+ Add</button>` : ''}</dd>
       ${typeof lowerRows === 'function' ? lowerRows(m, full) : ''}
-      ${!isOpen(m) && typeof closedRows === 'function' ? closedRows(m, full) : `      <dt>Next date</dt><dd class="fx-next">\${isStayed(m) ? \`<span class="fx-stay">\${esc(stayText(m))}</span> <button class="fx-edit" data-act="stayset" data-id="\${m.id}">Stay</button>\` : \`\${nd ? esc(nd) : isUnlisted(m) ? '<span class="fx-unl">UNLISTED – find the date</span>' : blank}\${isOpen(m) && m.forum !== 'Advisory' ? \` <button class="fx-edit" data-act="fixdate" data-id="\${m.id}">\${nd ? 'Correct' : 'Enter'}</button>\` : ''}\${full && isOpen(m) && m.forum !== 'HC' && m.forum !== 'Advisory' ? \` <button class="fx-edit" data-act="stayset" data-id="\${m.id}">Stayed by HC?</button>\` : ''}\`}</dd>
-      <dt>Purpose</dt><dd>\${v(m.purpose)}</dd>`}
+      ${!isOpen(m) && typeof closedRows === 'function' ? closedRows(m, full) : `      <dt>Next date</dt><dd class="fx-next">${isStayed(m) ? `<span class="fx-stay">${esc(stayText(m))}</span> <button class="fx-edit" data-act="stayset" data-id="${m.id}">Stay</button>` : `${nd ? esc(nd) : isUnlisted(m) ? '<span class="fx-unl">UNLISTED – find the date</span>' : blank}${isOpen(m) && m.forum !== 'Advisory' ? ` <button class="fx-edit" data-act="fixdate" data-id="${m.id}">${nd ? 'Correct' : 'Enter'}</button>` : ''}${full && isOpen(m) && m.forum !== 'HC' && m.forum !== 'Advisory' ? ` <button class="fx-edit" data-act="stayset" data-id="${m.id}">Stayed by HC?</button>` : ''}`}</dd>
+      <dt>Purpose</dt><dd>${v(m.purpose)}</dd>`}
     </dl>
   </div>`;
 }
