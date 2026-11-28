@@ -526,3 +526,7 @@ html.welcoming,html.welcoming body{overflow:hidden}
 .cl-when b{font-size:13px}.cl-when small{font-size:10px;font-weight:700}
 .cl-plan.late .cl-when{background:var(--red-soft);color:var(--red-ink)}
 .matter .acts .act{font-size:12px;padding:0 4px}
+/* further action after a matter is decided */
+.fx-fa{color:var(--saffron-ink);font-weight:800}
+.fx-fa.done{color:var(--wa)}
+.fx-fa-note{display:block;font-weight:600;color:var(--muted);font-size:12px;margin-top:2px}

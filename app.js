@@ -536,6 +536,7 @@ function viewMatters() {
     fees: m => feeDue(m) > 0,
     HC: m => m.forum === 'HC', District: m => m.forum === 'District', Tribunal: m => m.forum === 'Tribunal', Consumer: m => m.forum === 'Consumer', Revenue: m => m.forum === 'Revenue', Advisory: m => m.forum === 'Advisory',
     decided: m => !isOpen(m),
+    further: m => typeof furtherPending === 'function' && furtherPending(m),
     dups: m => dupsOf(m).length > 0,
     all: () => true,
   };
@@ -545,14 +546,14 @@ function viewMatters() {
     .sort((a, b) => f === 'deadline' ? a.deadline.localeCompare(b.deadline) : ((isOpen(b) - isOpen(a)) || ((+a.year || 0) - (+b.year || 0)) || ((+a.n || 0) - (+b.n || 0))));
   // Need a date / Unlisted: High Court matters first, then trial courts, then tribunals, consumer and revenue
   const grouped = f === 'need' || f === 'unlisted';
-  const pageTitle = f === 'stayed' ? 'Stayed by High Court' : f === 'need_hc' ? 'High Court – need a date' : f === 'need_trial' ? 'Trial courts – need a date' : '';
+  const pageTitle = f === 'further' ? 'Further action to take' : f === 'stayed' ? 'Stayed by High Court' : f === 'need_hc' ? 'High Court – need a date' : f === 'need_trial' ? 'Trial courts – need a date' : '';
   if (grouped) ms.sort((a, b) => (courtGroup(a) - courtGroup(b)) || ((a.nextDate || '') .localeCompare(b.nextDate || '')) || ((+a.year || 0) - (+b.year || 0)) || ((+a.n || 0) - (+b.n || 0)));
   const firstShut = f === 'deadline' || grouped ? -1 : ms.findIndex(m => !isOpen(m)), split = firstShut > 0;   // a heading between pending and decided
   const chip = (k, l) => `<button class="${f === k ? 'on' : ''}" data-act="filter" data-f="${k}">${l}</button>`;
   return `<header class="phead">
     <div class="top-row"><div class="tr-l">${backBtn()}<h1>${pageTitle || 'Matters'}</h1></div><button id="syncbtn" class="sync" data-act="sync"></button></div>
     <label class="search">${I.search}<input type="search" placeholder="Search matters" data-act="q" value="${esc(S.q)}"></label>
-    <div class="filters">${/^al_/.test(f || '') ? chip(f, 'Allotted: ' + esc(f === 'al_self' ? 'Self' : jShort(juniors().find(j => j.id === f.slice(3))))) : ''}${chip('pending', 'Pending')}${live().some(isStayed) ? chip('stayed', 'Stayed (' + live().filter(isStayed).length + ')') : ''}${live().some(isUnlisted) ? chip('unlisted', 'Unlisted (' + live().filter(isUnlisted).length + ')') : ''}${chip('st_consult', 'Consultations')}${chip('st_tofile', 'To be filed')}${chip('st_filed', 'Filed – no date yet')}${chip('need_hc', 'High Court – need a date')}${chip('need_trial', 'Trial courts – need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory / Pre-litigation')}${live().some(m => dupsOf(m).length) ? chip('dups', '<span class="dupstar">★</span> Duplicates') : ''}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
+    <div class="filters">${/^al_/.test(f || '') ? chip(f, 'Allotted: ' + esc(f === 'al_self' ? 'Self' : jShort(juniors().find(j => j.id === f.slice(3))))) : ''}${chip('pending', 'Pending')}${typeof furtherPending === 'function' && live().some(furtherPending) ? chip('further', 'Further action (' + live().filter(furtherPending).length + ')') : ''}${live().some(isStayed) ? chip('stayed', 'Stayed (' + live().filter(isStayed).length + ')') : ''}${live().some(isUnlisted) ? chip('unlisted', 'Unlisted (' + live().filter(isUnlisted).length + ')') : ''}${chip('st_consult', 'Consultations')}${chip('st_tofile', 'To be filed')}${chip('st_filed', 'Filed – no date yet')}${chip('need_hc', 'High Court – need a date')}${chip('need_trial', 'Trial courts – need a date')}${chip('deadline', 'Deadlines')}${chip('fees', 'Fees due')}${chip('HC', 'High Court')}${chip('District', 'District')}${chip('Tribunal', 'Tribunals')}${chip('Consumer', 'Consumer')}${chip('Revenue', 'Revenue')}${chip('Advisory', 'Advisory / Pre-litigation')}${live().some(m => dupsOf(m).length) ? chip('dups', '<span class="dupstar">★</span> Duplicates') : ''}${chip('decided', 'Decided / closed')}${chip('all', 'All')}</div>
   </header>
   <main><div class="list">
     ${typeof shotButton === 'function' ? shotButton('matters') : ''}
@@ -725,6 +726,7 @@ function sheetEdit(m, pre) {
     const asConsult = isNew && e.submitter && e.submitter.dataset.kind === 'consult';
     if (asConsult) { fd.forum = 'Advisory'; fd.status = 'Instructions received'; fd.stage = 'consult'; if (!fd.title) fd.title = clientName(fd.clients) + ' – consultation'; }
     if (fd.status !== 'Decided') fd.outcome = '';
+    if (fd.status && !isOpen({ forum: fd.forum, status: fd.status })) { if ('nextDate' in fd) fd.nextDate = ''; if ('purpose' in fd) fd.purpose = ''; if ('item' in fd) fd.item = ''; fd.unlisted = false; }
     for (const k in fd) fd[k] = String(fd[k]).trim();
     for (const k of ['pet', 'opp']) if (fd[k]) fd[k] = fd[k].split('\n').map(x => x.trim()).filter(Boolean).join('\n');
     fd.year = parseInt(fd.year, 10) || y;

@@ -567,11 +567,13 @@ document.addEventListener('change', e => {
       m.status = v; if (v !== 'Decided') m.outcome = '';
       const wasOpen = isOpen(m.forum === 'Advisory' ? { forum: 'Advisory', status: was } : { status: was }); m.status = v;
       if (!isOpen(m) && wasOpen) { m.closedOn = todayIso(); m.calPending = true; }
+      if (!isOpen(m) && (m.nextDate || m.purpose)) { logChange(m, 'Next date ' + (m.nextDate ? dmy(m.nextDate) : '—') + (m.purpose ? ' (' + m.purpose + ')' : '') + ' removed: matter ' + v); }
+      if (!isOpen(m)) { m.nextDate = ''; m.purpose = ''; m.item = ''; m.unlisted = false; }
       if (isOpen(m)) m.closedOn = '';
       touch(m);
     });
     change(() => logChange(m, 'Status: ' + (was || '—') + ' → ' + v));
-    toast('Status: ' + v + (v === 'Decided' ? '. Now choose the result.' : ''), 3000);
+    toast('Status: ' + v + (v === 'Decided' ? '. Now choose the result and further action.' : !isOpen(m) ? '. Next date removed.' : ''), 3000);
   } else if (el.dataset.st === 'allot') {
     if (el.value === '__new') { render(); return sheetNewJunior(m); }
     const was = allotName(m); change(() => { m.allot = el.value; logChange(m, 'Allotted to: ' + was + ' → ' + allotName(m)); touch(m); });
@@ -645,6 +647,7 @@ function fillYearsFromCaseNo() {
 function runOneTimeFixes() {
   if (!S.data || !S.account) return;
   const done = S.data.fixes || [];
+  { const n = typeof clearClosedDates === 'function' ? clearClosedDates() : 0; if (n) toast('Next date and purpose removed from ' + n + ' decided / closed matter' + (n > 1 ? 's' : ''), 4500); }
   { const n = fillYearsFromCaseNo(); if (n) toast(n + ' matter' + (n > 1 ? 's' : '') + ' got the year from the case no. (new matter ref.)', 5000); }
   { // his instruction 25.11.2026: no "(W/S)" in the case type — "Criminal Case (W/S)" is just "Criminal Case"
     const ws = /\s*\(\s*w\s*\/\s*s\s*\)\s*|\s+w\/s\b/ig, hit = live().filter(m => ws.test(m.type || '') && !(ws.lastIndex = 0));
